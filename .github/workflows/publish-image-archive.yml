@@ -123,6 +123,8 @@ jobs:
       - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # There is no checkout in this job, so gh needs the repo named.
+          GH_REPO: ${{ github.repository }}
           BASE: ${{ steps.export.outputs.base }}
         run: |
           set -euo pipefail
@@ -166,6 +168,7 @@ jobs:
               manifest.json config.json image-provenance.txt SHA256SUMS
           else
             gh release create '${{ inputs.release_tag }}' \
+              --target '${{ github.sha }}' \
               --title 'food-st44 image ${{ inputs.image_tag }}' \
               --notes-file notes.md \
               "${BASE}.docker.tar.gz" "${BASE}.oci.tar.gz" \
