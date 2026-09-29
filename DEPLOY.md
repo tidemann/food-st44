@@ -33,12 +33,17 @@ GHCR needs a token with `read:packages`, which a plain repository token does
 `main` build uploads one, and plain repository access is enough to download it:
 
 ```bash
-gh run download --repo tidemann/food-st44 --name "image-<commit-sha>" --dir .
-docker load < "food-st44-<commit-sha>.tar.gz"
+mkdir -p /tmp/food-st44
+gh run download --repo tidemann/food-st44 \
+  --name "image-<commit-sha>" --dir /tmp/food-st44
+docker load < "/tmp/food-st44/food-st44-<commit-sha>.tar.gz"
 ```
 
-That loads the identical image, same digest, same tags. Tarballs are kept for
-14 days, so use GHCR for anything older.
+Give `--dir` a real directory, not `.` — `gh` rejects `.` with a
+"would result in path traversal" error.
+
+That loads the identical image, same digest, tagged with the commit SHA.
+Tarballs are kept for 14 days, so use GHCR for anything older.
 
 ## Runtime
 
