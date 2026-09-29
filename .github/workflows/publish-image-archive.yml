@@ -1,0 +1,201 @@
+name: Publish image archive
+
+# Publishes an image that already exists in GHCR as a public GitHub release
+# asset, so a server that cannot authenticate to the registry can still get
+# the exact same image. This never builds: it copies an existing digest.
+
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: 'Manifest digest to publish, e.g. sha256:769fc8...'
+        required: true
+        type: string
+      image_tag:
+        description: 'Tag to write into the docker archive (usually the commit SHA)'
+        required: true
+        type: string
+      release_tag:
+        description: 'Release tag to create, e.g. image-d50023c5'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-image-archive-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  publish:
+    name: Export and publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # create the release and upload assets
+      packages: read # pull the existing image, never push
+    steps:
+      - name: Check the digest looks like a digest
+        run: |
+          set -euo pipefail
+          case '${{ inputs.digest }}' in
+            sha256:[0-9a-f]*) ;;
+            *) echo '::error::digest must be sha256:<hex>'; exit 1 ;;
+          esac
+
+      - name: Install skopeo
+        run: |
+          set -euo pipefail
+          command -v skopeo >/dev/null || {
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends skopeo
+          }
+          skopeo --version
+
+      - name: Log in to GHCR
+        run: |
+          set -euo pipefail
+          printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
+            | skopeo login ghcr.io -u '${{ github.actor }}' --password-stdin
+
+      # The registry digest IS the sha256 of these exact manifest bytes, so
+      # this both fetches the manifest and proves we got the right image.
+      - name: Fetch and verify the manifest
+        id: manifest
+        run: |
+          set -euo pipefail
+          SRC="docker://${IMAGE}@${{ inputs.digest }}"
+          skopeo inspect --raw "$SRC" > manifest.json
+          ACTUAL="sha256:$(sha256sum manifest.json | cut -d' ' -f1)"
+          echo "requested: ${{ inputs.digest }}"
+          echo "actual:    $ACTUAL"
+          test "$ACTUAL" = '${{ inputs.digest }}' || {
+            echo '::error::manifest digest mismatch'; exit 1; }
+
+          skopeo inspect --raw --config "$SRC" > config.json
+          CONFIG_DIGEST="sha256:$(sha256sum config.json | cut -d' ' -f1)"
+          echo "config_digest=$CONFIG_DIGEST" >> "$GITHUB_OUTPUT"
+
+          PLATFORM="$(jq -r '"\(.os)/\(.architecture)"' config.json)"
+          echo "platform=$PLATFORM" >> "$GITHUB_OUTPUT"
+          echo "media_type=$(jq -r '.mediaType // "unset"' manifest.json)" >> "$GITHUB_OUTPUT"
+
+      # Two archives on purpose: docker-archive loads with plain `docker load`
+      # on a server with nothing extra installed; oci-archive keeps the exact
+      # manifest bytes, so the registry digest survives for anyone re-pushing.
+      - name: Export the image
+        id: export
+        run: |
+          set -euo pipefail
+          SRC="docker://${IMAGE}@${{ inputs.digest }}"
+          BASE="food-st44-${{ inputs.image_tag }}"
+
+          skopeo copy "$SRC" "docker-archive:${BASE}.docker.tar:${IMAGE}:${{ inputs.image_tag }}"
+          skopeo copy --all "$SRC" "oci-archive:${BASE}.oci.tar"
+
+          gzip -n "${BASE}.docker.tar" "${BASE}.oci.tar"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          ls -lh "${BASE}".*.tar.gz
+
+      - name: Write provenance and checksums
+        run: |
+          set -euo pipefail
+          BASE='${{ steps.export.outputs.base }}'
+          cat > image-provenance.txt <<EOF
+          image                 ${IMAGE}
+          registry digest       ${{ inputs.digest }}
+          manifest media type   ${{ steps.manifest.outputs.media_type }}
+          config digest         ${{ steps.manifest.outputs.config_digest }}
+          platform              ${{ steps.manifest.outputs.platform }}
+          archive image tag     ${IMAGE}:${{ inputs.image_tag }}
+          exported by run       ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          exported from commit  ${{ github.sha }}
+          EOF
+          cat image-provenance.txt
+
+          sha256sum "${BASE}.docker.tar.gz" "${BASE}.oci.tar.gz" \
+            manifest.json config.json image-provenance.txt > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE: ${{ steps.export.outputs.base }}
+        run: |
+          set -euo pipefail
+          cat > notes.md <<EOF
+          Public archive of an image that already exists in GHCR. Nothing was
+          rebuilt: this is a byte-for-byte copy of \`${IMAGE}@${{ inputs.digest }}\`.
+
+          Use this when the target host cannot authenticate to GHCR. No
+          credentials are needed to download these assets.
+
+          | Fact | Value |
+          | --- | --- |
+          | Registry digest | \`${{ inputs.digest }}\` |
+          | Config digest (image ID after \`docker load\`) | \`${{ steps.manifest.outputs.config_digest }}\` |
+          | Platform | \`${{ steps.manifest.outputs.platform }}\` |
+          | Tag inside the archive | \`${IMAGE}:${{ inputs.image_tag }}\` |
+
+          ## Load it
+
+          \`\`\`bash
+          curl -fsSLO ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.release_tag }}/${BASE}.docker.tar.gz
+          curl -fsSLO ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.release_tag }}/SHA256SUMS
+          sha256sum -c --ignore-missing SHA256SUMS
+          gunzip -c ${BASE}.docker.tar.gz | docker load
+          \`\`\`
+
+          Verify identity after loading — the image ID must match the config digest:
+
+          \`\`\`bash
+          docker image inspect --format '{{.Id}}' ${IMAGE}:${{ inputs.image_tag }}
+          \`\`\`
+
+          \`docker load\` does not restore a registry RepoDigest, so check the
+          image ID rather than \`RepoDigests\`. \`${BASE}.oci.tar.gz\` keeps the
+          original manifest bytes if you need the registry digest preserved.
+          EOF
+
+          if gh release view '${{ inputs.release_tag }}' >/dev/null 2>&1; then
+            gh release upload '${{ inputs.release_tag }}' --clobber \
+              "${BASE}.docker.tar.gz" "${BASE}.oci.tar.gz" \
+              manifest.json config.json image-provenance.txt SHA256SUMS
+          else
+            gh release create '${{ inputs.release_tag }}' \
+              --title 'food-st44 image ${{ inputs.image_tag }}' \
+              --notes-file notes.md \
+              "${BASE}.docker.tar.gz" "${BASE}.oci.tar.gz" \
+              manifest.json config.json image-provenance.txt SHA256SUMS
+          fi
+
+      # A release asset nobody can fetch without a token is the bug we are
+      # fixing, so prove the anonymous path works before calling this done.
+      - name: Verify anonymous download
+        run: |
+          set -euo pipefail
+          BASE='${{ steps.export.outputs.base }}'
+          URL='${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.release_tag }}'
+          WORK="$(mktemp -d)"
+          cd "$WORK"
+          # No Authorization header, no netrc, no gh auth.
+          curl -fsSL --netrc-optional -o "${BASE}.docker.tar.gz" "${URL}/${BASE}.docker.tar.gz"
+          curl -fsSL --netrc-optional -o SHA256SUMS "${URL}/SHA256SUMS"
+          curl -fsSL --netrc-optional -o manifest.json "${URL}/manifest.json"
+          sha256sum -c --ignore-missing SHA256SUMS
+          test "sha256:$(sha256sum manifest.json | cut -d' ' -f1)" = '${{ inputs.digest }}'
+          echo "anonymous download verified"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Published ${{ inputs.release_tag }}"
+            echo
+            echo "- Registry digest: \`${{ inputs.digest }}\`"
+            echo "- Config digest: \`${{ steps.manifest.outputs.config_digest }}\`"
+            echo "- Platform: \`${{ steps.manifest.outputs.platform }}\`"
+            echo "- Anonymous download verified from the release."
+          } >> "$GITHUB_STEP_SUMMARY"
