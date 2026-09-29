@@ -23,6 +23,13 @@ credentials.
 - Release: https://github.com/tidemann/food-st44/releases/tag/image-d50023c5
 - Export proof: https://github.com/tidemann/food-st44/actions/runs/36563047075
 
+Pull proof, off GitHub infrastructure (2026-09-29): all six assets downloaded
+with `curl -H 'Authorization:'` from a host with no GitHub credentials;
+`sha256sum -c SHA256SUMS` passed, `sha256sum manifest.json` equalled the
+registry digest `769fc817…`, and the archive's own `manifest.json` names config
+`ddd54b02…` with repo tag
+`ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e`.
+
 Nothing was rebuilt. `.github/workflows/publish-image-archive.yml` copies the
 existing digest out of GHCR with `skopeo` and attaches it to the release.
 
