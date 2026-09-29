@@ -50,6 +50,9 @@ Note that `/healthz` only exists in the Docker version; it comes from
      what a deploy should reference.
    - `ghcr.io/tidemann/food-st44:latest` — a convenience pointer, never the
      source of truth for a deploy.
+
+   The same build is also uploaded as a `docker save` tarball on the workflow
+   run, for anyone whose token cannot reach GHCR. See `DEPLOY.md`.
 3. The server side — pulling the image, running the container, the nginx vhost
    for `food.st44.no`, and the TLS certificate — is owned by Server Admin, not
    by this repository. `DEPLOY.md` has everything they need.

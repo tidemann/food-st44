@@ -110,6 +110,24 @@ jobs:
             docker push "$tag"
           done <<<'${{ steps.meta.outputs.tags }}'
 
+      # Fallback delivery path: GHCR needs a token with read:packages, which not
+      # every consumer has. The tarball is downloadable with plain repo access.
+      - name: Save image as a tarball
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          docker save "${IMAGE}:${GITHUB_SHA}" | gzip > "food-st44-${GITHUB_SHA}.tar.gz"
+          ls -lh "food-st44-${GITHUB_SHA}.tar.gz"
+
+      - name: Upload image tarball
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: image-${{ github.sha }}
+          path: food-st44-${{ github.sha }}.tar.gz
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Summary
         run: |
           {
