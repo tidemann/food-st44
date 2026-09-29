@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege by default; the build job adds packages:write for GHCR.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  # Cheap checks first, so an obvious mistake fails in seconds.
+  validate:
+    name: Validate sources
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Required files exist
+        run: |
+          for f in site/index.html nginx.conf Dockerfile README.md DEPLOY.md LICENSE; do
+            test -s "$f" || { echo "::error::missing or empty: $f"; exit 1; }
+          done
+
+      - name: index.html looks like a page
+        run: |
+          grep -qi '<!doctype html>' site/index.html || { echo '::error::no doctype'; exit 1; }
+          grep -qi '<title>' site/index.html || { echo '::error::no <title>'; exit 1; }
+
+      - name: No committed env files
+        run: |
+          if git ls-files | grep -E '^\.env($|\.)' | grep -v '\.example$'; then
+            echo "::error::a .env file is committed"
+            exit 1
+          fi
+
+  build:
+    name: Build image
+    needs: validate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Image tags
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,format=long,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      # Build once into the local daemon. On main we push these exact tags,
+      # so the tested image and the shipped image are the same build.
+      - name: Build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the image
+        run: |
+          set -euo pipefail
+          TAG="$(head -n1 <<<'${{ steps.meta.outputs.tags }}')"
+          echo "testing $TAG"
+          docker run --rm "$TAG" nginx -t
+          docker run -d --name smoke -p 8080:80 "$TAG"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then break; fi
+            if [ "$i" = 30 ]; then docker logs smoke; echo '::error::container never became healthy'; exit 1; fi
+            sleep 1
+          done
+          test "$(curl -fsS http://127.0.0.1:8080/healthz)" = "ok"
+          curl -fsS http://127.0.0.1:8080/ | grep -q 'food.st44.no'
+          docker rm -f smoke
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          while read -r tag; do
+            [ -n "$tag" ] || continue
+            docker push "$tag"
+          done <<<'${{ steps.meta.outputs.tags }}'
+
+      - name: Summary
+        run: |
+          {
+            echo "### Image"
+            echo
+            echo '```'
+            echo '${{ steps.meta.outputs.tags }}'
+            echo '```'
+            if [ '${{ github.event_name }}' = 'push' ] && [ '${{ github.ref }}' = 'refs/heads/main' ]; then
+              echo "Pushed to GHCR."
+            else
+              echo "Built and smoke-tested only (not pushed)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

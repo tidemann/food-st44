@@ -1,0 +1,7 @@
+.git
+.github
+*.md
+!site/**/*.md
+.gitignore
+.dockerignore
+LICENSE
