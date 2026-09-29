@@ -1,131 +1,77 @@
 # Deploy handoff — food.st44.no
 
-Everything needed to run this container. Nothing here requires asking the
-repository owner.
+## Release identity and access gate
 
-## Artifact
+- Image: `ghcr.io/tidemann/food-st44`
+- Selected SHA tag: `d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e`
+- Registry manifest digest: `sha256:769fc817db5fa6a8c7c9db2fe3e15b8d2300f482bc79bbdb4bb0aec90efd23bc`
+- Platform: `linux/amd64`
+- Build proof: https://github.com/tidemann/food-st44/actions/runs/36539383656
 
-| Fact             | Value                                                           |
-| ---------------- | --------------------------------------------------------------- |
-| Registry         | `ghcr.io` (GitHub Container Registry)                            |
-| Image            | `ghcr.io/tidemann/food-st44`                                     |
-| Tag to deploy    | the **full commit SHA** of the `main` commit you are shipping    |
-| Convenience tag  | `latest` — points at the newest `main` build, do not deploy by it |
-| Architecture     | `linux/amd64`                                                    |
-| Base image       | `nginx:1.29-alpine`, pinned by digest                            |
-| Approx. size     | ~50 MB                                                           |
+Keep this release identity while repairing access. Do not rebuild or substitute
+`latest`. The source repository is public, but package visibility is separate.
+Anonymous GHCR access currently fails (HTTP 401 on 2026-09-29); deployment must
+wait until anonymous pull of this exact digest succeeds on spzmf.
 
-The repository is public, but the **GHCR package is still private**. Package
-visibility does not follow repository visibility, and GitHub has no REST
-endpoint for changing it — it is a manual setting under
-[package settings](https://github.com/users/tidemann/packages/container/food-st44/settings)
-("Change visibility" → Public). Until someone flips that, pulling needs a
-GitHub token with `read:packages` for the `tidemann` account:
+Oskar owns access repair; Maria owns escalation for missing package administration
+permissions. The intended remedy is public visibility for the package at
+https://github.com/users/tidemann/packages/container/food-st44/settings.
+Do not pass registry credentials to Bob. A GitHub Actions artifact download
+requires GitHub authentication and is not an anonymous server handoff.
 
-```bash
-echo "$GHCR_TOKEN" | docker login ghcr.io -u tidemann --password-stdin
-docker pull ghcr.io/tidemann/food-st44:<commit-sha>
-```
+## Runtime contract
 
-Do not put a token in this file or in any issue comment. If you need a
-pull-only credential, ask Oskar — it goes through Paperclip secrets.
+| Fact | Value |
+| --- | --- |
+| Container name | `food-st44` |
+| Container port | `80` (HTTP) |
+| Docker network | `st44_default`, shared with `nginx-proxy` |
+| Published host ports | None |
+| Environment variables | None |
+| Volumes | None; stateless |
+| Runtime secrets | None |
+| Restart policy | `unless-stopped` |
+| Hostname | `food.st44.no` |
+| nginx upstream | `http://food-st44:80` |
 
-### Fallback if you cannot pull from GHCR
-
-A plain repository token has no `read:packages`, so `docker pull` may be
-denied. Take the tarball instead — every `main` build uploads one, and plain
-repository access is enough to download it:
-
-```bash
-mkdir -p /tmp/food-st44
-gh run download --repo tidemann/food-st44 \
-  --name "image-<commit-sha>" --dir /tmp/food-st44
-docker load < "/tmp/food-st44/food-st44-<commit-sha>.tar.gz"
-```
-
-Give `--dir` a real directory, not `.` — `gh` rejects `.` with a
-"would result in path traversal" error.
-
-That loads the identical image, same digest, tagged with the commit SHA.
-Tarballs are kept for 14 days, so use GHCR for anything older.
-
-## Runtime
-
-| Fact                  | Value                                                  |
-| --------------------- | ------------------------------------------------------ |
-| Container port        | **80** (HTTP, plain — TLS terminates at the host nginx) |
-| Suggested host port   | `127.0.0.1:8081` (bind to loopback, not `0.0.0.0`)      |
-| Environment variables | **none** — the image needs no configuration             |
-| Volumes               | **none** — the container is stateless, nothing persists |
-| Secrets               | none at runtime                                         |
-| Runs as               | nginx default (root master, `nginx` workers)            |
-| Restart policy        | `unless-stopped`                                        |
-
-Example:
+Server Admin runs these commands through the server's permitted tooling after
+reading `/srv/nginx/AGENTS.md`. These are the Docker semantics, not permission
+to bypass server wrappers:
 
 ```bash
-docker run -d \
-  --name food-st44 \
-  --restart unless-stopped \
-  -p 127.0.0.1:8081:80 \
-  ghcr.io/tidemann/food-st44:<commit-sha>
-```
-
-## Health check
-
-| Fact           | Value                                          |
-| -------------- | ---------------------------------------------- |
-| Path           | `/healthz`                                     |
-| Method         | `GET`                                          |
-| Expected       | HTTP `200`, body `ok`                          |
-| In-container   | `http://127.0.0.1/healthz`                     |
-| From the host  | `http://127.0.0.1:8081/healthz`                |
-| Public         | `https://food.st44.no/healthz`                 |
-
-The image also declares a Docker `HEALTHCHECK` on the same path, so
-`docker ps` shows `healthy` once it is up (within ~10 s).
-
-**The deploy is finished when `https://food.st44.no/healthz` returns `ok`** —
-not when the container starts.
-
-## Hostname and TLS
-
-| Fact     | Value                                                    |
-| -------- | -------------------------------------------------------- |
-| Hostname | `food.st44.no`                                            |
-| Scheme   | HTTPS, with HTTP redirecting to HTTPS                     |
-| TLS      | Let's Encrypt, same approach as the other ST44 hosts      |
-| DNS      | `food.st44.no` must resolve to the server before issuing a certificate |
-
-The host nginx should reverse-proxy `food.st44.no` to the container's host port
-(`127.0.0.1:8081` in the example above) and pass through the usual
-`Host` / `X-Forwarded-For` / `X-Forwarded-Proto` headers. There is no
-websocket, no upload, and no long-lived request — default proxy settings are
-fine.
-
-## Rollback
-
-Every commit on `main` produces an image tagged with its full commit SHA, and
-those tags are never overwritten. To roll back, run the previous SHA tag:
-
-```bash
-docker rm -f food-st44
+docker pull ghcr.io/tidemann/food-st44@sha256:769fc817db5fa6a8c7c9db2fe3e15b8d2300f482bc79bbdb4bb0aec90efd23bc
 docker run -d --name food-st44 --restart unless-stopped \
-  -p 127.0.0.1:8081:80 ghcr.io/tidemann/food-st44:<previous-commit-sha>
+  --network st44_default \
+  ghcr.io/tidemann/food-st44@sha256:769fc817db5fa6a8c7c9db2fe3e15b8d2300f482bc79bbdb4bb0aec90efd23bc
 ```
 
-List what is available with (needs a token with `read:packages`):
+There is deliberately no `-p`. nginx-proxy terminates TLS and proxies to
+`http://food-st44:80`, passing Host, X-Forwarded-For and X-Forwarded-Proto.
+Server Admin owns Docker runtime, nginx configuration and TLS; Maria owns DNS.
 
-```bash
-gh api /user/packages/container/food-st44/versions --jq '.[].metadata.container.tags'
-```
+## Verification and rollback
 
-Or just read the commit log — `git log --oneline main` — every entry has a
-matching image tag.
+Bob records the anonymous server pull result and resolved digest before running
+the container. Verify `http://food-st44:80/healthz` from the proxy network:
+HTTP 200 with body `ok`. The image's own health check uses
+`http://127.0.0.1/healthz` inside the food-st44 container; that local check is valid.
+Deployment finishes when `https://food.st44.no/healthz` returns HTTP 200 and `ok`
+over valid TLS, with HTTP redirecting to HTTPS.
 
-## Who owns what
+Before replacing an existing service, record its exact image digest and run
+configuration. Roll back by recreating it with that digest on `st44_default`
+and checking health again. This is the first deployment: no previous good
+server artifact is established. Earlier build tags `736275fb6bcd58a9d2a773dcb7c61807a17fd44e`
+and `bb40aab95053546854a4329d8179c59c01001d0d` are candidates only, not verified
+server rollback artifacts. If first deployment fails, Server Admin removes the
+new service/vhost using permitted tooling and restores the prior server state.
 
-- **Oskar (GitHub & CI/CD)** — the repository, the image, the tags, the
-  pipeline. Anything wrong with the artifact is his.
-- **Server Admin** — the Docker runtime on the server, the nginx vhost, DNS and
-  TLS. Anything wrong with how it is served is theirs.
+## Lessons from the failed handoff
+
+- Images for spzmf must be pullable by the server. Prove anonymous access to the
+  exact SHA/digest before handing off; a green authenticated CI push is insufficient.
+- Never use 127.0.0.1 upstreams from nginx-proxy to another container. Container
+  loopback belongs to that container; use `food-st44:80` on `st44_default`.
+- A Docker archive preserves image content and tags, but do not assume it
+  preserves a registry RepoDigest after loading; verify identity explicitly.
+- Return agent-output failures to the responsible agent or Maria, never the user.
