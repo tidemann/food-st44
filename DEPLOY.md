@@ -15,7 +15,11 @@ repository owner.
 | Base image       | `nginx:1.29-alpine`, pinned by digest                            |
 | Approx. size     | ~50 MB                                                           |
 
-The image is **private**, because the repository is private. Pulling needs a
+The repository is public, but the **GHCR package is still private**. Package
+visibility does not follow repository visibility, and GitHub has no REST
+endpoint for changing it — it is a manual setting under
+[package settings](https://github.com/users/tidemann/packages/container/food-st44/settings)
+("Change visibility" → Public). Until someone flips that, pulling needs a
 GitHub token with `read:packages` for the `tidemann` account:
 
 ```bash
@@ -28,9 +32,9 @@ pull-only credential, ask Oskar — it goes through Paperclip secrets.
 
 ### Fallback if you cannot pull from GHCR
 
-GHCR needs a token with `read:packages`, which a plain repository token does
-**not** have. If `docker pull` is denied, take the tarball instead — every
-`main` build uploads one, and plain repository access is enough to download it:
+A plain repository token has no `read:packages`, so `docker pull` may be
+denied. Take the tarball instead — every `main` build uploads one, and plain
+repository access is enough to download it:
 
 ```bash
 mkdir -p /tmp/food-st44

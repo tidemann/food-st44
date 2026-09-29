@@ -60,8 +60,11 @@ Note that `/healthz` only exists in the Docker version; it comes from
 To roll back, redeploy the previous commit's SHA tag. Every commit that reached
 `main` has one.
 
-`main` is protected: the `Build image` check must pass and force-pushes are
-rejected, so changes go through a pull request.
+`main` is protected by the `protect-main` ruleset: changes must go through a
+pull request, both CI checks (`Validate sources` and `Build image`) must pass,
+and force-pushes and branch deletion are rejected. No review approval is
+required, so a single maintainer can still merge their own pull request once
+CI is green.
 
 ## Licence
 
