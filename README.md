@@ -16,6 +16,7 @@ nothing else has to change.
 | `nginx.conf`               | Server config, including the `/healthz` endpoint.|
 | `Dockerfile`               | Packages `site/` into an nginx image.            |
 | `.github/workflows/ci.yml` | Validate → build → smoke test → push to GHCR.    |
+| `.github/workflows/publish-image-archive.yml` | Copies an existing image digest to a public release asset. |
 | `DEPLOY.md`                | Handoff facts for whoever runs the container.    |
 
 ## Run it locally
@@ -52,13 +53,19 @@ Note that `/healthz` only exists in the Docker version; it comes from
      source of truth for a deploy.
 
    The same build is also uploaded as a `docker save` tarball on the workflow
-   run, for anyone whose token cannot reach GHCR. See `DEPLOY.md`.
-3. The server side — pulling the image, running the container, the nginx vhost
+   run, but that download still needs a GitHub login.
+3. The GHCR package is private and we cannot change its visibility, so a host
+   that has no registry credentials gets the image from a **public GitHub
+   release** instead. Run the `Publish image archive` workflow with the digest
+   you want; it copies that exact image — it never rebuilds — and fails unless
+   it can download the result back anonymously. See `DEPLOY.md`.
+4. The server side — loading the image, running the container, the nginx vhost
    for `food.st44.no`, and the TLS certificate — is owned by Server Admin, not
    by this repository. `DEPLOY.md` has everything they need.
 
 To roll back, redeploy the previous commit's SHA tag. Every commit that reached
-`main` has one.
+`main` has one. If the server cannot reach GHCR, publish that older digest as
+its own release archive first — same workflow, different `release_tag`.
 
 `main` is protected by the `protect-main` ruleset: changes must go through a
 pull request, both CI checks (`Validate sources` and `Build image`) must pass,
