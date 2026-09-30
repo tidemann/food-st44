@@ -19,28 +19,51 @@ returning 200 `ok` over valid TLS.
 - Platform: `linux/amd64`
 - Build proof: https://github.com/tidemann/food-st44/actions/runs/36539383656
 
-The tag is pinned in `infra/docker-compose.yml`. `latest` exists as a pointer
-and is never the source of truth for a deploy.
+The deployed tag is named in the `.env` the deploy workflow writes on the
+server; `infra/docker-compose.yml` says `${IMAGE}`. Only the commit-SHA tag is
+published — there is no `latest`, so there is no pointer to mistake for a
+release identity.
 
 ## How a deploy runs
 
 `.github/workflows/deploy.yml` runs on `workflow_dispatch` and on push to
-`main`. In order, it:
+`main`. It holds no deploy logic of its own — it calls the shared workflow in
+[tidemann/deploy-workflows](https://github.com/tidemann/deploy-workflows),
+pinned at `@v1`:
 
-1. installs `DEPLOY_KEY`, `ssh-keyscan`s `SERVER_HOST` into `known_hosts` with
-   `StrictHostKeyChecking yes`, and writes one `spzmf` ssh alias so the host
-   and user are named once;
-2. records the image currently running as `food-st44` — the rollback anchor —
+```yaml
+jobs:
+  deploy:
+    uses: tidemann/deploy-workflows/.github/workflows/build-and-deploy.yml@v1
+    with:
+      app-name: food-st44
+      site-host: food.st44.no
+    secrets: inherit
+```
+
+Every st44 site calls that same copy, so a fix to the route lands everywhere at
+once. `@v1` is a tag, not a branch: moving it is a deliberate act. In order, it:
+
+1. builds the image and pushes it to GHCR as
+   `ghcr.io/tidemann/food-st44:<commit-sha>`;
+2. installs `DEPLOY_KEY`, `ssh-keyscan`s `SERVER_HOST` into `known_hosts` with
+   `StrictHostKeyChecking yes`, and writes one ssh alias so the host and user
+   are named once;
+3. records the image currently running as `food-st44` — the rollback anchor —
    before touching anything;
-3. `mkdir -p`s `/srv/apps/food-st44/infra` and checks it is writable;
-4. `scp`s `infra/docker-compose.yml` there (the server has no git clone);
-5. runs `docker compose pull && docker compose up -d --force-recreate`. **The
+4. `mkdir -p`s `/srv/apps/food-st44/infra` and checks it is writable;
+5. `scp`s `infra/docker-compose.yml` there, plus an `.env` naming the image just
+   built (the server has no git clone);
+6. runs `docker compose pull && docker compose up -d --force-recreate`. **The
    pull happens on the host, as the deploy user, whose docker config holds the
    GHCR credential.** That is the whole point of this route;
-6. gates on `http://food-st44:80/healthz` = `ok` from inside the shared network,
+7. gates on `http://food-st44:80/healthz` = `ok` from inside the shared network,
    then on `https://food.st44.no/healthz` = 200 `ok` over valid TLS.
 
-A deploy is finished when step 6 passes, not when the container starts.
+A deploy is finished when step 7 passes, not when the container starts.
+
+`.github/workflows/ci.yml` builds and smoke-tests the image on every pull
+request but never pushes it. The deploy workflow is the only publisher.
 
 To deploy manually:
 
@@ -97,10 +120,12 @@ the copy from this repository; edit `infra/docker-compose.yml` and merge.
 
 ## Changing what is deployed
 
-Edit the `image:` tag in `infra/docker-compose.yml`, open a pull request, merge.
-Pushing to `main` runs the deploy. CI parses the compose file with real
-`docker compose config` on every pull request, so a typo fails before it reaches
-the server.
+Merge to `main`. The deploy workflow builds that commit, pushes it as
+`ghcr.io/tidemann/food-st44:<commit-sha>` and deploys that exact tag — there is
+nothing to edit. `infra/docker-compose.yml` says `${IMAGE}`; the workflow writes
+`IMAGE=<image>` to a `.env` beside it on the server. CI parses the compose file
+with real `docker compose config` on every pull request, so a typo fails before
+it reaches the server.
 
 ## Rollback
 
@@ -111,19 +136,21 @@ deployed image** step and the run summary both print it, for example:
 ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e sha256:ddd54b02…
 ```
 
-To roll back, set that tag back in `infra/docker-compose.yml` and merge — the
-normal deploy path, with the same health gates. Every commit that reached `main`
-has an immutable SHA tag in GHCR.
-
-For an emergency rollback without CI, on the server as the deploy user:
+Rolling back means pointing the server's `.env` at that tag. On the server, as
+the deploy user:
 
 ```bash
 cd /srv/apps/food-st44/infra
-# edit the image: tag to the previous SHA
+printf 'IMAGE=ghcr.io/tidemann/food-st44:<previous-sha>\n' > .env
 docker compose pull && docker compose up -d --force-recreate
 ```
 
-Then fix `infra/docker-compose.yml` in git, or the next deploy will undo it.
+Every commit that reached `main` has an immutable SHA tag in GHCR, so any of
+them is a valid target.
+
+Note that the next push to `main` re-deploys that commit and overwrites `.env`.
+A rollback is therefore a stop-gap: follow it by reverting the bad commit in
+git, which makes the revert the newest build and the rollback permanent.
 
 ## Lessons this route was built from
 
