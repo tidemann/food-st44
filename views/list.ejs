@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oppskrifter — food.st44.no</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Oppskrifter</h1>
+  </header>
+  <main>
+    <% if (recipes.length === 0) { %>
+      <p class="empty-state">Ingen oppskrifter ennå.</p>
+    <% } else { %>
+      <ul class="recipe-list">
+        <% recipes.forEach(function (recipe) { %>
+          <li class="recipe-list__item"><%= recipe.title %></li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </main>
+</body>
+</html>

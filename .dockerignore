@@ -1,7 +1,11 @@
 .git
 .github
 *.md
-!site/**/*.md
 .gitignore
 .dockerignore
 LICENSE
+node_modules/
+data/
+test/
+docs/
+infra/

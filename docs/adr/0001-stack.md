@@ -41,8 +41,9 @@ more than the job needs" problem.
 - **Rendering:** server-rendered HTML with EJS templates. No client-side
   framework, no bundler, no build step — the app serves the HTML it
   renders directly.
-- **Data:** SQLite, accessed via `better-sqlite3`, as a single file on a
-  named Docker volume mounted into the container (e.g. `/data/recipes.db`).
+- **Data:** SQLite, accessed via Node's built-in `node:sqlite` module (see
+  amendment below), as a single file on a named Docker volume mounted into
+  the container (e.g. `/data/recipes.db`).
 - **Styling:** one plain CSS file, no preprocessor, no framework.
 - **Tests:** Node's built-in test runner (`node:test`) plus `supertest` for
   HTTP-level route tests.
@@ -96,6 +97,26 @@ This replaces the current nginx-serving-static-files `Dockerfile` and
 - **Static site + client-side JS calling some backend.** There is no
   backend to call without standing one up, which is the actual decision
   being made here — this option just defers the same question. Rejected.
+
+## Amendment (2026-09-30, walking skeleton — ST-120)
+
+`better-sqlite3` needs a native module built against the exact Node/libc
+combination it runs on. `node:22-alpine` (musl libc) plus a very recent Node
+line meant no prebuilt binary was available and building from source needs a
+C toolchain we don't otherwise want in the image or on builders' machines —
+exactly the kind of extra moving part this ADR is trying to avoid for three
+autonomous builders.
+
+Node 22+ ships SQLite support built in as `node:sqlite` (`DatabaseSync` /
+`StatementSync`), stable enough for this app's needs and requiring zero
+native compilation anywhere — local dev, CI, or the container. It needs the
+`--experimental-sqlite` flag on Node 22 (harmless no-op on later Node
+versions where it's enabled by default), which is now baked into the
+`dev`/`start`/`test` npm scripts and the Dockerfile's `CMD`.
+
+This changes only the driver, not the decision: still SQLite, still a single
+file on a named volume, still no second container. No other part of this ADR
+changes.
 
 ## References
 
