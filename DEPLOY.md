@@ -115,7 +115,7 @@ deploy-user access and rotate it immediately if it is exposed.
 | Docker network | `st44_default`, shared with `nginx-proxy` |
 | Published host ports | None, by design |
 | Environment variables | None |
-| Volumes | None; stateless |
+| Volumes | Named volume `food-st44-data` at `/data` (SQLite database) |
 | Runtime secrets | None |
 | Restart policy | `unless-stopped` |
 | Hostname | `food.st44.no` |
