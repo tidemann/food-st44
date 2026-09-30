@@ -8,6 +8,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.urlencoded({ extended: false }));
 
 app.get('/healthz', (req, res) => {
   res.status(200).send('ok');
@@ -18,6 +19,26 @@ app.get('/', (req, res) => {
     .prepare('SELECT id, title, ingredients, instructions, created_at FROM recipes ORDER BY created_at DESC')
     .all();
   res.render('list', { recipes });
+});
+
+app.get('/recipes/new', (req, res) => {
+  res.render('new', { error: null, values: {} });
+});
+
+app.post('/recipes', (req, res) => {
+  const title = String(req.body.title || '').trim();
+  const ingredients = String(req.body.ingredients || '').trim();
+  const instructions = String(req.body.instructions || '').trim();
+
+  if (!title || !ingredients || !instructions) {
+    return res.status(400).render('new', {
+      error: 'Alle feltene må fylles ut.',
+      values: { title: req.body.title, ingredients: req.body.ingredients, instructions: req.body.instructions }
+    });
+  }
+
+  db.prepare('INSERT INTO recipes (title, ingredients, instructions) VALUES (?, ?, ?)').run(title, ingredients, instructions);
+  res.redirect('/');
 });
 
 if (require.main === module) {

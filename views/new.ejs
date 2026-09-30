@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ny oppskrift — food.st44.no</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Ny oppskrift</h1>
+  </header>
+  <main>
+    <% if (error) { %>
+      <p class="error"><%= error %></p>
+    <% } %>
+    <form action="/recipes" method="post" class="recipe-form">
+      <label for="title">Tittel</label>
+      <input type="text" id="title" name="title" value="<%= values.title || '' %>" required>
+
+      <label for="ingredients">Ingredienser</label>
+      <textarea id="ingredients" name="ingredients" rows="8" required><%= values.ingredients || '' %></textarea>
+
+      <label for="instructions">Fremgangsmåte</label>
+      <textarea id="instructions" name="instructions" rows="10" required><%= values.instructions || '' %></textarea>
+
+      <button type="submit">Lagre oppskrift</button>
+    </form>
+  </main>
+</body>
+</html>
