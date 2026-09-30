@@ -24,8 +24,19 @@ services:
     restart: unless-stopped
     # Deliberately no `ports:`. nginx-proxy terminates TLS and reaches this
     # container at http://food-st44:80 over the shared network below.
+    volumes:
+      # The app keeps its SQLite database at /data/recipes.db (DB_PATH in the
+      # Dockerfile). A named volume keeps that file across container recreation
+      # and redeploys. Compose creates it automatically on first `up`; nothing
+      # needs provisioning on the host.
+      - food-st44-data:/data
     networks:
       - st44_default
+
+# The app's persistent SQLite database, keyed to this project so the volume
+# survives `--force-recreate` redeploys.
+volumes:
+  food-st44-data:
 
 # Owned by the existing stack. `external: true` makes compose attach to it and
 # fail loudly if it is missing, rather than creating a second, isolated network.
