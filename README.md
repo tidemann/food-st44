@@ -45,29 +45,30 @@ Note that `/healthz` only exists in the Docker version; it comes from
 ## How it deploys
 
 1. You open a pull request against `main`. CI checks the sources, builds the
-   image, and runs it to confirm `/healthz` answers. Nothing is published.
-2. The pull request merges to `main`. CI builds the image again, smoke tests it,
-   and pushes **that same build** to the GitHub Container Registry as:
-   - `ghcr.io/tidemann/food-st44:<full-commit-sha>` — the immutable tag, this is
-     what a deploy should reference.
-   - `ghcr.io/tidemann/food-st44:latest` — a convenience pointer, never the
-     source of truth for a deploy.
-
-   The same build is also uploaded as a `docker save` tarball on the workflow
-   run, but that download still needs a GitHub login.
-3. The `Deploy` workflow then connects to the server over SSH, copies
-   `infra/docker-compose.yml` there, and runs `docker compose pull && up -d`.
-   **The registry pull happens on the server, as the deploy user, whose docker
-   config already holds the GHCR credential** — so the package stays private and
-   no credential goes near CI. It runs on every push to `main` and on demand
-   with `gh workflow run deploy.yml`.
-4. The deploy is only green once `https://food.st44.no/healthz` returns 200 `ok`
+   image, and runs it to confirm `/healthz` answers. Nothing is published — CI
+   never pushes.
+2. The pull request merges to `main`, and the `Deploy` workflow runs. It is five
+   lines: the route itself lives once in
+   [tidemann/deploy-workflows](https://github.com/tidemann/deploy-workflows),
+   pinned at `@v1`, and every st44 site calls that same copy.
+3. That workflow builds the image and pushes **one** immutable tag,
+   `ghcr.io/tidemann/food-st44:<full-commit-sha>`, to the GitHub Container
+   Registry. There is no `latest` and no tarball: the SHA tag is the only
+   release identity. The package is private and stays private.
+4. It then connects to the server over SSH, copies `infra/docker-compose.yml`
+   there with an `.env` naming the image, and runs
+   `docker compose pull && up -d --force-recreate`. **The registry pull happens
+   on the server, as the deploy user, whose docker config already holds the GHCR
+   credential** — so no credential goes near CI. It runs on every push to `main`
+   and on demand with `gh workflow run deploy.yml`.
+5. The deploy is only green once `https://food.st44.no/healthz` returns 200 `ok`
    over valid TLS, not merely once the container starts.
 
-The image tag that actually runs is the one pinned in
-`infra/docker-compose.yml`. To deploy a different build — or to roll back —
-change that tag and merge. Every commit that reached `main` has an immutable SHA
-tag in GHCR, and every deploy run prints the image it replaced.
+The image that actually runs is named in the `.env` the deploy workflow writes
+beside the compose file on the server — the compose file itself just says
+`${IMAGE}`. Rolling back means pointing that `.env` at a previous SHA and
+running compose up again; every deploy run prints the image it replaced.
+`DEPLOY.md` has the exact commands.
 
 The server side — the Docker runtime, the nginx vhost for `food.st44.no` and its
 TLS certificate — is owned by Server Admin, not by this repository. `DEPLOY.md`

@@ -5,8 +5,12 @@
 # credential. CI never ships the image bytes and never hands a credential to
 # the server; it only runs these commands over SSH.
 #
-# The tag is pinned to a commit SHA on purpose. `latest` is a pointer, not a
-# release identity — changing what is deployed means editing this file.
+# The image is supplied by the deploy workflow, which writes IMAGE=<image> to a
+# .env beside this file on the server. It is always a commit-SHA tag, never
+# `latest`: `latest` is a pointer, not a release identity. Rolling back means
+# pointing that .env at the previous SHA and running compose up again — see
+# DEPLOY.md.
+#
 # Pinned explicitly. Compose otherwise names the project after its directory,
 # which is `infra` here — and st44-home also deploys from a directory called
 # `infra`, so both stacks would claim the same project name on this host and
@@ -15,7 +19,7 @@ name: food-st44
 
 services:
   food-st44:
-    image: ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e
+    image: ${IMAGE:?IMAGE must be set — the deploy workflow writes it to .env}
     container_name: food-st44
     restart: unless-stopped
     # Deliberately no `ports:`. nginx-proxy terminates TLS and reaches this
