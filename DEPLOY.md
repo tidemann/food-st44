@@ -5,19 +5,26 @@ server over SSH and runs `docker compose` there.** The GHCR package is private
 and stays private. Nothing here needs a public release asset, and no registry
 credential ever travels through GitHub Actions.
 
-Proven end to end on
-[run 36729457106](https://github.com/tidemann/food-st44/actions/runs/36729457106):
-private pull on the host, container healthy, `https://food.st44.no/healthz`
-returning 200 `ok` over valid TLS.
+Proven end to end on the shared route by
+[run 36730946719](https://github.com/tidemann/food-st44/actions/runs/36730946719):
+built and pushed from the calling repo, private pull on the host, container
+healthy, `https://food.st44.no/healthz` returning 200 `ok` over valid TLS.
 
 ## Release identity
 
 - Image: `ghcr.io/tidemann/food-st44`
-- Deployed SHA tag: `d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e`
-- Registry manifest digest: `sha256:769fc817db5fa6a8c7c9db2fe3e15b8d2300f482bc79bbdb4bb0aec90efd23bc`
-- Config digest (image ID): `sha256:ddd54b02009e855ae006c0b9c7ad13d5561917cdad2b50e860df05345884ce7f`
+- Tag: the full commit SHA of the `main` commit being deployed. Nothing else is
+  published — no `latest`, no tarball.
 - Platform: `linux/amd64`
-- Build proof: https://github.com/tidemann/food-st44/actions/runs/36539383656
+
+Do not read the deployed version from this file — it moves on every merge. The
+live value is in the deploy run's step summary (**Image**, **Digest** and
+**Previous image**), and on the server in `/srv/apps/food-st44/infra/.env`.
+
+At the time of writing that is commit
+[`9d6f67f`](https://github.com/tidemann/food-st44/commit/9d6f67f91c6a81782f9c88d35115f9d409c6d082),
+digest `sha256:4fa89bdf96f485c340d7423a9414cd11df9c72f64d449ac8567b92777e505cd7`,
+which replaced `d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e`.
 
 The deployed tag is named in the `.env` the deploy workflow writes on the
 server; `infra/docker-compose.yml` says `${IMAGE}`. Only the commit-SHA tag is
