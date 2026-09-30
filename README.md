@@ -16,8 +16,9 @@ nothing else has to change.
 | `nginx.conf`               | Server config, including the `/healthz` endpoint.|
 | `Dockerfile`               | Packages `site/` into an nginx image.            |
 | `.github/workflows/ci.yml` | Validate → build → smoke test → push to GHCR.    |
-| `.github/workflows/publish-image-archive.yml` | Copies an existing image digest to a public release asset. |
-| `DEPLOY.md`                | Handoff facts for whoever runs the container.    |
+| `.github/workflows/deploy.yml` | Ships the compose file to the server over SSH and runs it. |
+| `infra/docker-compose.yml` | The deploy unit: which image tag runs, on which network. |
+| `DEPLOY.md`                | How the deploy works, its prerequisites, and how to roll back. |
 
 ## Run it locally
 
@@ -54,18 +55,23 @@ Note that `/healthz` only exists in the Docker version; it comes from
 
    The same build is also uploaded as a `docker save` tarball on the workflow
    run, but that download still needs a GitHub login.
-3. The GHCR package is private and we cannot change its visibility, so a host
-   that has no registry credentials gets the image from a **public GitHub
-   release** instead. Run the `Publish image archive` workflow with the digest
-   you want; it copies that exact image — it never rebuilds — and fails unless
-   it can download the result back anonymously. See `DEPLOY.md`.
-4. The server side — loading the image, running the container, the nginx vhost
-   for `food.st44.no`, and the TLS certificate — is owned by Server Admin, not
-   by this repository. `DEPLOY.md` has everything they need.
+3. The `Deploy` workflow then connects to the server over SSH, copies
+   `infra/docker-compose.yml` there, and runs `docker compose pull && up -d`.
+   **The registry pull happens on the server, as the deploy user, whose docker
+   config already holds the GHCR credential** — so the package stays private and
+   no credential goes near CI. It runs on every push to `main` and on demand
+   with `gh workflow run deploy.yml`.
+4. The deploy is only green once `https://food.st44.no/healthz` returns 200 `ok`
+   over valid TLS, not merely once the container starts.
 
-To roll back, redeploy the previous commit's SHA tag. Every commit that reached
-`main` has one. If the server cannot reach GHCR, publish that older digest as
-its own release archive first — same workflow, different `release_tag`.
+The image tag that actually runs is the one pinned in
+`infra/docker-compose.yml`. To deploy a different build — or to roll back —
+change that tag and merge. Every commit that reached `main` has an immutable SHA
+tag in GHCR, and every deploy run prints the image it replaced.
+
+The server side — the Docker runtime, the nginx vhost for `food.st44.no` and its
+TLS certificate — is owned by Server Admin, not by this repository. `DEPLOY.md`
+has the full contract, the prerequisites and the rollback procedure.
 
 `main` is protected by the `protect-main` ruleset: changes must go through a
 pull request, both CI checks (`Validate sources` and `Build image`) must pass,

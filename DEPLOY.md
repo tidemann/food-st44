@@ -1,141 +1,143 @@
-# Deploy handoff — food.st44.no
+# Deploy — food.st44.no
+
+There is exactly one supported way to deploy this site: **CI connects to the
+server over SSH and runs `docker compose` there.** The GHCR package is private
+and stays private. Nothing here needs a public release asset, and no registry
+credential ever travels through GitHub Actions.
+
+Proven end to end on
+[run 36729457106](https://github.com/tidemann/food-st44/actions/runs/36729457106):
+private pull on the host, container healthy, `https://food.st44.no/healthz`
+returning 200 `ok` over valid TLS.
 
 ## Release identity
 
 - Image: `ghcr.io/tidemann/food-st44`
-- Selected SHA tag: `d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e`
+- Deployed SHA tag: `d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e`
 - Registry manifest digest: `sha256:769fc817db5fa6a8c7c9db2fe3e15b8d2300f482bc79bbdb4bb0aec90efd23bc`
-- Config digest (image ID after `docker load`): `sha256:ddd54b02009e855ae006c0b9c7ad13d5561917cdad2b50e860df05345884ce7f`
+- Config digest (image ID): `sha256:ddd54b02009e855ae006c0b9c7ad13d5561917cdad2b50e860df05345884ce7f`
 - Platform: `linux/amd64`
 - Build proof: https://github.com/tidemann/food-st44/actions/runs/36539383656
 
-Keep this release identity. Do not rebuild or substitute `latest`.
+The tag is pinned in `infra/docker-compose.yml`. `latest` exists as a pointer
+and is never the source of truth for a deploy.
 
-## How to get the image (no credentials)
+## How a deploy runs
 
-The source repository is public, but package visibility is separate and the
-GHCR package is still private: anonymous `docker pull` of this digest returns
-HTTP 403. Nobody on this team has package administration, so the image is
-distributed as a **public GitHub release asset** instead. Release assets on a
-public repository download with no token, so spzmf never needs registry
-credentials.
+`.github/workflows/deploy.yml` runs on `workflow_dispatch` and on push to
+`main`. In order, it:
 
-- Release: https://github.com/tidemann/food-st44/releases/tag/image-d50023c5
-- Export proof: https://github.com/tidemann/food-st44/actions/runs/36563047075
+1. installs `DEPLOY_KEY`, `ssh-keyscan`s `SERVER_HOST` into `known_hosts` with
+   `StrictHostKeyChecking yes`, and writes one `spzmf` ssh alias so the host
+   and user are named once;
+2. records the image currently running as `food-st44` — the rollback anchor —
+   before touching anything;
+3. `mkdir -p`s `/srv/apps/food-st44/infra` and checks it is writable;
+4. `scp`s `infra/docker-compose.yml` there (the server has no git clone);
+5. runs `docker compose pull && docker compose up -d --force-recreate`. **The
+   pull happens on the host, as the deploy user, whose docker config holds the
+   GHCR credential.** That is the whole point of this route;
+6. gates on `http://food-st44:80/healthz` = `ok` from inside the shared network,
+   then on `https://food.st44.no/healthz` = 200 `ok` over valid TLS.
 
-Pull proof, off GitHub infrastructure (2026-09-29): all six assets downloaded
-with `curl -H 'Authorization:'` from a host with no GitHub credentials;
-`sha256sum -c SHA256SUMS` passed, `sha256sum manifest.json` equalled the
-registry digest `769fc817…`, and the archive's own `manifest.json` names config
-`ddd54b02…` with repo tag
-`ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e`.
+A deploy is finished when step 6 passes, not when the container starts.
 
-Nothing was rebuilt. `.github/workflows/publish-image-archive.yml` copies the
-existing digest out of GHCR with `skopeo` and attaches it to the release.
-
-```bash
-BASE=food-st44-d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e
-URL=https://github.com/tidemann/food-st44/releases/download/image-d50023c5
-
-curl -fsSLO "$URL/$BASE.docker.tar.gz"
-curl -fsSLO "$URL/SHA256SUMS"
-sha256sum -c --ignore-missing SHA256SUMS
-
-gunzip -c "$BASE.docker.tar.gz" | docker load
-```
-
-Verify identity after loading — the image ID must equal the config digest:
+To deploy manually:
 
 ```bash
-docker image inspect --format '{{.Id}}' \
-  ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e
-# sha256:ddd54b02009e855ae006c0b9c7ad13d5561917cdad2b50e860df05345884ce7f
+gh workflow run deploy.yml --repo tidemann/food-st44 --ref main
 ```
 
-`docker load` does not restore a registry RepoDigest, so check the image ID, not
-`RepoDigests`. The registry digest is still verifiable from the release: the
-published `manifest.json` is the original manifest bytes, so
-`sha256sum manifest.json` equals `769fc817…`. `$BASE.oci.tar.gz` preserves those
-bytes if the image is ever re-pushed to a registry.
+## Prerequisites (all already in place)
 
-Do not pass registry credentials to Bob. A GitHub Actions artifact download
-requires GitHub authentication and is not an anonymous server handoff; a public
-release asset is.
+| Prerequisite | Who owns it | State |
+| --- | --- | --- |
+| Repo secrets `DEPLOY_KEY`, `SERVER_HOST`, `SERVER_USER` | minted by `sudo agent-deploy-key tidemann/food-st44` on the server | set |
+| `/srv/apps/food-st44`, owned by the deploy user | Server Admin (`sudo agent-docker mkapp food-st44 --deploy`) | created |
+| Deploy user logged in to `ghcr.io` | Server Admin | done; private pull works |
+| Docker network `st44_default` | the existing stack | exists |
+| nginx vhost + TLS for `food.st44.no` → `http://food-st44:80` | Server Admin (`sudo agent-nginx install-site`) | installed |
 
-If package administration is restored later, making the GHCR package public is
-still the preferred route, and `docker pull …@sha256:769fc817…` then works
-directly. The archive stays valid either way — it is the same image.
+The deploy user's name is deliberately not written down here: this repository is
+public, and the name lives in the `SERVER_USER` secret.
+
+To rotate the deploy key, re-run `sudo agent-deploy-key tidemann/food-st44` on
+the server. It replaces the `authorized_keys` line and overwrites the three
+repo secrets in one step.
+
+### Scope of `DEPLOY_KEY` — read this before treating it as harmless
+
+`agent-deploy-key` installs the key as a plain `restrict` line. `restrict` turns
+off the pty, port/agent/X11 forwarding and `~/.ssh/rc`; **it does not pin a
+command.** A leaked `DEPLOY_KEY` can therefore run anything the deploy user can
+run, not just this deploy. Narrowing it to a forced command needs a host-side
+deploy script that does not exist yet. Until it does, treat `DEPLOY_KEY` as
+deploy-user access and rotate it immediately if it is exposed.
 
 ## Runtime contract
 
 | Fact | Value |
 | --- | --- |
 | Container name | `food-st44` |
+| Compose project | `food-st44` (pinned; the directory name `infra` would collide with st44-home) |
+| Compose file on the server | `/srv/apps/food-st44/infra/docker-compose.yml` |
 | Container port | `80` (HTTP) |
 | Docker network | `st44_default`, shared with `nginx-proxy` |
-| Published host ports | None |
+| Published host ports | None, by design |
 | Environment variables | None |
 | Volumes | None; stateless |
 | Runtime secrets | None |
 | Restart policy | `unless-stopped` |
 | Hostname | `food.st44.no` |
 | nginx upstream | `http://food-st44:80` |
+| Health check | `GET /healthz` → 200, body `ok` |
 
-Server Admin runs these commands through the server's permitted tooling after
-reading `/srv/nginx/AGENTS.md`. These are the Docker semantics, not permission
-to bypass server wrappers:
+Do not hand-edit the compose file on the server. Every deploy overwrites it with
+the copy from this repository; edit `infra/docker-compose.yml` and merge.
 
-```bash
-# Image comes from the release archive above, not from a registry pull.
-docker run -d --name food-st44 --restart unless-stopped \
-  --network st44_default \
-  ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e
+## Changing what is deployed
+
+Edit the `image:` tag in `infra/docker-compose.yml`, open a pull request, merge.
+Pushing to `main` runs the deploy. CI parses the compose file with real
+`docker compose config` on every pull request, so a typo fails before it reaches
+the server.
+
+## Rollback
+
+Every deploy names the artifact it is replacing. The **Record the currently
+deployed image** step and the run summary both print it, for example:
+
+```
+ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e sha256:ddd54b02…
 ```
 
-The tag is the one baked into the archive; it resolves to the locally loaded
-image, so this does not contact the registry. Confirm the image ID matches the
-config digest before running it.
+To roll back, set that tag back in `infra/docker-compose.yml` and merge — the
+normal deploy path, with the same health gates. Every commit that reached `main`
+has an immutable SHA tag in GHCR.
 
-There is deliberately no `-p`. nginx-proxy terminates TLS and proxies to
-`http://food-st44:80`, passing Host, X-Forwarded-For and X-Forwarded-Proto.
-Server Admin owns Docker runtime, nginx configuration and TLS; Maria owns DNS.
+For an emergency rollback without CI, on the server as the deploy user:
 
-## Verification and rollback
+```bash
+cd /srv/apps/food-st44/infra
+# edit the image: tag to the previous SHA
+docker compose pull && docker compose up -d --force-recreate
+```
 
-Bob records the checksum result and the loaded image ID before running the
-container. Verify `http://food-st44:80/healthz` from the proxy network:
-HTTP 200 with body `ok`. The image's own health check uses
-`http://127.0.0.1/healthz` inside the food-st44 container; that local check is valid.
-Deployment finishes when `https://food.st44.no/healthz` returns HTTP 200 and `ok`
-over valid TLS, with HTTP redirecting to HTTPS.
+Then fix `infra/docker-compose.yml` in git, or the next deploy will undo it.
 
-Before replacing an existing service, record its exact image digest and run
-configuration. Roll back by recreating it with that digest on `st44_default`
-and checking health again. This is the first deployment: no previous good
-server artifact is established. Earlier build tags `736275fb6bcd58a9d2a773dcb7c61807a17fd44e`
-and `bb40aab95053546854a4329d8179c59c01001d0d` are candidates only, not verified
-server rollback artifacts. If first deployment fails, Server Admin removes the
-new service/vhost using permitted tooling and restores the prior server state.
+## Lessons this route was built from
 
-## Lessons from the failed handoff
-
-- Images for spzmf must be reachable by the server without credentials. Prove the
-  exact SHA/digest can be fetched anonymously before handing off; a green
-  authenticated CI push is insufficient.
 - Repository visibility is not package visibility. A public repo with a private
-  GHCR package still fails anonymous pull, and the failure only shows up at
-  deploy time.
-- When you cannot change access, change the distribution channel. A public
-  release asset carrying the already-built image beats waiting on a permission
-  nobody on the team holds. Do not rebuild to work around access — copy the
-  existing digest.
-- Never use 127.0.0.1 upstreams from nginx-proxy to another container. Container
-  loopback belongs to that container; use `food-st44:80` on `st44_default`.
-- A Docker archive preserves image content and tags, but do not assume it
-  preserves a registry RepoDigest after loading; verify the image ID against the
-  config digest instead, and publish the raw manifest so the registry digest
-  stays checkable.
-- A delivery path is not proven until it has been exercised unauthenticated. The
-  publish workflow re-downloads its own asset with no credentials and fails if
-  that does not work.
+  GHCR package still fails an anonymous pull, and the failure only shows up at
+  deploy time. Pull on the host, where the credential already is.
+- Never send a registry credential to CI when the host already has one.
+- Never use a `127.0.0.1` upstream from nginx-proxy to another container.
+  Container loopback belongs to that container; use `food-st44:80` on
+  `st44_default`.
+- Pin the compose project name. Compose names a project after its directory, and
+  more than one stack on this host deploys from a directory called `infra`; a
+  `compose down` in either could have taken out the other's containers.
+- A workflow that has never run is not done, and a green container is not a
+  finished deploy. Gate on the public URL.
+- Name the previous good artifact before replacing it.
 - Return agent-output failures to the responsible agent or Maria, never the user.
