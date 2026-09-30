@@ -10,9 +10,12 @@ Thumbs.db
 .env.*
 !.env.example
 
-# Build output (for whatever stack lands here later)
+# Build output
 dist/
 build/
 out/
 node_modules/
 .cache/
+
+# Local dev SQLite file — in the container this path is a mounted volume
+data/

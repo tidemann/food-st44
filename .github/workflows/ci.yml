@@ -28,7 +28,8 @@ jobs:
 
       - name: Required files exist
         run: |
-          for f in site/index.html nginx.conf Dockerfile README.md DEPLOY.md LICENSE; do
+          for f in package.json package-lock.json src/server.js src/db.js \
+                   views/list.ejs Dockerfile README.md DEPLOY.md LICENSE; do
             test -s "$f" || { echo "::error::missing or empty: $f"; exit 1; }
           done
 
@@ -74,10 +75,10 @@ jobs:
               esac
             done
 
-      - name: index.html looks like a page
+      - name: Page template looks like a page
         run: |
-          grep -qi '<!doctype html>' site/index.html || { echo '::error::no doctype'; exit 1; }
-          grep -qi '<title>' site/index.html || { echo '::error::no <title>'; exit 1; }
+          grep -qi '<!doctype html>' views/list.ejs || { echo '::error::no doctype'; exit 1; }
+          grep -qi '<title>' views/list.ejs || { echo '::error::no <title>'; exit 1; }
 
       - name: No committed env files
         run: |
@@ -85,6 +86,19 @@ jobs:
             echo "::error::a .env file is committed"
             exit 1
           fi
+
+      # The unit tests are the cheapest thing that actually exercises the app,
+      # so they run here rather than waiting on the image build.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
 
   build:
     name: Build image
@@ -126,16 +140,31 @@ jobs:
           set -euo pipefail
           TAG="$(head -n1 <<<'${{ steps.meta.outputs.tags }}')"
           echo "testing $TAG"
-          docker run --rm "$TAG" nginx -t
+
+          # Dump the container log on any failure below; without it a red run
+          # here tells you only that curl was unhappy.
+          cleanup() {
+            rc=$?
+            [ "$rc" -eq 0 ] || docker logs smoke || true
+            docker rm -f smoke >/dev/null 2>&1 || true
+            exit "$rc"
+          }
+          trap cleanup EXIT
+
           docker run -d --name smoke -p 8080:80 "$TAG"
+
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then break; fi
-            if [ "$i" = 30 ]; then docker logs smoke; echo '::error::container never became healthy'; exit 1; fi
+            if [ "$i" = 30 ]; then echo '::error::container never became healthy'; exit 1; fi
             sleep 1
           done
+
+          # Same /healthz contract as the old nginx image, now served by Express.
           test "$(curl -fsS http://127.0.0.1:8080/healthz)" = "ok"
-          curl -fsS http://127.0.0.1:8080/ | grep -q 'food.st44.no'
-          docker rm -f smoke
+
+          # The index has to render through EJS and read the SQLite table, so a
+          # broken view or an unwritable DB path fails here and not on spzmf.
+          curl -fsS http://127.0.0.1:8080/ | grep -q 'Oppskrifter'
 
       - name: Summary
         run: |
