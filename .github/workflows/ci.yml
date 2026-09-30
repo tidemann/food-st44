@@ -31,20 +31,41 @@ jobs:
             test -s "$f" || { echo "::error::missing or empty: $f"; exit 1; }
           done
 
-      # The deploy workflow scps this file to the server and runs compose there,
-      # so a typo would otherwise only surface mid-deploy.
+      # The deploy workflow sends this file to the server and the host's deploy
+      # script runs compose there, so a typo would otherwise only surface
+      # mid-deploy.
       - name: Deploy compose file is valid
         run: |
           set -euo pipefail
-          docker compose -f infra/docker-compose.yml config
+          docker compose -p food-st44 -f infra/docker-compose.yml config > compose.normalised.yml
 
           # No published host ports: nginx-proxy reaches the container over the
           # shared st44_default network, and publishing one would bypass TLS.
-          if docker compose -f infra/docker-compose.yml config --format json \
+          if docker compose -p food-st44 -f infra/docker-compose.yml config --format json \
             | grep -q '"published"'; then
             echo '::error::infra/docker-compose.yml must not publish host ports'
             exit 1
           fi
+
+          # The same refusals /srv/apps/food-st44/deploy.sh applies on the host.
+          # Checked here too so the answer arrives in seconds rather than after
+          # a failed deploy. Run against the normalised output, so flow style
+          # cannot slip a key past the grep.
+          if grep -nE '^[[:space:]]*(privileged|cap_add|cap_drop|devices|device|device_cgroup_rules|pid|ipc|uts|userns_mode|network_mode|security_opt|sysctls|cgroup|cgroup_parent|build|extends|volumes_from)[[:space:]]*:' compose.normalised.yml; then
+            echo '::error::infra/docker-compose.yml uses a key the host deploy script refuses'
+            exit 1
+          fi
+
+          # container_name is global to the docker daemon, so it is the one name
+          # that could collide with another site on spzmf.
+          awk '/^[[:space:]]*container_name:[[:space:]]*/ { sub(/^[[:space:]]*container_name:[[:space:]]*/, ""); gsub(/"/, ""); print }' \
+            compose.normalised.yml \
+          | while read -r name; do
+              case "$name" in
+                food-st44|food-st44-*|food-st44_*) ;;
+                *) echo "::error::container_name '$name' must be food-st44 or food-st44-*"; exit 1 ;;
+              esac
+            done
 
       - name: index.html looks like a page
         run: |
