@@ -1,0 +1,30 @@
+# Deploy unit for food.st44.no.
+#
+# The GHCR package is private and stays private. The pull happens here, on
+# spzmf, as the deploy user whose docker config already holds the registry
+# credential. CI never ships the image bytes and never hands a credential to
+# the server; it only runs these commands over SSH.
+#
+# The tag is pinned to a commit SHA on purpose. `latest` is a pointer, not a
+# release identity — changing what is deployed means editing this file.
+# Pinned explicitly. Compose otherwise names the project after its directory,
+# which is `infra` here — and st44-home also deploys from a directory called
+# `infra`, so both stacks would claim the same project name on this host and
+# could tear each other's containers down.
+name: food-st44
+
+services:
+  food-st44:
+    image: ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e
+    container_name: food-st44
+    restart: unless-stopped
+    # Deliberately no `ports:`. nginx-proxy terminates TLS and reaches this
+    # container at http://food-st44:80 over the shared network below.
+    networks:
+      - st44_default
+
+# Owned by the existing stack. `external: true` makes compose attach to it and
+# fail loudly if it is missing, rather than creating a second, isolated network.
+networks:
+  st44_default:
+    external: true

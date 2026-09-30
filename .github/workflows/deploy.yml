@@ -1,0 +1,155 @@
+name: Deploy
+
+# Private deploy route, same shape as st44-home: CI copies infra/docker-compose.yml
+# to spzmf over SSH and runs compose there. The GHCR package stays private — the
+# registry credential lives on the host, in the deploy user's docker config, and
+# never travels through this workflow.
+#
+# Scope of DEPLOY_KEY: `agent-deploy-key` installs this repo's key as a plain
+# `restrict` line in the deploy user's authorized_keys. `restrict` turns off the
+# pty, port/agent/X11 forwarding and ~/.ssh/rc — it does NOT pin a command. So a
+# leaked DEPLOY_KEY can run anything the deploy user can run, not just this
+# deploy. Narrowing that to a forced command needs a host-side deploy script
+# that does not exist yet; until it does, treat DEPLOY_KEY as deploy-user access
+# and rotate it with `agent-deploy-key tidemann/food-st44` if it is exposed.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-food-st44
+  cancel-in-progress: false
+
+env:
+  # Deploy root on spzmf. /srv/apps/food-st44 is handed over once, owned by the
+  # deploy user; this workflow creates the infra/ subdirectory itself with
+  # `mkdir -p`, so no compose file has to be placed by hand.
+  REMOTE_DIR: /srv/apps/food-st44/infra
+  SITE_HOST: food.st44.no
+
+jobs:
+  deploy:
+    name: Deploy to spzmf
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      # One ssh alias, so the host and user are named once and no step has to
+      # re-interpolate a secret into a command line.
+      - name: Configure ssh
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+
+          # StrictHostKeyChecking=yes, so a swapped host key fails the deploy
+          # rather than silently trusting a new one.
+          ssh-keyscan -H '${{ secrets.SERVER_HOST }}' >> ~/.ssh/known_hosts
+          test -s ~/.ssh/known_hosts
+
+          cat > ~/.ssh/config <<EOF
+          Host spzmf
+            HostName ${{ secrets.SERVER_HOST }}
+            User ${{ secrets.SERVER_USER }}
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            BatchMode yes
+          EOF
+          chmod 600 ~/.ssh/config
+
+      # Rollback anchor: name the artifact running now, before replacing it.
+      - name: Record the currently deployed image
+        run: |
+          set -euo pipefail
+          ssh spzmf "docker inspect -f '{{.Config.Image}} {{.Image}}' food-st44 2>/dev/null || echo 'none (first deployment)'" \
+            | tee previous-image.txt
+
+      # `mkdir -p` creates infra/ on a first deploy and is a no-op afterwards, so
+      # nobody pre-creates it by hand. It cannot grant itself permission, so name
+      # the missing prerequisite out loud when that is what failed.
+      - name: Create the deploy directory
+        run: |
+          set -euo pipefail
+          if ! ssh spzmf "mkdir -p '${REMOTE_DIR}'"; then
+            echo "::error::could not create ${REMOTE_DIR} on spzmf — the deploy user needs a writable /srv/apps/food-st44"
+            exit 1
+          fi
+          ssh spzmf "test -w '${REMOTE_DIR}'"
+
+      - name: Ship the compose file
+        run: |
+          set -euo pipefail
+          scp infra/docker-compose.yml "spzmf:${REMOTE_DIR}/docker-compose.yml"
+
+      # The pull runs as the deploy user on the host, which holds the GHCR
+      # credential. That is the whole point of the SSH route.
+      - name: Pull and start
+        run: |
+          set -euo pipefail
+          ssh spzmf "cd '${REMOTE_DIR}' && docker compose pull && docker compose up -d --force-recreate"
+
+      - name: Show container state
+        run: |
+          set -euo pipefail
+          ssh spzmf 'docker ps --filter name=food-st44 --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"'
+
+      # Checked over the shared st44_default network by service name, not over
+      # loopback: container loopback belongs to that container, and the proxy
+      # reaches this service the same way.
+      - name: Verify http://food-st44:80/healthz from the proxy network
+        run: |
+          set -euo pipefail
+          ssh spzmf bash -s <<'REMOTE'
+          set -uo pipefail
+          for i in $(seq 1 30); do
+            body="$(docker exec food-st44 wget -qO- http://food-st44:80/healthz 2>/dev/null || true)"
+            if [ "$(printf '%s' "$body" | tr -d '[:space:]')" = "ok" ]; then
+              echo "internal healthz: ok"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "food-st44 never answered ok on http://food-st44:80/healthz"
+          docker logs --tail 50 food-st44 2>&1 || true
+          exit 1
+          REMOTE
+
+      # Only true once nginx-proxy has a vhost and a valid certificate for the
+      # hostname. A green container is not a finished deploy.
+      - name: Verify https://food.st44.no/healthz
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            # curl already reports 000 for a connection or TLS failure; `|| true`
+            # only stops `set -e` from aborting the retry loop.
+            code="$(curl -sS -o body.txt -w '%{http_code}' "https://${SITE_HOST}/healthz" || true)"
+            if [ "$code" = "200" ] && [ "$(tr -d '[:space:]' < body.txt)" = "ok" ]; then
+              echo "public healthz: 200 ok over valid TLS"
+              exit 0
+            fi
+            echo "attempt $i: http=$code"
+            sleep 10
+          done
+          echo "::error::https://${SITE_HOST}/healthz did not return 200 ok with valid TLS"
+          curl -sSv "https://${SITE_HOST}/healthz" || true
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### food-st44 deploy"
+            echo
+            echo "- Image: \`ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e\`"
+            echo "- Remote path: \`${REMOTE_DIR}\`"
+            echo "- Public health check: https://${SITE_HOST}/healthz"
+            echo "- Previous image (rollback anchor): \`$(cat previous-image.txt 2>/dev/null || echo unknown)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
