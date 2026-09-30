@@ -18,7 +18,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  REMOTE_DIR: /srv/food-st44/infra
+  # Deploy root on spzmf. The workflow creates food-st44/infra under /srv/apps
+  # itself with `mkdir -p`, so the only server-side prerequisite is that the
+  # deploy user can write inside /srv/apps.
+  REMOTE_DIR: /srv/apps/food-st44/infra
   SITE_HOST: food.st44.no
 
 jobs:
@@ -61,10 +64,22 @@ jobs:
           ssh spzmf "docker inspect -f '{{.Config.Image}} {{.Image}}' food-st44 2>/dev/null || echo 'none (first deployment)'" \
             | tee previous-image.txt
 
+      # The deploy owns its own directory tree: `mkdir -p` creates food-st44/
+      # and infra/ on a first deploy and is a no-op afterwards. Nobody has to
+      # pre-create them by hand. It still needs write permission inside
+      # /srv/apps, so say so out loud when that is what failed.
+      - name: Create the deploy directory
+        run: |
+          set -euo pipefail
+          if ! ssh spzmf "mkdir -p '${REMOTE_DIR}'"; then
+            echo "::error::could not create ${REMOTE_DIR} on spzmf — the deploy user needs write permission inside /srv/apps"
+            exit 1
+          fi
+          ssh spzmf "test -w '${REMOTE_DIR}'"
+
       - name: Ship the compose file
         run: |
           set -euo pipefail
-          ssh spzmf "mkdir -p '${REMOTE_DIR}'"
           scp infra/docker-compose.yml "spzmf:${REMOTE_DIR}/docker-compose.yml"
 
       # The pull runs as the deploy user on the host, which holds the GHCR
