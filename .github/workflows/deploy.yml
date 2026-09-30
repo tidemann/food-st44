@@ -18,9 +18,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Deploy root on spzmf. The workflow creates food-st44/infra under /srv/apps
-  # itself with `mkdir -p`, so the only server-side prerequisite is that the
-  # deploy user can write inside /srv/apps.
+  # Deploy root on spzmf. /srv/apps/food-st44 is handed over once, owned by the
+  # deploy user; this workflow creates the infra/ subdirectory itself with
+  # `mkdir -p`, so no compose file has to be placed by hand.
   REMOTE_DIR: /srv/apps/food-st44/infra
   SITE_HOST: food.st44.no
 
@@ -64,15 +64,14 @@ jobs:
           ssh spzmf "docker inspect -f '{{.Config.Image}} {{.Image}}' food-st44 2>/dev/null || echo 'none (first deployment)'" \
             | tee previous-image.txt
 
-      # The deploy owns its own directory tree: `mkdir -p` creates food-st44/
-      # and infra/ on a first deploy and is a no-op afterwards. Nobody has to
-      # pre-create them by hand. It still needs write permission inside
-      # /srv/apps, so say so out loud when that is what failed.
+      # `mkdir -p` creates infra/ on a first deploy and is a no-op afterwards, so
+      # nobody pre-creates it by hand. It cannot grant itself permission, so name
+      # the missing prerequisite out loud when that is what failed.
       - name: Create the deploy directory
         run: |
           set -euo pipefail
           if ! ssh spzmf "mkdir -p '${REMOTE_DIR}'"; then
-            echo "::error::could not create ${REMOTE_DIR} on spzmf — the deploy user needs write permission inside /srv/apps"
+            echo "::error::could not create ${REMOTE_DIR} on spzmf — the deploy user needs a writable /srv/apps/food-st44"
             exit 1
           fi
           ssh spzmf "test -w '${REMOTE_DIR}'"
