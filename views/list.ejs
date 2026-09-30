@@ -16,7 +16,17 @@
     <% } else { %>
       <ul class="recipe-list">
         <% recipes.forEach(function (recipe) { %>
-          <li class="recipe-list__item"><%= recipe.title %></li>
+          <li class="recipe-list__item">
+            <h2 class="recipe-title"><%= recipe.title %></h2>
+            <section class="recipe-section">
+              <h3>Ingredienser</h3>
+              <pre class="recipe-ingredients"><%= recipe.ingredients %></pre>
+            </section>
+            <section class="recipe-section">
+              <h3>Fremgangsmåte</h3>
+              <pre class="recipe-instructions"><%= recipe.instructions %></pre>
+            </section>
+          </li>
         <% }); %>
       </ul>
     <% } %>
