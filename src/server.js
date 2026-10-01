@@ -47,9 +47,9 @@ app.post('/recipes', (req, res) => {
   const ingredients = String(req.body.ingredients || '').trim();
   const instructions = String(req.body.instructions || '').trim();
 
-  if (!title || !ingredients || !instructions) {
+  if (!title || !ingredients) {
     return res.status(400).render('new', {
-      error: 'Alle feltene må fylles ut.',
+      error: 'Tittel og minst én ingrediens må fylles ut.',
       values: { title: req.body.title, ingredients: req.body.ingredients, instructions: req.body.instructions }
     });
   }

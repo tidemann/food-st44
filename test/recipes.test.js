@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
 const app = require('../src/server');
+const db = require('../src/db');
 
 test('GET /recipes/new returns 200 and shows the form', async () => {
   const res = await request(app).get('/recipes/new');
@@ -28,13 +29,20 @@ test('POST /recipes with valid data creates a recipe and redirects to /', async 
   assert.equal(res.headers.location, '/');
 });
 
-test('POST /recipes with missing fields returns 400', async () => {
+test('POST /recipes with missing title re-renders the form and does not create a row', async () => {
+  const before = db.prepare('SELECT COUNT(*) AS count FROM recipes').get().count;
   const res = await request(app)
     .post('/recipes')
     .type('form')
-    .send({ title: '', ingredients: '  ', instructions: undefined });
+    .send({ title: '', ingredients: '2 egg\n5 dl melk', instructions: 'Bland sammen.' });
 
   assert.equal(res.status, 400);
+  assert.match(res.text, /Tittel/);
+  assert.match(res.text, /2 egg/);
+  assert.match(res.text, /Bland sammen/);
+
+  const after = db.prepare('SELECT COUNT(*) AS count FROM recipes').get().count;
+  assert.equal(after, before);
 });
 
 test('After a successful POST, GET / lists the new recipe title', async () => {

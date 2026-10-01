@@ -16,13 +16,13 @@
     <% } %>
     <form action="/recipes" method="post" class="recipe-form">
       <label for="title">Tittel</label>
-      <input type="text" id="title" name="title" value="<%= values.title || '' %>" required>
+      <input type="text" id="title" name="title" value="<%= values.title || '' %>">
 
       <label for="ingredients">Ingredienser</label>
-      <textarea id="ingredients" name="ingredients" rows="8" required><%= values.ingredients || '' %></textarea>
+      <textarea id="ingredients" name="ingredients" rows="8"><%= values.ingredients || '' %></textarea>
 
       <label for="instructions">Fremgangsmåte</label>
-      <textarea id="instructions" name="instructions" rows="10" required><%= values.instructions || '' %></textarea>
+      <textarea id="instructions" name="instructions" rows="10"><%= values.instructions || '' %></textarea>
 
       <button type="submit">Lagre oppskrift</button>
     </form>
