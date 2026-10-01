@@ -25,6 +25,23 @@ app.get('/recipes/new', (req, res) => {
   res.render('new', { error: null, values: {} });
 });
 
+app.get('/recipes/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(404).send('Not found');
+  }
+
+  const recipe = db
+    .prepare('SELECT id, title, ingredients, instructions, created_at FROM recipes WHERE id = ?')
+    .get(id);
+
+  if (!recipe) {
+    return res.status(404).send('Not found');
+  }
+
+  res.render('detail', { recipe });
+});
+
 app.post('/recipes', (req, res) => {
   const title = String(req.body.title || '').trim();
   const ingredients = String(req.body.ingredients || '').trim();
