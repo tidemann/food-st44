@@ -28,6 +28,12 @@ jobs:
     with:
       app-name: food-st44
       site-host: food.st44.no
+      # food-st44's key is re-minted with the forced command
+      # (restrict,command="/srv/apps/food-st44/deploy.sh"), so every deploy now
+      # proves the key cannot run anything else. st44-home's compose read is the
+      # cross-site case a leaked key must not reach.
+      verify-forced-command: true
+      verify-other-site-path: /srv/st44-home/infra/docker-compose.yml
     # DEPLOY_KEY, SERVER_HOST and SERVER_USER — the three that
     # `agent-deploy-key` sets on this repository.
     secrets: inherit
