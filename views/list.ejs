@@ -11,6 +11,7 @@
     <h1>Oppskrifter</h1>
   </header>
   <main>
+    <%- include('partials/flash', { flash }) %>
     <form class="search" method="get" action="/">
       <label for="q">Søk etter navn</label>
       <input type="search" id="q" name="q" value="<%= q %>">

@@ -11,6 +11,7 @@
     <h1><%= recipe.title %></h1>
   </header>
   <main>
+    <%- include('partials/flash', { flash }) %>
     <section class="recipe-section">
       <h2>Ingredienser</h2>
       <pre class="recipe-ingredients"><%= recipe.ingredients %></pre>
@@ -19,6 +20,9 @@
       <h2>Fremgangsmåte</h2>
       <pre class="recipe-instructions"><%= recipe.instructions %></pre>
     </section>
+    <form action="/recipes/<%= recipe.id %>/delete" method="POST" class="delete-form">
+      <button type="submit">Slett oppskrift</button>
+    </form>
     <p><a href="/">← Tilbake til oppskrifter</a></p>
   </main>
 </body>

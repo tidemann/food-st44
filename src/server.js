@@ -10,6 +10,17 @@ app.set('views', path.join(__dirname, '..', 'views'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(express.urlencoded({ extended: false }));
 
+const FLASH_MESSAGES = Object.freeze({
+  created: 'Oppskriften ble lagret.',
+  updated: 'Endringene ble lagret.',
+  deleted: 'Oppskriften ble slettet.',
+});
+
+function flashFor(key) {
+  if (typeof key !== 'string') return null;
+  return FLASH_MESSAGES[key] || null;
+}
+
 app.get('/healthz', (req, res) => {
   res.status(200).send('ok');
 });
@@ -23,7 +34,7 @@ app.get('/', (req, res) => {
   const filtered = needle
     ? recipes.filter((recipe) => recipe.title.toLocaleLowerCase('nb').includes(needle))
     : recipes;
-  res.render('list', { recipes: filtered, q });
+  res.render('list', { recipes: filtered, q, flash: flashFor(req.query.flash) });
 });
 
 app.get('/recipes/new', (req, res) => {
@@ -33,7 +44,7 @@ app.get('/recipes/new', (req, res) => {
 app.get('/recipes/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isInteger(id) || id <= 0) {
-    return res.status(404).send('Not found');
+    return res.status(404).render('404');
   }
 
   const recipe = db
@@ -41,10 +52,10 @@ app.get('/recipes/:id', (req, res) => {
     .get(id);
 
   if (!recipe) {
-    return res.status(404).send('Not found');
+    return res.status(404).render('404');
   }
 
-  res.render('detail', { recipe });
+  res.render('detail', { recipe, flash: flashFor(req.query.flash) });
 });
 
 app.post('/recipes', (req, res) => {
@@ -59,8 +70,37 @@ app.post('/recipes', (req, res) => {
     });
   }
 
-  db.prepare('INSERT INTO recipes (title, ingredients, instructions) VALUES (?, ?, ?)').run(title, ingredients, instructions);
-  res.redirect('/');
+  const result = db.prepare('INSERT INTO recipes (title, ingredients, instructions) VALUES (?, ?, ?)').run(title, ingredients, instructions);
+  res.redirect(`/recipes/${result.lastInsertRowid}?flash=created`);
+});
+
+app.post('/recipes/:id/delete', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(404).render('404');
+  }
+
+  const result = db.prepare('DELETE FROM recipes WHERE id = ?').run(id);
+  if (result.changes === 0) {
+    return res.status(404).render('404');
+  }
+
+  res.redirect('/?flash=deleted');
+});
+
+if (process.env.NODE_ENV === 'test') {
+  app.get('/__test-boom', () => {
+    throw new Error('intentional test error');
+  });
+}
+
+app.use((req, res) => {
+  res.status(404).render('404');
+});
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).render('500');
 });
 
 if (require.main === module) {
