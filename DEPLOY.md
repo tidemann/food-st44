@@ -1,14 +1,16 @@
 # Deploy — food.st44.no
 
-There is exactly one supported way to deploy this site: **CI connects to the
-server over SSH and runs `docker compose` there.** The GHCR package is private
-and stays private. Nothing here needs a public release asset, and no registry
-credential ever travels through GitHub Actions.
+There is exactly one supported way to deploy this site: **CI sends the compose
+file to the server over SSH on stdin, where the site's own `deploy.sh` installs
+it, pulls, recreates and gates on health.** The GHCR package is private and stays
+private. Nothing here needs a public release asset, and no registry credential
+ever travels through GitHub Actions.
 
 Proven end to end on the shared route by
-[run 36730946719](https://github.com/tidemann/food-st44/actions/runs/36730946719):
-built and pushed from the calling repo, private pull on the host, container
-healthy, `https://food.st44.no/healthz` returning 200 `ok` over valid TLS.
+[run 36973507313](https://github.com/tidemann/food-st44/actions/runs/36973507313):
+built and pushed from the calling repo, compose file accepted on the host,
+private pull, container healthy, `https://food.st44.no/healthz` returning 200
+`ok` over valid TLS.
 
 ## Release identity
 
@@ -19,17 +21,16 @@ healthy, `https://food.st44.no/healthz` returning 200 `ok` over valid TLS.
 
 Do not read the deployed version from this file — it moves on every merge. The
 live value is in the deploy run's step summary (**Image**, **Digest** and
-**Previous image**), and on the server in `/srv/apps/food-st44/infra/.env`.
+**Previous image**), and on the server in the `previous-image:` line `deploy.sh`
+prints and in `/srv/apps/food-st44/infra/docker-compose.yml`.
 
 At the time of writing that is commit
-[`9d6f67f`](https://github.com/tidemann/food-st44/commit/9d6f67f91c6a81782f9c88d35115f9d409c6d082),
-digest `sha256:4fa89bdf96f485c340d7423a9414cd11df9c72f64d449ac8567b92777e505cd7`,
-which replaced `d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e`.
+[`31177df`](https://github.com/tidemann/food-st44/commit/31177df3c9b1449513d786a395f21481d84c3547).
 
-The deployed tag is named in the `.env` the deploy workflow writes on the
-server; `infra/docker-compose.yml` says `${IMAGE}`. Only the commit-SHA tag is
-published — there is no `latest`, so there is no pointer to mistake for a
-release identity.
+The deployed tag is rendered into the compose file by the deploy workflow before
+it is sent; `infra/docker-compose.yml` in the repo says `${IMAGE}`. Only the
+commit-SHA tag is published — there is no `latest`, so there is no pointer to
+mistake for a release identity.
 
 ## How a deploy runs
 
@@ -56,18 +57,18 @@ once. `@v1` is a tag, not a branch: moving it is a deliberate act. In order, it:
 2. installs `DEPLOY_KEY`, `ssh-keyscan`s `SERVER_HOST` into `known_hosts` with
    `StrictHostKeyChecking yes`, and writes one ssh alias so the host and user
    are named once;
-3. records the image currently running as `food-st44` — the rollback anchor —
-   before touching anything;
-4. `mkdir -p`s `/srv/apps/food-st44/infra` and checks it is writable;
-5. `scp`s `infra/docker-compose.yml` there, plus an `.env` naming the image just
-   built (the server has no git clone);
-6. runs `docker compose pull && docker compose up -d --force-recreate`. **The
-   pull happens on the host, as the deploy user, whose docker config holds the
-   GHCR credential.** That is the whole point of this route;
-7. gates on `http://food-st44:80/healthz` = `ok` from inside the shared network,
-   then on `https://food.st44.no/healthz` = 200 `ok` over valid TLS.
+3. renders `infra/docker-compose.yml`, resolving `${IMAGE}` to the image just
+   built, so the immutable per-commit tag travels inside the file;
+4. makes **one ssh call** to `/srv/apps/food-st44/deploy.sh` — the forced
+   command on this repo's deploy key — with the rendered compose file on stdin.
+   That script installs the file (keeping the previous one as
+   `docker-compose.yml.prev`), pulls, recreates, prints the container state and
+   runs the internal health gate, exiting non-zero if the container does not
+   answer. Its output names the previous image, which is the rollback anchor;
+5. gates on `https://food.st44.no/healthz` = 200 `ok` over valid TLS. A green
+   container is not a finished deploy.
 
-A deploy is finished when step 7 passes, not when the container starts.
+A deploy is finished when step 5 passes, not when the container starts.
 
 `.github/workflows/ci.yml` builds and smoke-tests the image on every pull
 request but never pushes it. The deploy workflow is the only publisher.
@@ -95,14 +96,18 @@ To rotate the deploy key, re-run `sudo agent-deploy-key tidemann/food-st44` on
 the server. It replaces the `authorized_keys` line and overwrites the three
 repo secrets in one step.
 
-### Scope of `DEPLOY_KEY` — read this before treating it as harmless
+### Scope of `DEPLOY_KEY`
 
-`agent-deploy-key` installs the key as a plain `restrict` line. `restrict` turns
-off the pty, port/agent/X11 forwarding and `~/.ssh/rc`; **it does not pin a
-command.** A leaked `DEPLOY_KEY` can therefore run anything the deploy user can
-run, not just this deploy. Narrowing it to a forced command needs a host-side
-deploy script that does not exist yet. Until it does, treat `DEPLOY_KEY` as
-deploy-user access and rotate it immediately if it is exposed.
+The shared route and the host's `deploy.sh` are in place (see the forced-command
+rollout on [ST-47](/ST/issues/ST-47)). Once the key is re-minted with
+`agent-deploy-key`, it is installed as
+`restrict,command="/srv/apps/food-st44/deploy.sh"`: `restrict` turns off the
+pty, port/agent/X11 forwarding and `~/.ssh/rc`, and the forced command means
+sshd runs that one script and discards whatever command line CI sent. A leaked
+`DEPLOY_KEY` can then redeploy food-st44 and nothing else — no arbitrary
+commands as the deploy user, and no touching another site's directory. Until the
+key is re-minted, treat `DEPLOY_KEY` as deploy-user access and rotate it
+immediately if it is exposed.
 
 ## Runtime contract
 
@@ -129,35 +134,36 @@ the copy from this repository; edit `infra/docker-compose.yml` and merge.
 
 Merge to `main`. The deploy workflow builds that commit, pushes it as
 `ghcr.io/tidemann/food-st44:<commit-sha>` and deploys that exact tag — there is
-nothing to edit. `infra/docker-compose.yml` says `${IMAGE}`; the workflow writes
-`IMAGE=<image>` to a `.env` beside it on the server. CI parses the compose file
-with real `docker compose config` on every pull request, so a typo fails before
-it reaches the server.
+nothing to edit. `infra/docker-compose.yml` says `${IMAGE}`; the workflow renders
+it to the concrete image before sending it on stdin to `deploy.sh`. CI parses the
+compose file with real `docker compose config` on every pull request, so a typo
+fails before it reaches the server.
 
 ## Rollback
 
-Every deploy names the artifact it is replacing. The **Record the currently
-deployed image** step and the run summary both print it, for example:
+Every deploy names the artifact it is replacing. The host's `deploy.sh` prints a
+`previous-image:` line in its "Record what is running now" step, and the run
+summary echoes it, for example:
 
 ```
-ghcr.io/tidemann/food-st44:d50023c5c17764c1ea4c36e3ba8112bb3bd2ff4e sha256:ddd54b02…
+previous-image: food-st44=ghcr.io/tidemann/food-st44:<previous-sha>
 ```
 
-Rolling back means pointing the server's `.env` at that tag. On the server, as
-the deploy user:
+Rolling back means re-running the deploy workflow with `image-tag` set to that
+previous SHA — no rebuild, because the previous image is still in GHCR under its
+own SHA tag:
 
 ```bash
-cd /srv/apps/food-st44/infra
-printf 'IMAGE=ghcr.io/tidemann/food-st44:<previous-sha>\n' > .env
-docker compose pull && docker compose up -d --force-recreate
+gh workflow run deploy.yml --repo tidemann/food-st44 --ref main \
+  -f image-tag=<previous-sha>
 ```
 
 Every commit that reached `main` has an immutable SHA tag in GHCR, so any of
 them is a valid target.
 
-Note that the next push to `main` re-deploys that commit and overwrites `.env`.
-A rollback is therefore a stop-gap: follow it by reverting the bad commit in
-git, which makes the revert the newest build and the rollback permanent.
+Note that the next push to `main` re-deploys that commit. A rollback is
+therefore a stop-gap: follow it by reverting the bad commit in git, which makes
+the revert the newest build and the rollback permanent.
 
 ## Lessons this route was built from
 
