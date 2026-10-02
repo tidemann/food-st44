@@ -11,8 +11,13 @@
     <h1>Oppskrifter</h1>
   </header>
   <main>
+    <form class="search" method="get" action="/">
+      <label for="q">Søk etter navn</label>
+      <input type="search" id="q" name="q" value="<%= q %>">
+      <button type="submit">Søk</button>
+    </form>
     <% if (recipes.length === 0) { %>
-      <p class="empty-state">Ingen oppskrifter ennå.</p>
+      <p class="empty-state"><%= q ? 'Ingen oppskrifter passer søket.' : 'Ingen oppskrifter ennå.' %></p>
     <% } else { %>
       <ul class="recipe-list">
         <% recipes.forEach(function (recipe) { %>
