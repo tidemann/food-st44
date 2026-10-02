@@ -18,7 +18,12 @@ app.get('/', (req, res) => {
   const recipes = db
     .prepare('SELECT id, title, ingredients, instructions, created_at FROM recipes ORDER BY created_at DESC')
     .all();
-  res.render('list', { recipes });
+  const q = String(req.query.q || '').trim();
+  const needle = q.toLocaleLowerCase('nb');
+  const filtered = needle
+    ? recipes.filter((recipe) => recipe.title.toLocaleLowerCase('nb').includes(needle))
+    : recipes;
+  res.render('list', { recipes: filtered, q });
 });
 
 app.get('/recipes/new', (req, res) => {
