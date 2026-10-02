@@ -7,15 +7,18 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header>
+  <a class="skip-link visually-hidden-focusable" href="#main">Hopp til innhold</a>
+  <header class="app-header">
     <h1>Oppskrifter</h1>
   </header>
-  <main>
+  <main id="main" tabindex="-1">
     <%- include('partials/flash', { flash }) %>
-    <form class="search" method="get" action="/">
-      <label for="q">Søk etter navn</label>
-      <input type="search" id="q" name="q" value="<%= q %>">
-      <button type="submit">Søk</button>
+    <form class="search" method="get" action="/" role="search">
+      <div class="field">
+        <label for="q">Søk etter navn</label>
+        <input class="search-field" type="search" id="q" name="q" value="<%= q %>">
+      </div>
+      <button class="btn btn--secondary" type="submit">Søk</button>
     </form>
     <% if (recipes.length === 0) { %>
       <p class="empty-state"><%= q ? 'Ingen oppskrifter passer søket.' : 'Ingen oppskrifter ennå.' %></p>
@@ -26,11 +29,11 @@
             <h2 class="recipe-title"><a href="/recipes/<%= recipe.id %>"><%= recipe.title %></a></h2>
             <section class="recipe-section">
               <h3>Ingredienser</h3>
-              <pre class="recipe-ingredients"><%= recipe.ingredients %></pre>
+              <p class="recipe-body recipe-ingredients"><%= recipe.ingredients %></p>
             </section>
             <section class="recipe-section">
               <h3>Fremgangsmåte</h3>
-              <pre class="recipe-instructions"><%= recipe.instructions %></pre>
+              <p class="recipe-body recipe-instructions"><%= recipe.instructions %></p>
             </section>
           </li>
         <% }); %>
