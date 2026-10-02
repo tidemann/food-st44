@@ -35,5 +35,5 @@ test('GET / with empty or absent q returns all recipes', async () => {
 test('GET /?q= with no match shows the no-match message', async () => {
   const res = await request(app).get('/').query({ q: `finnesikke${suffix}` });
   assert.equal(res.status, 200);
-  assert.match(res.text, /Ingen oppskrifter passer søket/);
+  assert.match(res.text, new RegExp(`Ingen treff på «finnesikke${suffix}»`));
 });

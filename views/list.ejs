@@ -10,35 +10,64 @@
   <a class="skip-link visually-hidden-focusable" href="#main">Hopp til innhold</a>
   <header class="app-header">
     <h1>Oppskrifter</h1>
+    <% if (state !== 'empty') { %>
+      <a class="btn btn--primary" href="/recipes/new">+ Ny oppskrift</a>
+    <% } %>
   </header>
   <main id="main" tabindex="-1">
     <%- include('partials/flash', { flash }) %>
-    <form class="search" method="get" action="/" role="search">
-      <div class="field">
-        <label for="q">Søk etter navn</label>
-        <input class="search-field" type="search" id="q" name="q" value="<%= q %>">
+    <% if (state === 'empty') { %>
+      <div class="empty-state">
+        <h2 class="empty-state__title">Ingen oppskrifter ennå</h2>
+        <p class="empty-state__body">Legg inn den første, så finner dere den igjen her.</p>
+        <a class="btn btn--primary" href="/recipes/new">+ Legg til den første oppskriften</a>
       </div>
-      <button class="btn btn--secondary" type="submit">Søk</button>
-    </form>
-    <% if (recipes.length === 0) { %>
-      <p class="empty-state"><%= q ? 'Ingen oppskrifter passer søket.' : 'Ingen oppskrifter ennå.' %></p>
     <% } else { %>
-      <ul class="recipe-list">
-        <% recipes.forEach(function (recipe) { %>
-          <li class="recipe-list__item">
-            <h2 class="recipe-title"><a href="/recipes/<%= recipe.id %>"><%= recipe.title %></a></h2>
-            <section class="recipe-section">
-              <h3>Ingredienser</h3>
-              <p class="recipe-body recipe-ingredients"><%= recipe.ingredients %></p>
-            </section>
-            <section class="recipe-section">
-              <h3>Fremgangsmåte</h3>
-              <p class="recipe-body recipe-instructions"><%= recipe.instructions %></p>
-            </section>
-          </li>
-        <% }); %>
-      </ul>
+      <div class="list-controls">
+        <form class="search" method="get" action="/" role="search">
+          <label class="visually-hidden" for="q">Søk etter oppskrift</label>
+          <input class="search-field" type="search" id="q" name="q"
+                 placeholder="Søk etter oppskrift" value="<%= q %>">
+          <button class="visually-hidden-focusable" type="submit">Søk</button>
+        </form>
+        <% if (state === 'list') { %>
+          <p class="result-count" role="status"><%= count %><% if (q) { %> — <a href="/">Tøm søk</a><% } %></p>
+        <% } %>
+      </div>
+
+      <% if (state === 'error') { %>
+        <div class="alert alert--error" role="alert">
+          <span aria-hidden="true">⚠</span>
+          <div>
+            <p class="alert__title">Kunne ikke hente oppskriftene.</p>
+            <p>Prøv igjen om litt.</p>
+            <a class="btn btn--secondary" href="/<%= searchQuery %>">Prøv på nytt</a>
+          </div>
+        </div>
+      <% } else if (state === 'no-hits') { %>
+        <div class="empty-state">
+          <h2 class="empty-state__title">Ingen treff på «<%= q %>»</h2>
+          <p class="empty-state__body">Prøv et kortere søk, eller se alle oppskriftene.</p>
+          <a class="btn btn--secondary" href="/">Vis alle oppskrifter</a>
+        </div>
+      <% } else { %>
+        <ul class="recipe-list">
+          <% recipes.forEach(function (recipe) { %>
+            <li>
+              <a class="recipe-card" href="/recipes/<%= recipe.id %><%= searchQuery %>">
+                <h2 class="recipe-card__title"><%= recipe.title %></h2>
+                <p class="recipe-card__meta"><%= recipe.meta %></p>
+              </a>
+            </li>
+          <% }); %>
+        </ul>
+      <% } %>
     <% } %>
   </main>
+  <% if (state !== 'empty') { %>
+    <div class="action-bar">
+      <a class="btn btn--primary btn--block" href="/recipes/new">+ Ny oppskrift</a>
+    </div>
+  <% } %>
 </body>
 </html>

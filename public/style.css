@@ -151,6 +151,17 @@ main { max-width: var(--w-content); margin-inline: auto; padding: var(--sp-4); }
 @media (min-width: 48rem) { .search-field { max-width: 24rem; } }
 .result-count { font-size: var(--fs-sm); color: var(--c-ink-muted);
                 margin: var(--sp-3) 0; }
+/* Tøm søk sits in the muted count line but must still hit 44px (§7). */
+.result-count a { display:inline-flex; align-items:center; min-height: var(--tap); }
+
+/* S1d: search left, count right on one row. */
+.list-controls { margin-bottom: var(--sp-3); }
+.list-controls .search { margin-bottom: 0; }
+@media (min-width: 48rem) {
+  .list-controls { display:flex; align-items:center; justify-content:space-between;
+                   gap: var(--sp-4); margin-bottom: var(--sp-4); }
+  .list-controls .search { flex: 1; }
+}
 
 /* ---- 5.4 Recipe card ---- */
 
@@ -162,10 +173,18 @@ main { max-width: var(--w-content); margin-inline: auto; padding: var(--sp-4); }
   background: var(--c-surface); border: 1px solid var(--c-border);
   border-radius: var(--radius-2); box-shadow: var(--shadow-1);
   text-decoration: none; color: var(--c-ink); }
-.recipe-card:hover { border-color: var(--c-brand); background: var(--c-brand-tint); }
+.recipe-card:hover, .recipe-card:focus-visible {
+  border-color: var(--c-brand); background: var(--c-brand-tint); }
 .recipe-card__title { font-size: var(--fs-md); font-weight: var(--fw-bold);
                       margin: 0 0 var(--sp-1); }
 .recipe-card__meta  { font-size: var(--fs-sm); color: var(--c-ink-muted); margin:0; }
+
+/* S2 empty / S3 no-hit: centred heading, muted body, one action. */
+.empty-state { text-align: center; padding-block: var(--sp-7); }
+.empty-state__title { font-size: var(--fs-md); font-weight: var(--fw-bold);
+                      line-height: var(--lh-tight); margin: 0 0 var(--sp-2); }
+.empty-state__body { color: var(--c-ink-muted); max-width: 28rem;
+                     margin: 0 auto var(--sp-5); }
 
 /* ---- 5.5 Alert ---- */
 
@@ -176,6 +195,7 @@ main { max-width: var(--w-content); margin-inline: auto; padding: var(--sp-4); }
 .alert--error   { background: var(--c-danger-tint);  border-color: var(--c-danger);
                   color: var(--c-ink); }
 .alert__title { font-weight: var(--fw-bold); margin:0 0 var(--sp-2); }
+.alert p:not(.alert__title) { margin: 0 0 var(--sp-4); }
 
 /* ---- 5.6 App header and action bar ---- */
 
