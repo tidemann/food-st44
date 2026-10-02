@@ -11,6 +11,7 @@
     <h1><%= recipe.title %></h1>
   </header>
   <main>
+    <%- include('partials/flash', { flash }) %>
     <section class="recipe-section">
       <h2>Ingredienser</h2>
       <pre class="recipe-ingredients"><%= recipe.ingredients %></pre>

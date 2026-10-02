@@ -25,9 +25,13 @@ test('GET /recipes/:id returns 200 and shows the recipe title', async () => {
 test('GET /recipes/:id returns 404 for a missing id', async () => {
   const res = await request(app).get('/recipes/999999');
   assert.equal(res.status, 404);
+  assert.match(res.text, /Fant ikke oppskriften/);
+  assert.match(res.text, /Til alle oppskrifter/);
+  assert.doesNotMatch(res.text, /Not found/);
 });
 
 test('GET /recipes/:id returns 404 for an invalid id', async () => {
   const res = await request(app).get('/recipes/not-a-number');
   assert.equal(res.status, 404);
+  assert.match(res.text, /Fant ikke oppskriften/);
 });

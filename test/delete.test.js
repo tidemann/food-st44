@@ -6,7 +6,7 @@ const request = require('supertest');
 const app = require('../src/server');
 const db = require('../src/db');
 
-test('POST /recipes/:id/delete removes the recipe and redirects to /', async () => {
+test('POST /recipes/:id/delete removes the recipe and redirects to /?flash=deleted', async () => {
   const insert = db.prepare('INSERT INTO recipes (title, ingredients, instructions) VALUES (?, ?, ?)');
   const result = insert.run('Pannekaker', '2 egg\n5 dl melk', 'Stek.');
   const id = result.lastInsertRowid;
@@ -15,7 +15,7 @@ test('POST /recipes/:id/delete removes the recipe and redirects to /', async () 
   const res = await request(app).post(`/recipes/${id}/delete`);
 
   assert.equal(res.status, 302);
-  assert.equal(res.headers.location, '/');
+  assert.equal(res.headers.location, '/?flash=deleted');
 
   const after = db.prepare('SELECT COUNT(*) AS count FROM recipes').get().count;
   assert.equal(after, before - 1);
