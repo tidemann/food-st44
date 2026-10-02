@@ -63,6 +63,20 @@ app.post('/recipes', (req, res) => {
   res.redirect('/');
 });
 
+app.post('/recipes/:id/delete', (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(404).send('Not found');
+  }
+
+  const result = db.prepare('DELETE FROM recipes WHERE id = ?').run(id);
+  if (result.changes === 0) {
+    return res.status(404).send('Not found');
+  }
+
+  res.redirect('/');
+});
+
 if (require.main === module) {
   const port = process.env.PORT || 3000;
   app.listen(port, () => {

@@ -19,6 +19,9 @@
       <h2>Fremgangsmåte</h2>
       <pre class="recipe-instructions"><%= recipe.instructions %></pre>
     </section>
+    <form action="/recipes/<%= recipe.id %>/delete" method="POST" class="delete-form">
+      <button type="submit">Slett oppskrift</button>
+    </form>
     <p><a href="/">← Tilbake til oppskrifter</a></p>
   </main>
 </body>
