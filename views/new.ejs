@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ny oppskrift — food.st44.no</title>
+  <title><%= hasErrors ? 'Feil — Ny oppskrift' : 'Ny oppskrift — food.st44.no' %></title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -12,29 +12,7 @@
     <h1>Ny oppskrift</h1>
   </header>
   <main id="main" tabindex="-1">
-    <form action="/recipes" method="post" class="recipe-form">
-      <% if (error) { %>
-        <div class="alert alert--error" role="alert">
-          <p class="alert__title"><%= error %></p>
-        </div>
-      <% } %>
-      <div class="field">
-        <label for="title">Tittel</label>
-        <input type="text" id="title" name="title" value="<%= values.title || '' %>">
-      </div>
-
-      <div class="field">
-        <label for="ingredients">Ingredienser</label>
-        <textarea id="ingredients" name="ingredients" rows="8"><%= values.ingredients || '' %></textarea>
-      </div>
-
-      <div class="field">
-        <label for="instructions">Fremgangsmåte</label>
-        <textarea id="instructions" name="instructions" rows="10"><%= values.instructions || '' %></textarea>
-      </div>
-
-      <button class="btn btn--primary" type="submit">Lagre oppskrift</button>
-    </form>
+    <%- include('_form', { mode: 'new', action: '/recipes', cancelHref: '/' }) %>
   </main>
 </body>
 </html>
