@@ -25,16 +25,56 @@ app.get('/healthz', (req, res) => {
   res.status(200).send('ok');
 });
 
+const cardDate = new Intl.DateTimeFormat('nb-NO', { day: 'numeric', month: 'short', timeZone: 'Europe/Oslo' });
+
+// Meta line for a card: "9 ingredienser · 2. okt" (style guide §6).
+function recipeMeta(recipe) {
+  const count = recipe.ingredients.split('\n').filter((line) => line.trim()).length;
+  const noun = count === 1 ? 'ingrediens' : 'ingredienser';
+  // created_at is SQLite CURRENT_TIMESTAMP: UTC, "YYYY-MM-DD HH:MM:SS".
+  const created = new Date(`${String(recipe.created_at).replace(' ', 'T')}Z`);
+  if (Number.isNaN(created.getTime())) return `${count} ${noun}`;
+  return `${count} ${noun} · ${cardDate.format(created).replace(/\.$/, '')}`;
+}
+
+function countLabel(count, q) {
+  if (q) return `${count} treff på «${q}»`;
+  return `${count} ${count === 1 ? 'oppskrift' : 'oppskrifter'}`;
+}
+
 app.get('/', (req, res) => {
-  const recipes = db
-    .prepare('SELECT id, title, ingredients, instructions, created_at FROM recipes ORDER BY created_at DESC')
-    .all();
   const q = String(req.query.q || '').trim();
+  // Carried into card links (so the detail back link can return to the search,
+  // flows §5) and into the S4 retry link.
+  const searchQuery = q ? `?q=${encodeURIComponent(q)}` : '';
+
+  let recipes;
+  try {
+    recipes = db
+      .prepare('SELECT id, title, ingredients, created_at FROM recipes ORDER BY created_at DESC')
+      .all();
+  } catch (err) {
+    console.error('list query failed', err);
+    return res.status(500).render('list', { state: 'error', q, count: '', searchQuery, recipes: [], flash: null });
+  }
+
   const needle = q.toLocaleLowerCase('nb');
   const filtered = needle
     ? recipes.filter((recipe) => recipe.title.toLocaleLowerCase('nb').includes(needle))
     : recipes;
-  res.render('list', { recipes: filtered, q, flash: flashFor(req.query.flash) });
+
+  let state = 'list';
+  if (recipes.length === 0) state = 'empty';
+  else if (filtered.length === 0) state = 'no-hits';
+
+  res.render('list', {
+    state,
+    q,
+    count: countLabel(filtered.length, q),
+    searchQuery,
+    recipes: filtered.map((recipe) => ({ id: recipe.id, title: recipe.title, meta: recipeMeta(recipe) })),
+    flash: flashFor(req.query.flash)
+  });
 });
 
 app.get('/recipes/new', (req, res) => {
