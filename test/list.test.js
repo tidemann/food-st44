@@ -47,6 +47,6 @@ test('GET / preserves line breaks in ingredients and instructions', async () => 
 
   const res = await request(app).get('/');
   assert.equal(res.status, 200);
-  assert.match(res.text, /<pre[\s\S]*?2 egg[\s\S]*?5 dl melk[\s\S]*?3 dl hvetemel[\s\S]*?<\/pre>/);
-  assert.match(res.text, /<pre[\s\S]*?Bland alt sammen\.[\s\S]*?Stek på middels varme\.[\s\S]*?<\/pre>/);
+  assert.match(res.text, /class="recipe-body[\s\S]*?2 egg[\s\S]*?5 dl melk[\s\S]*?3 dl hvetemel[\s\S]*?<\/p>/);
+  assert.match(res.text, /class="recipe-body[\s\S]*?Bland alt sammen\.[\s\S]*?Stek på middels varme\.[\s\S]*?<\/p>/);
 });

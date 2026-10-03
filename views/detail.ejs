@@ -7,18 +7,19 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header>
+  <a class="skip-link visually-hidden-focusable" href="#main">Hopp til innhold</a>
+  <header class="app-header">
     <h1><%= recipe.title %></h1>
   </header>
-  <main>
+  <main id="main" tabindex="-1">
     <%- include('partials/flash', { flash }) %>
     <section class="recipe-section">
       <h2>Ingredienser</h2>
-      <pre class="recipe-ingredients"><%= recipe.ingredients %></pre>
+      <p class="recipe-body recipe-ingredients"><%= recipe.ingredients %></p>
     </section>
     <section class="recipe-section">
       <h2>Fremgangsmåte</h2>
-      <pre class="recipe-instructions"><%= recipe.instructions %></pre>
+      <p class="recipe-body recipe-instructions"><%= recipe.instructions %></p>
     </section>
     <form action="/recipes/<%= recipe.id %>/delete" method="POST" class="delete-form">
       <button type="submit">Slett oppskrift</button>

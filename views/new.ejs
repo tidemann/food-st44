@@ -7,24 +7,33 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header>
+  <a class="skip-link visually-hidden-focusable" href="#main">Hopp til innhold</a>
+  <header class="app-header">
     <h1>Ny oppskrift</h1>
   </header>
-  <main>
-    <% if (error) { %>
-      <p class="error"><%= error %></p>
-    <% } %>
+  <main id="main" tabindex="-1">
     <form action="/recipes" method="post" class="recipe-form">
-      <label for="title">Tittel</label>
-      <input type="text" id="title" name="title" value="<%= values.title || '' %>">
+      <% if (error) { %>
+        <div class="alert alert--error" role="alert">
+          <p class="alert__title"><%= error %></p>
+        </div>
+      <% } %>
+      <div class="field">
+        <label for="title">Tittel</label>
+        <input type="text" id="title" name="title" value="<%= values.title || '' %>">
+      </div>
 
-      <label for="ingredients">Ingredienser</label>
-      <textarea id="ingredients" name="ingredients" rows="8"><%= values.ingredients || '' %></textarea>
+      <div class="field">
+        <label for="ingredients">Ingredienser</label>
+        <textarea id="ingredients" name="ingredients" rows="8"><%= values.ingredients || '' %></textarea>
+      </div>
 
-      <label for="instructions">Fremgangsmåte</label>
-      <textarea id="instructions" name="instructions" rows="10"><%= values.instructions || '' %></textarea>
+      <div class="field">
+        <label for="instructions">Fremgangsmåte</label>
+        <textarea id="instructions" name="instructions" rows="10"><%= values.instructions || '' %></textarea>
+      </div>
 
-      <button type="submit">Lagre oppskrift</button>
+      <button class="btn btn--primary" type="submit">Lagre oppskrift</button>
     </form>
   </main>
 </body>
