@@ -1,25 +1,16 @@
-<!DOCTYPE html>
-<html lang="no">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Slett «<%= recipe.title %>»? — food.st44.no</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <a class="skip-link visually-hidden-focusable" href="#main">Hopp til innhold</a>
-  <header class="app-header">
-    <a href="/recipes/<%= recipe.id %>">← Tilbake til oppskriften</a>
-  </header>
-  <main id="main" tabindex="-1">
-    <div class="confirm-page">
+<%- include('partials/head', { title: `Slett «${recipe.title}»? — food.st44.no` }) %>
+<%- include('partials/mast', { nav: '', home: false }) %>
+<main id="main" tabindex="-1">
+  <div class="wrap">
+    <div class="notice">
+      <div class="notice__rule"></div>
       <h1>Slett «<%= recipe.title %>»?</h1>
       <p>Oppskriften blir borte for godt. Dette kan ikke angres.</p>
-      <form action="/recipes/<%= recipe.id %>/delete" method="POST" class="form-actions">
-        <a class="btn btn--secondary" href="/recipes/<%= recipe.id %>">Avbryt</a>
-        <button class="btn btn--danger" type="submit">Slett oppskriften</button>
+      <form action="/recipes/<%= recipe.id %>/delete" method="POST" class="notice__actions">
+        <a class="btn btn--lg" href="/recipes/<%= recipe.id %>">Avbryt</a>
+        <button class="btn btn--danger btn--lg" type="submit">Slett oppskriften</button>
       </form>
     </div>
-  </main>
-</body>
-</html>
+  </div>
+</main>
+<%- include('partials/foot') %>

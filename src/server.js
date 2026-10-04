@@ -1,6 +1,7 @@
 const path = require('path');
 const express = require('express');
 const db = require('./db');
+const view = require('./view-model');
 
 const app = express();
 
@@ -9,6 +10,23 @@ app.set('views', path.join(__dirname, '..', 'views'));
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(express.urlencoded({ extended: false }));
+
+// The masthead and the footer carry the size of the collection and the date it
+// was last added to. Every page shows them, so they are read once per request
+// and never allowed to break a page — including the 500 page, which is exactly
+// the page that renders when the database is the thing that failed.
+app.use((req, res, next) => {
+  res.locals.site = { known: false, total: 0, updated: '', today: view.formatMastheadDate() };
+  try {
+    const row = db.prepare('SELECT COUNT(*) AS total, MAX(created_at) AS updated FROM recipes').get();
+    res.locals.site.known = true;
+    res.locals.site.total = row.total;
+    res.locals.site.updated = row.updated ? view.formatLong(row.updated) : '';
+  } catch (err) {
+    console.error('site summary failed', err);
+  }
+  next();
+});
 
 const FLASH_MESSAGES = Object.freeze({
   created: 'Oppskriften ble lagret.',
@@ -57,21 +75,31 @@ app.get('/healthz', (req, res) => {
   res.status(200).send('ok');
 });
 
-const cardDate = new Intl.DateTimeFormat('nb-NO', { day: 'numeric', month: 'short', timeZone: 'Europe/Oslo' });
-
-// Meta line for a card: "9 ingredienser · 2. okt" (style guide §6).
-function recipeMeta(recipe) {
-  const count = recipe.ingredients.split('\n').filter((line) => line.trim()).length;
-  const noun = count === 1 ? 'ingrediens' : 'ingredienser';
-  // created_at is SQLite CURRENT_TIMESTAMP: UTC, "YYYY-MM-DD HH:MM:SS".
-  const created = new Date(`${String(recipe.created_at).replace(' ', 'T')}Z`);
-  if (Number.isNaN(created.getTime())) return `${count} ${noun}`;
-  return `${count} ${noun} · ${cardDate.format(created).replace(/\.$/, '')}`;
-}
-
 function countLabel(count, q) {
   if (q) return `${count} treff på «${q}»`;
-  return `${count} ${count === 1 ? 'oppskrift' : 'oppskrifter'}`;
+  return view.pluralise(count, 'oppskrift', 'oppskrifter');
+}
+
+const SIDE_SUB = [
+  '',
+  'Den nest siste oppskriften i samlingen.',
+  'De to siste oppskriftene i samlingen.',
+  'De tre siste oppskriftene i samlingen.'
+];
+
+// The front page is laid out like the opening spread of a magazine: one dish
+// large, the newest few beside it, the whole archive as an alphabetical
+// register, then whatever is left as a row of plates. Each band disappears on
+// its own when the collection is too small to fill it.
+function frontPage(cards) {
+  const side = cards.slice(1, 4);
+  return {
+    lead: cards[0],
+    side,
+    sideSub: SIDE_SUB[side.length] || '',
+    index: view.toIndex(cards),
+    rest: cards.slice(4)
+  };
 }
 
 app.get('/', (req, res) => {
@@ -87,7 +115,9 @@ app.get('/', (req, res) => {
       .all();
   } catch (err) {
     console.error('list query failed', err);
-    return res.status(500).render('list', { state: 'error', q, count: '', searchQuery, recipes: [], flash: null });
+    return res.status(500).render('list', {
+      state: 'error', q, count: '', searchQuery, recipes: [], front: null, flash: null
+    });
   }
 
   const needle = q.toLocaleLowerCase('nb');
@@ -99,12 +129,17 @@ app.get('/', (req, res) => {
   if (recipes.length === 0) state = 'empty';
   else if (filtered.length === 0) state = 'no-hits';
 
+  const cards = filtered.map(view.toCard);
+
   res.render('list', {
     state,
     q,
     count: countLabel(filtered.length, q),
     searchQuery,
-    recipes: filtered.map((recipe) => ({ id: recipe.id, title: recipe.title, meta: recipeMeta(recipe) })),
+    recipes: cards,
+    // The magazine opening is the unsearched front page. A search answers with
+    // a plain register of hits instead — a lead dish would be a guess there.
+    front: state === 'list' && !q ? frontPage(cards) : null,
     flash: flashFor(req.query.flash)
   });
 });
@@ -119,7 +154,19 @@ app.get('/recipes/:id', (req, res) => {
     return notFound(res);
   }
 
-  res.render('detail', { recipe, flash: flashFor(req.query.flash) });
+  // Cards carry the search in their href, so the way back lands on the search
+  // the reader came from rather than the top of the collection.
+  const q = String(req.query.q || '').trim();
+
+  res.render('detail', {
+    recipe,
+    photo: view.photoFor(recipe.title),
+    ingredients: view.ingredientsFor(recipe.ingredients),
+    steps: view.stepsFor(recipe.instructions),
+    added: view.formatLong(recipe.created_at),
+    backHref: q ? `/?q=${encodeURIComponent(q)}` : '/',
+    flash: flashFor(req.query.flash)
+  });
 });
 
 app.get('/recipes/:id/edit', (req, res) => {

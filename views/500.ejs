@@ -1,24 +1,16 @@
-<!DOCTYPE html>
-<html lang="no">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Noe gikk galt — food.st44.no</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <header>
-    <h1>Oppskrifter</h1>
-  </header>
-  <main>
-    <div class="error-page">
+<%- include('partials/head', { title: 'Noe gikk galt — food.st44.no' }) %>
+<%- include('partials/mast', { nav: '', home: false }) %>
+<main id="main" tabindex="-1">
+  <div class="wrap">
+    <div class="notice">
+      <div class="notice__rule"></div>
       <h1>Noe gikk galt</h1>
-      <p>Prøv igjen om litt.</p>
-      <div class="error-page__actions">
-        <button class="btn btn--secondary" type="button" onclick="location.reload()">Prøv på nytt</button>
-        <a href="/">← Til alle oppskrifter</a>
+      <p>Prøv igjen om litt. Oppskriftene ligger trygt der de lå.</p>
+      <div class="notice__actions">
+        <button class="btn btn--lg" type="button" onclick="location.reload()">Prøv på nytt</button>
+        <a class="btn btn--lg" href="/">Til alle oppskrifter</a>
       </div>
     </div>
-  </main>
-</body>
-</html>
+  </div>
+</main>
+<%- include('partials/foot') %>

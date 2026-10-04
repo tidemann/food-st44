@@ -23,7 +23,10 @@ test('detail page links Slett to the confirm page and has no delete form', async
 
   assert.equal(res.status, 200);
   assert.match(res.text, new RegExp(`<a class="btn btn--danger-ghost" href="/recipes/${id}/delete">Slett</a>`));
-  assert.doesNotMatch(res.text, /<form/);
+  // The only form on the page is the masthead search — nothing here can destroy
+  // a recipe in one click.
+  assert.doesNotMatch(res.text, /method="POST"|method="post"/);
+  assert.doesNotMatch(res.text, new RegExp(`action="/recipes/${id}/delete"`));
 });
 
 test('GET /recipes/:id/delete names the recipe and deletes nothing', async () => {
@@ -42,8 +45,8 @@ test('confirm page puts Avbryt (link back) before the Slett oppskriften submit',
 
   const res = await request(app).get(`/recipes/${id}/delete`);
 
-  const cancel = res.text.indexOf(`<a class="btn btn--secondary" href="/recipes/${id}">Avbryt</a>`);
-  const submit = res.text.indexOf('<button class="btn btn--danger" type="submit">Slett oppskriften</button>');
+  const cancel = res.text.indexOf(`<a class="btn btn--lg" href="/recipes/${id}">Avbryt</a>`);
+  const submit = res.text.indexOf('<button class="btn btn--danger btn--lg" type="submit">Slett oppskriften</button>');
   assert.ok(cancel > -1, 'Avbryt link missing');
   assert.ok(submit > -1, 'Slett oppskriften submit missing');
   assert.ok(cancel < submit, 'Avbryt must come before Slett oppskriften');

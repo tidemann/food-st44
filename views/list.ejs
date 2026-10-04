@@ -1,73 +1,150 @@
-<!DOCTYPE html>
-<html lang="no">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Oppskrifter — food.st44.no</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <a class="skip-link visually-hidden-focusable" href="#main">Hopp til innhold</a>
-  <header class="app-header">
-    <h1>Oppskrifter</h1>
-    <% if (state !== 'empty') { %>
-      <a class="btn btn--primary" href="/recipes/new">+ Ny oppskrift</a>
-    <% } %>
-  </header>
-  <main id="main" tabindex="-1">
-    <%- include('partials/flash', { flash }) %>
-    <% if (state === 'empty') { %>
-      <div class="empty-state">
-        <h2 class="empty-state__title">Ingen oppskrifter ennå</h2>
-        <p class="empty-state__body">Legg inn den første, så finner dere den igjen her.</p>
-        <a class="btn btn--primary" href="/recipes/new">+ Legg til den første oppskriften</a>
-      </div>
-    <% } else { %>
-      <div class="list-controls">
-        <form class="search" method="get" action="/" role="search">
-          <label class="visually-hidden" for="q">Søk etter oppskrift</label>
-          <input class="search-field" type="search" id="q" name="q"
-                 placeholder="Søk etter oppskrift" value="<%= q %>">
-          <button class="visually-hidden-focusable" type="submit">Søk</button>
-        </form>
-        <% if (state === 'list') { %>
-          <p class="result-count" role="status"><%= count %><% if (q) { %> — <a href="/">Tøm søk</a><% } %></p>
-        <% } %>
-      </div>
+<%- include('partials/head', { title: q ? `Søk: ${q} — food.st44.no` : 'food.st44.no — familiens oppskrifter' }) %>
+<%- include('partials/mast', { nav: 'list', home: true, q }) %>
+<main id="main" tabindex="-1">
+  <%- include('partials/flash', { flash }) %>
 
-      <% if (state === 'error') { %>
-        <div class="alert alert--error" role="alert">
-          <span aria-hidden="true">⚠</span>
-          <div>
-            <p class="alert__title">Kunne ikke hente oppskriftene.</p>
-            <p>Prøv igjen om litt.</p>
-            <a class="btn btn--secondary" href="/<%= searchQuery %>">Prøv på nytt</a>
-          </div>
+  <% if (state === 'empty') { %>
+    <div class="wrap">
+      <div class="notice">
+        <div class="notice__rule"></div>
+        <h2>Ingen oppskrifter ennå</h2>
+        <p>Legg inn den første, så finner dere den igjen her.</p>
+        <div class="notice__actions">
+          <a class="btn btn--primary btn--lg" href="/recipes/new">Legg til den første oppskriften</a>
         </div>
-      <% } else if (state === 'no-hits') { %>
-        <div class="empty-state">
-          <h2 class="empty-state__title">Ingen treff på «<%= q %>»</h2>
-          <p class="empty-state__body">Prøv et kortere søk, eller se alle oppskriftene.</p>
-          <a class="btn btn--secondary" href="/">Vis alle oppskrifter</a>
+      </div>
+    </div>
+
+  <% } else if (state === 'error') { %>
+    <div class="wrap">
+      <div class="alert" role="alert">
+        <p class="alert__title">Kunne ikke hente oppskriftene.</p>
+        <p>Prøv igjen om litt.</p>
+        <a class="btn" href="/<%= searchQuery %>">Prøv på nytt</a>
+      </div>
+    </div>
+
+  <% } else if (state === 'no-hits') { %>
+    <div class="wrap">
+      <div class="notice">
+        <div class="notice__rule"></div>
+        <h2>Ingen treff på «<%= q %>»</h2>
+        <p>Prøv et kortere søk, eller se alle oppskriftene.</p>
+        <div class="notice__actions">
+          <a class="btn btn--lg" href="/">Vis alle oppskrifter</a>
         </div>
-      <% } else { %>
-        <ul class="recipe-list">
+      </div>
+    </div>
+
+  <% } else if (q) { %>
+    <%# A search answers with a register of hits — no lead dish, nothing chosen for you. %>
+    <section class="results">
+      <div class="wrap">
+        <h2 class="visually-hidden">Søkeresultater</h2>
+        <div class="results__head">
+          <p class="result-count" role="status"><%= count %></p>
+          <p class="clear"><a href="/">Tøm søk</a></p>
+        </div>
+        <ul class="hits">
           <% recipes.forEach(function (recipe) { %>
             <li>
-              <a class="recipe-card" href="/recipes/<%= recipe.id %><%= searchQuery %>">
-                <h2 class="recipe-card__title"><%= recipe.title %></h2>
-                <p class="recipe-card__meta"><%= recipe.meta %></p>
+              <a class="sideitem" href="/recipes/<%= recipe.id %><%= searchQuery %>">
+                <% if (recipe.photo) { %>
+                  <img src="<%= recipe.photo %>" alt="">
+                <% } else { %>
+                  <span class="plate plate--thumb"></span>
+                <% } %>
+                <div>
+                  <h3><%= recipe.title %></h3>
+                  <p class="m"><%= recipe.meta %></p>
+                </div>
               </a>
             </li>
           <% }); %>
         </ul>
-      <% } %>
+      </div>
+    </section>
+
+  <% } else { %>
+    <%# The unsearched front page: one dish large, the archive beside it. %>
+    <section class="lead">
+      <div class="wrap grid">
+        <figure class="lead__fig">
+          <% if (front.lead.photo) { %>
+            <img src="<%= front.lead.photo %>" alt="">
+          <% } else { %>
+            <span class="plate"></span>
+          <% } %>
+          <figcaption class="lead__plate">
+            <p class="kicker">Sist lagt inn</p>
+            <h2><a href="/recipes/<%= front.lead.id %>"><%= front.lead.title %></a></h2>
+            <p class="lead__dek"><%= front.lead.ingredientCount %>
+              <%= front.lead.ingredientCount === 1 ? 'ingrediens' : 'ingredienser' %><% if (front.lead.added) { %>,
+              lagt inn <%= front.lead.added %><% } %>.</p>
+          </figcaption>
+        </figure>
+
+        <div class="lead__side">
+          <% if (front.side.length) { %>
+            <div class="band">
+              <h2 class="band__head">Nylig lagt inn</h2>
+              <p class="band__sub"><%= front.sideSub %></p>
+              <% front.side.forEach(function (recipe) { %>
+                <a class="sideitem" href="/recipes/<%= recipe.id %>">
+                  <% if (recipe.photo) { %>
+                    <img src="<%= recipe.photo %>" alt="">
+                  <% } else { %>
+                    <span class="plate plate--thumb"></span>
+                  <% } %>
+                  <div>
+                    <h3><%= recipe.title %></h3>
+                    <p class="m"><%= recipe.meta %></p>
+                  </div>
+                </a>
+              <% }); %>
+            </div>
+          <% } %>
+
+          <div class="band index<%= front.side.length ? '' : ' index--first' %>">
+            <h2 class="band__head">Hele samlingen</h2>
+            <p class="band__sub">Alle <%= recipes.length %> oppskriftene, i alfabetisk rekkefølge.</p>
+            <ol>
+              <% front.index.forEach(function (recipe) { %>
+                <li>
+                  <a href="/recipes/<%= recipe.id %>"><%= recipe.title %></a>
+                  <span class="d"></span>
+                  <span class="t"><%= recipe.date %></span>
+                </li>
+              <% }); %>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <% if (front.rest.length) { %>
+      <section class="more">
+        <div class="wrap">
+          <div class="more__head">
+            <h2>Resten av samlingen</h2>
+            <p>Eldre oppskrifter, nyest først.</p>
+          </div>
+          <div class="cards" style="--cols:<%= Math.min(front.rest.length, 4) %>">
+            <% front.rest.forEach(function (recipe) { %>
+              <a class="card" href="/recipes/<%= recipe.id %>">
+                <% if (recipe.photo) { %>
+                  <img src="<%= recipe.photo %>" alt="">
+                <% } else { %>
+                  <span class="plate"></span>
+                <% } %>
+                <h3><%= recipe.title %></h3>
+                <p class="m"><%= recipe.meta %></p>
+              </a>
+            <% }); %>
+          </div>
+        </div>
+      </section>
     <% } %>
-  </main>
-  <% if (state !== 'empty') { %>
-    <div class="action-bar">
-      <a class="btn btn--primary btn--block" href="/recipes/new">+ Ny oppskrift</a>
-    </div>
   <% } %>
-</body>
-</html>
+</main>
+<%- include('partials/foot') %>

@@ -1,29 +1,61 @@
-<!DOCTYPE html>
-<html lang="no">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= recipe.title %> — food.st44.no</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <a class="skip-link visually-hidden-focusable" href="#main">Hopp til innhold</a>
-  <header class="app-header">
-    <h1><%= recipe.title %></h1>
-  </header>
-  <main id="main" tabindex="-1">
-    <%- include('partials/flash', { flash }) %>
-    <section class="recipe-section">
-      <h2>Ingredienser</h2>
-      <p class="recipe-body recipe-ingredients"><%= recipe.ingredients %></p>
-    </section>
-    <section class="recipe-section">
-      <h2>Fremgangsmåte</h2>
-      <p class="recipe-body recipe-instructions"><%= recipe.instructions %></p>
-    </section>
-    <p><a class="btn btn--secondary" href="/recipes/<%= recipe.id %>/edit">Rediger</a></p>
-    <p><a class="btn btn--danger-ghost" href="/recipes/<%= recipe.id %>/delete">Slett</a></p>
-    <p><a href="/">← Tilbake til oppskrifter</a></p>
-  </main>
-</body>
-</html>
+<%- include('partials/head', { title: `${recipe.title} — food.st44.no` }) %>
+<%- include('partials/mast', { nav: '', home: false }) %>
+<main id="main" tabindex="-1">
+  <%- include('partials/flash', { flash }) %>
+
+  <section class="rh">
+    <div class="wrap">
+      <div class="rh__top">
+        <p class="crumb"><a href="<%= backHref %>">Oppskrifter</a> &nbsp;/&nbsp; <%= recipe.title %></p>
+        <div class="acts">
+          <a class="btn" href="/recipes/<%= recipe.id %>/edit">Rediger</a>
+          <a class="btn btn--danger-ghost" href="/recipes/<%= recipe.id %>/delete">Slett</a>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="rt"><h1><%= recipe.title %></h1></div>
+        <div class="rmeta">
+          <dl>
+            <div><dt>Ingredienser</dt><dd><%= ingredients.length %></dd></div>
+            <div><dt>Fremgangsmåte</dt><dd><%= steps.length %> steg</dd></div>
+            <% if (added) { %><div><dt>Lagt inn</dt><dd><%= added %></dd></div><% } %>
+          </dl>
+        </div>
+      </div>
+
+      <% if (photo) { %>
+        <figure class="rhero"><img src="<%= photo %>" alt="<%= recipe.title %>"></figure>
+      <% } %>
+    </div>
+  </section>
+
+  <section class="rbody">
+    <div class="wrap grid">
+      <aside class="ing">
+        <h2>Ingredienser</h2>
+        <ul>
+          <% ingredients.forEach(function (item) { %>
+            <li<%- item.amount ? '' : ' class="li--plain"' %>>
+              <% if (item.amount) { %><b><%= item.amount %></b><% } %>
+              <span><%= item.name %></span>
+            </li>
+          <% }); %>
+        </ul>
+      </aside>
+
+      <div class="steps">
+        <h2>Fremgangsmåte</h2>
+        <% if (steps.length) { %>
+          <% steps.forEach(function (step, i) { %>
+            <div class="step"><span class="n"><%= i + 1 %></span><p><%= step %></p></div>
+          <% }); %>
+        <% } else { %>
+          <p class="steps__none">Ingen fremgangsmåte er skrevet inn ennå.
+            <a href="/recipes/<%= recipe.id %>/edit">Skriv den inn</a>.</p>
+        <% } %>
+      </div>
+    </div>
+  </section>
+</main>
+<%- include('partials/foot') %>

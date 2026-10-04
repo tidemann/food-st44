@@ -5,14 +5,12 @@
 <% const submitLabel = mode === 'edit' ? 'Lagre endringer' : 'Lagre oppskrift'; %>
 <form action="<%= action %>" method="post" class="recipe-form">
   <% if (errors.title || errors.ingredients) { %>
-    <div class="alert alert--error" id="error-summary" role="alert" tabindex="-1" autofocus>
-      <div>
-        <p class="alert__title"><span aria-hidden="true">⚠</span> Oppskriften ble ikke lagret</p>
-        <ul>
-          <% if (errors.title) { %><li><a href="#title"><%= errors.title %></a></li><% } %>
-          <% if (errors.ingredients) { %><li><a href="#ingredients"><%= errors.ingredients %></a></li><% } %>
-        </ul>
-      </div>
+    <div class="alert" id="error-summary" role="alert" tabindex="-1" autofocus>
+      <p class="alert__title">Oppskriften ble ikke lagret</p>
+      <ul>
+        <% if (errors.title) { %><li><a href="#title"><%= errors.title %></a></li><% } %>
+        <% if (errors.ingredients) { %><li><a href="#ingredients"><%= errors.ingredients %></a></li><% } %>
+      </ul>
     </div>
   <% } %>
 
@@ -21,29 +19,31 @@
     <input type="text" id="title" name="title" value="<%= values.title || '' %>"
       <% if (errors.title) { %>aria-invalid="true" aria-describedby="title-error"<% } %>>
     <% if (errors.title) { %>
-      <p class="field__error" id="title-error"><span aria-hidden="true">⚠</span> <%= errors.title %></p>
+      <p class="field__error" id="title-error"><%= errors.title %></p>
     <% } %>
   </div>
 
   <div class="field<%= errors.ingredients ? ' field--error' : '' %>">
     <label for="ingredients">Ingredienser</label>
-    <p class="field__hint" id="ingredients-hint">Én ingrediens per linje.</p>
-    <textarea id="ingredients" name="ingredients" rows="8"
+    <p class="field__hint" id="ingredients-hint">Én ingrediens per linje. Mengden først: «600 g kjøttdeig».</p>
+    <textarea id="ingredients" name="ingredients" rows="10"
       aria-describedby="ingredients-hint<%= errors.ingredients ? ' ingredients-error' : '' %>"
       <% if (errors.ingredients) { %>aria-invalid="true"<% } %>><%= values.ingredients || '' %></textarea>
     <% if (errors.ingredients) { %>
-      <p class="field__error" id="ingredients-error"><span aria-hidden="true">⚠</span> <%= errors.ingredients %></p>
+      <p class="field__error" id="ingredients-error"><%= errors.ingredients %></p>
     <% } %>
   </div>
 
   <div class="field">
     <label for="instructions">Fremgangsmåte (valgfritt)</label>
-    <textarea id="instructions" name="instructions" rows="10"><%= values.instructions || '' %></textarea>
+    <p class="field__hint" id="instructions-hint">Ett steg per avsnitt. Stegene nummereres når oppskriften vises.</p>
+    <textarea id="instructions" name="instructions" rows="12"
+      aria-describedby="instructions-hint"><%= values.instructions || '' %></textarea>
   </div>
 
   <div class="form-actions">
-    <button class="btn btn--primary" type="submit"><%= submitLabel %></button>
-    <a class="btn btn--secondary" href="<%= cancelHref %>">Avbryt</a>
+    <button class="btn btn--primary btn--lg" type="submit"><%= submitLabel %></button>
+    <a class="btn btn--lg" href="<%= cancelHref %>">Avbryt</a>
   </div>
 </form>
 <script>

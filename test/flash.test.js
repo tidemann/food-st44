@@ -10,8 +10,7 @@ test('GET /?flash=deleted shows the deleted message', async () => {
   const res = await request(app).get('/?flash=deleted');
   assert.equal(res.status, 200);
   assert.match(res.text, /Oppskriften ble slettet\./);
-  assert.match(res.text, /role="status"/);
-  assert.match(res.text, /alert--success/);
+  assert.match(res.text, /<p class="flash" role="status">/);
 });
 
 test('GET /recipes/:id?flash=created shows the created message', async () => {
@@ -43,7 +42,7 @@ test('Unknown or empty flash keys render nothing', async () => {
 
   const empty = await request(app).get('/?flash=');
   assert.equal(empty.status, 200);
-  assert.doesNotMatch(empty.text, /alert--success/);
+  assert.doesNotMatch(empty.text, /class="flash"/);
 });
 
 test('Malicious flash key renders no message and no injected markup', async () => {
@@ -53,5 +52,5 @@ test('Malicious flash key renders no message and no injected markup', async () =
 
   assert.equal(res.status, 200);
   assert.doesNotMatch(res.text, /<script[\s\S]*?>alert\(1\)<\/script>/);
-  assert.doesNotMatch(res.text, /alert--success/);
+  assert.doesNotMatch(res.text, /class="flash"/);
 });

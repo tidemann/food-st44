@@ -12,8 +12,11 @@ decision.
 | --------------------------- | ------------------------------------------------ |
 | `src/server.js`            | Express app entrypoint. Listens on `process.env.PORT` (default `3000`). |
 | `src/db.js`                | Opens the SQLite file and creates the `recipes` table if missing. |
-| `views/*.ejs`              | Server-rendered HTML templates.                  |
+| `src/view-model.js`        | Turns a stored recipe into what the pages show: amount column, numbered steps, photograph, meta line. |
+| `views/*.ejs`              | Server-rendered HTML templates. `partials/` holds the masthead, footer and flash. |
 | `public/style.css`         | The one CSS file — no preprocessor, no framework. |
+| `public/fonts/`            | Bodoni Moda and Archivo, self-hosted. No third-party font request. |
+| `public/img/recipes/`      | One photograph per recipe, named after its title. See the [README there](public/img/recipes/README.md). |
 | `data/`                    | Local dev SQLite file (gitignored). In the container this path is a mounted volume. |
 | `test/*.test.js`           | Tests: `node --test` + `supertest`.              |
 | `Dockerfile`               | Single-stage `node:22-alpine` image.             |
@@ -22,6 +25,18 @@ decision.
 | `infra/docker-compose.yml` | The deploy unit: which image tag runs, on which network. |
 | `DEPLOY.md`                | How the deploy works, its prerequisites, and how to roll back. |
 | `docs/adr/`                | Architecture decision records.                   |
+
+## The design
+
+The front end is **Søndag**, the Nordic food-magazine direction Stig picked on
+[ST-272](https://paperclip.st44.no/ST/issues/ST-272). Bodoni Moda for display and
+Archivo for interface; paper `#FBFAF7`, ink `#14110E`, muted ink `#5B544C`, rule
+`#DED8CE`, crimson `#A4142E`, tint `#F2EFE8`. Those six values are CSS custom
+properties at the top of `public/style.css` and are the only colours used.
+
+The front page opens on the most recently added dish with the whole collection
+as a register beside it. A search replaces that opening with a plain list of
+hits — the front page chooses a dish for you, a search must not.
 
 ## Run it locally
 
