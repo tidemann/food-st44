@@ -40,8 +40,8 @@ agents.
   flow (`@if`/`@for`), no NgModules.
 - **Styling:** the Søndag design stays plain CSS. The tokens and base
   typography become the global stylesheet; components get small scoped CSS
-  files using those tokens. **stylelint** rejects any colour that isn't one
-  of the six tokens. No Tailwind, no component library.
+  files using those tokens. **stylelint** rejects any colour that isn't one of
+  the six tokens. No Tailwind, no component library.
 - **Link previews:** the backend injects title and photo meta tags into the
   SPA's `index.html` for `/recipes/:id`, so shared recipe links get a proper
   preview without SSR.
@@ -110,8 +110,13 @@ Deliberately not decided here:
 - How existing recipes and their photos move to the new app.
 - Which AI vision provider reads recipe photos (a paid service — owner
   approval).
+  *Stig (2026-10-04): no vendor lock-in — it must be possible to swap
+  providers; ask Stig each time before anything is paid.*
 - How uploaded photos are stored and served.
+  *Stig (2026-10-04): stored on our own server, next to the database.*
 - Feature details: roles and editor list, cooking mode, import review flow.
+  *Stig (2026-10-04): editors are Stig and his household; everyone else
+  reads only.*
 
 ## Options considered and rejected
 
