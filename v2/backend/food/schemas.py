@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from ninja import ModelSchema, Schema
 from pydantic import field_validator
 from pydantic_core import PydanticCustomError
@@ -37,6 +39,12 @@ class RecipeIn(Schema):
 
 
 class RecipeOut(ModelSchema):
+    # Always present in a response. Declared here so the generated client types are required
+    # fields, not the optional/nullable ones ModelSchema derives from the model's defaults.
+    id: int
+    instructions: str
+    created_at: datetime
+
     class Meta:
         model = Recipe
         fields = ("id", "title", "ingredients", "instructions", "created_at")

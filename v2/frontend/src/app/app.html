@@ -1,7 +1,76 @@
+<a class="skip-link visually-hidden-focusable" href="#main" (click)="skip($event)"
+  >Hopp til innhold</a
+>
+
 <header class="mast">
-  <p class="wordmark">Oppskrifter<span class="dot">.</span></p>
-  @if (health.value(); as h) {
-    <p class="status">API: {{ h.status }}</p>
-  }
+  <div class="wrap">
+    <p class="mast-meta">
+      <span>{{ today }}</span>
+      <span><b>Familiekjøkkenet</b></span>
+    </p>
+    <div class="mast-brand">
+      @if (home()) {
+        <h1 class="wordmark">
+          <a routerLink="/">food<span class="dot">.</span>st44<span class="dot">.</span>no</a>
+        </h1>
+      } @else {
+        <p class="wordmark">
+          <a routerLink="/">food<span class="dot">.</span>st44<span class="dot">.</span>no</a>
+        </p>
+      }
+      <span class="mast-brandline"></span>
+      @if (site.searchable()) {
+        <form class="search" method="get" action="/" role="search" (submit)="search($event, field)">
+          <label for="q">Søk</label>
+          <input
+            #field
+            class="search-field"
+            type="search"
+            id="q"
+            name="q"
+            placeholder="brun saus, kål, torsk …"
+            [value]="q()"
+          />
+          <button class="visually-hidden-focusable" type="submit">Søk</button>
+        </form>
+      }
+    </div>
+  </div>
 </header>
-<router-outlet />
+
+<!-- A direct child of the page, so the sticky it gets on a phone can travel the whole page. -->
+<div class="mastbar">
+  <div class="wrap">
+    <nav class="mast-nav">
+      <a
+        routerLink="/"
+        routerLinkActive
+        ariaCurrentWhenActive="page"
+        [routerLinkActiveOptions]="{
+          paths: 'exact',
+          queryParams: 'ignored',
+          fragment: 'ignored',
+          matrixParams: 'ignored',
+        }"
+        >Oppskrifter</a
+      >
+      <a routerLink="/recipes/new" routerLinkActive ariaCurrentWhenActive="page">Ny oppskrift</a>
+      @if (site.total() > 0) {
+        <span class="count">{{ count() }} i samlingen</span>
+      }
+    </nav>
+  </div>
+</div>
+
+<main id="main" tabindex="-1" #main>
+  <router-outlet />
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>food.st44.no — familiens oppskrifter</span>
+    @if (site.updated(); as updated) {
+      <span>Sist oppdatert {{ updated }}</span>
+    }
+  </div>
+</footer>

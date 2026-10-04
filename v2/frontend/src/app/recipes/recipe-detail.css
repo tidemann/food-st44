@@ -1,0 +1,212 @@
+.rh {
+  padding: 40px 0 0;
+}
+
+.rh-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 30px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 14px;
+}
+
+.crumb {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--soft);
+}
+
+.crumb a {
+  color: var(--red);
+  text-decoration: none;
+  border-bottom: 1px solid currentcolor;
+}
+
+.acts {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.rt {
+  grid-column: 1/9;
+  padding: 30px 0 10px;
+}
+
+.rt h1 {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 72px;
+  line-height: 0.98;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.rmeta {
+  grid-column: 10/13;
+  padding: 36px 0 10px;
+  border-top: 3px solid var(--ink);
+  align-self: start;
+}
+
+.rmeta dl {
+  margin: 0;
+}
+
+.rmeta div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+
+.rmeta dt {
+  color: var(--soft);
+  margin: 0;
+}
+
+.rmeta dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.rbody {
+  padding: 50px 0 80px;
+}
+
+/* ---------- ingredients: amount column + name ---------- */
+.ing {
+  grid-column: 1/5;
+  align-self: start;
+  position: sticky;
+  top: 28px;
+  background: var(--tint);
+  padding: 26px 26px 30px;
+  margin: 0;
+}
+
+.ing h2,
+.steps h2 {
+  font-family: var(--disp);
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.ing ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ing li {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+}
+
+.ing li b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ing li.li-plain {
+  grid-template-columns: 1fr;
+}
+
+/* ---------- steps ---------- */
+.steps {
+  grid-column: 6/13;
+}
+
+.steps h2 {
+  margin: 0 0 20px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--ink);
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 18px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.step .n {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 30px;
+  color: var(--red);
+  line-height: 1;
+}
+
+.step p,
+.steps-none {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.68;
+  max-width: 62ch;
+}
+
+.steps-none a {
+  color: var(--red);
+}
+
+@media (width <= 760px) {
+  .rh-top {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .rt,
+  .rmeta,
+  .ing,
+  .steps {
+    grid-column: auto;
+  }
+
+  .rt {
+    padding: 22px 0 0;
+  }
+
+  .rt h1 {
+    font-size: 40px;
+  }
+
+  .rmeta {
+    padding-top: 24px;
+    margin-top: 24px;
+  }
+
+  .rbody {
+    padding: 30px 0 50px;
+  }
+
+  .ing {
+    position: static;
+    padding: 22px 20px 26px;
+    margin-bottom: 34px;
+  }
+
+  .step {
+    grid-template-columns: 36px 1fr;
+    gap: 12px;
+  }
+
+  .step .n {
+    font-size: 24px;
+  }
+
+  .step p {
+    font-size: 15.5px;
+  }
+}

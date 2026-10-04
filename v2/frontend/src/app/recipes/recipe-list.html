@@ -1,0 +1,147 @@
+@switch (state()) {
+  @case ('empty') {
+    <div class="wrap">
+      <div class="notice">
+        <div class="notice-rule"></div>
+        <h2>Ingen oppskrifter ennå</h2>
+        <p>Legg inn den første, så finner dere den igjen her.</p>
+        <div class="notice-actions">
+          <a class="btn btn-primary btn-lg" routerLink="/recipes/new"
+            >Legg til den første oppskriften</a
+          >
+        </div>
+      </div>
+    </div>
+  }
+
+  @case ('error') {
+    <div class="wrap">
+      <div class="alert" role="alert">
+        <p class="alert-title">Kunne ikke hente oppskriftene.</p>
+        <p>Prøv igjen om litt.</p>
+        <a class="btn" [href]="retryHref()">Prøv på nytt</a>
+      </div>
+    </div>
+  }
+
+  @case ('no-hits') {
+    <div class="wrap">
+      <div class="notice">
+        <div class="notice-rule"></div>
+        <h2>Ingen treff på «{{ term() }}»</h2>
+        <p>Prøv et kortere søk, eller se alle oppskriftene.</p>
+        <div class="notice-actions">
+          <a class="btn btn-lg" routerLink="/">Vis alle oppskrifter</a>
+        </div>
+      </div>
+    </div>
+  }
+
+  @case ('hits') {
+    <!-- A search answers with a register of hits: no lead dish, nothing chosen for you. -->
+    <section class="results">
+      <div class="wrap">
+        <h2 class="visually-hidden">Søkeresultater</h2>
+        <div class="results-head">
+          <p class="result-count" role="status">{{ hitCards().length }} treff på «{{ term() }}»</p>
+          <p class="clear"><a routerLink="/">Tøm søk</a></p>
+        </div>
+        <ul class="hits">
+          @for (recipe of hitCards(); track recipe.id) {
+            <li>
+              <a
+                class="sideitem"
+                [routerLink]="['/recipes', recipe.id]"
+                [queryParams]="{ q: term() }"
+              >
+                <span class="plate plate-thumb"></span>
+                <div>
+                  <h3>{{ recipe.title }}</h3>
+                  <p class="m">{{ recipe.meta }}</p>
+                </div>
+              </a>
+            </li>
+          }
+        </ul>
+      </div>
+    </section>
+  }
+
+  @case ('front') {
+    <!-- The unsearched front page: one dish large, the archive beside it. -->
+    @if (lead(); as lead) {
+      <section class="lead">
+        <div class="wrap grid">
+          <figure class="lead-fig">
+            <span class="plate"></span>
+            <figcaption class="lead-plate">
+              <p class="kicker">Sist lagt inn</p>
+              <h2>
+                <a [routerLink]="['/recipes', lead.id]">{{ lead.title }}</a>
+              </h2>
+              <p class="lead-dek">{{ leadDek() }}</p>
+            </figcaption>
+          </figure>
+
+          <div class="lead-side">
+            @if (side().length) {
+              <div class="band">
+                <h2 class="band-head">Nylig lagt inn</h2>
+                <p class="band-sub">{{ sideSub() }}</p>
+                @for (recipe of side(); track recipe.id) {
+                  <a class="sideitem" [routerLink]="['/recipes', recipe.id]">
+                    <span class="plate plate-thumb"></span>
+                    <div>
+                      <h3>{{ recipe.title }}</h3>
+                      <p class="m">{{ recipe.meta }}</p>
+                    </div>
+                  </a>
+                }
+              </div>
+            }
+
+            <div class="band index" [class.index-first]="!side().length">
+              <h2 class="band-head">Hele samlingen</h2>
+              <p class="band-sub">
+                @if (index().length === 1) {
+                  Den ene oppskriften i samlingen.
+                } @else {
+                  Alle {{ index().length }} oppskriftene, i alfabetisk rekkefølge.
+                }
+              </p>
+              <ol>
+                @for (recipe of index(); track recipe.id) {
+                  <li>
+                    <a [routerLink]="['/recipes', recipe.id]">{{ recipe.title }}</a>
+                    <span class="d"></span>
+                    <span class="t">{{ recipe.date }}</span>
+                  </li>
+                }
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+    }
+
+    @if (rest().length) {
+      <section class="more">
+        <div class="wrap">
+          <div class="more-head">
+            <h2>Resten av samlingen</h2>
+            <p>Eldre oppskrifter, nyest først.</p>
+          </div>
+          <div class="cards" [attr.data-cols]="restCols()">
+            @for (recipe of rest(); track recipe.id) {
+              <a class="card" [routerLink]="['/recipes', recipe.id]">
+                <span class="plate"></span>
+                <h3>{{ recipe.title }}</h3>
+                <p class="m">{{ recipe.meta }}</p>
+              </a>
+            }
+          </div>
+        </div>
+      </section>
+    }
+  }
+}
