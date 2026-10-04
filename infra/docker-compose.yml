@@ -5,11 +5,10 @@
 # credential. CI never ships the image bytes and never hands a credential to
 # the server; it only runs these commands over SSH.
 #
-# The image is supplied by the deploy workflow, which writes IMAGE=<image> to a
-# .env beside this file on the server. It is always a commit-SHA tag, never
-# `latest`: `latest` is a pointer, not a release identity. Rolling back means
-# pointing that .env at the previous SHA and running compose up again — see
-# DEPLOY.md.
+# The image is supplied by the deploy workflow, which renders ${IMAGE} below
+# into this file before sending it to the server. It is always a commit-SHA
+# tag, never `latest`: `latest` is a pointer, not a release identity. For
+# rolling back, see DEPLOY.md.
 #
 # Pinned explicitly. Compose otherwise names the project after its directory,
 # which is `infra` here — and st44-home also deploys from a directory called
@@ -19,7 +18,7 @@ name: food-st44
 
 services:
   food-st44:
-    image: ${IMAGE:?IMAGE must be set — the deploy workflow writes it to .env}
+    image: ${IMAGE:?IMAGE must be set — the deploy workflow renders it}
     container_name: food-st44
     restart: unless-stopped
     # Deliberately no `ports:`. nginx-proxy terminates TLS and reaches this

@@ -181,9 +181,16 @@ The two rollbacks that work:
 
 The switch from v1 to v2 left the v1 data where it was: the volume
 `food-st44_food-st44-data`, file `recipes.db`, which v2 only mounts read-only.
-Either rollback above puts the v1 image back on that volume, read-write, with
-the data exactly as it was at the switch. Recipes added or edited on v2 after
-the switch are only in `food-st44_food-st44-v2-data`; they are not copied back.
+Both rollbacks put the v1 image back on that volume, read-write, with the data
+exactly as it was at the switch. Recipes added or edited on v2 after the switch
+are only in `food-st44_food-st44-v2-data`; they are not copied back.
+
+For the host rollback, do not use `docker-compose.yml.prev`: it is the v1 file
+only until the next deploy to `main`, and after that it is a v2 file. Use
+`docker-compose.v1.yml`, the copy of the v1 compose file saved before the
+switch. Never just change the image in the v2 compose file: v1 would then get
+the v2 volume at `/data`, create an empty `recipes.db` there and still pass
+`/healthz`.
 The full runbook, with the commands Bob runs before and after, is the `cutover`
 document on [ST-492](https://paperclip.st44.no/ST/issues/ST-492).
 
