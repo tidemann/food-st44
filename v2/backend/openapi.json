@@ -24,6 +24,218 @@
           }
         }
       }
+    },
+    "/api/recipes": {
+      "get": {
+        "operationId": "list_recipes",
+        "summary": "List Recipes",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecipeOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "recipes"
+        ]
+      },
+      "post": {
+        "operationId": "create_recipe",
+        "summary": "Create Recipe",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "recipes"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeIn"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/recipes/{recipe_id}": {
+      "get": {
+        "operationId": "get_recipe",
+        "summary": "Get Recipe",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "schema": {
+              "title": "Recipe Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "recipes"
+        ]
+      },
+      "put": {
+        "operationId": "update_recipe",
+        "summary": "Update Recipe",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "schema": {
+              "title": "Recipe Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "recipes"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeIn"
+              }
+            }
+          },
+          "required": true
+        }
+      },
+      "delete": {
+        "operationId": "delete_recipe",
+        "summary": "Delete Recipe",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "schema": {
+              "title": "Recipe Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "recipes"
+        ]
+      }
     }
   },
   "components": {
@@ -40,6 +252,106 @@
           "status"
         ],
         "title": "Health",
+        "type": "object"
+      },
+      "RecipeOut": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "ingredients": {
+            "title": "Ingredients",
+            "type": "string"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "",
+            "title": "Instructions"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "ingredients"
+        ],
+        "title": "RecipeOut",
+        "type": "object"
+      },
+      "ValidationErrors": {
+        "description": "422 body: one message per field, keyed by field name, ready to show next to the input.",
+        "properties": {
+          "errors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "object"
+          }
+        },
+        "required": [
+          "errors"
+        ],
+        "title": "ValidationErrors",
+        "type": "object"
+      },
+      "RecipeIn": {
+        "description": "Create and edit share one rule set (inventory §3.2). Values are stored trimmed.",
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "ingredients": {
+            "title": "Ingredients",
+            "type": "string"
+          },
+          "instructions": {
+            "default": "",
+            "title": "Instructions",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "ingredients"
+        ],
+        "title": "RecipeIn",
+        "type": "object"
+      },
+      "ErrorOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorOut",
         "type": "object"
       }
     }

@@ -4,3 +4,10 @@
 import type { components } from './schema';
 
 export type Health = components['schemas']['Health'];
+
+export type Recipe = components['schemas']['RecipeOut'];
+export type RecipeInput = components['schemas']['RecipeIn'];
+/** 404 body: `{ detail: "Not Found" }`. */
+export type ApiError = components['schemas']['ErrorOut'];
+/** 422 body: one message per field, e.g. `{ errors: { title: "Tittelen må fylles ut." } }`. */
+export type ValidationErrors = components['schemas']['ValidationErrors'];
