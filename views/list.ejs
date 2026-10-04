@@ -107,7 +107,9 @@
 
           <div class="band index<%= front.side.length ? '' : ' index--first' %>">
             <h2 class="band__head">Hele samlingen</h2>
-            <p class="band__sub">Alle <%= recipes.length %> oppskriftene, i alfabetisk rekkefølge.</p>
+            <p class="band__sub"><%= recipes.length === 1
+              ? 'Den ene oppskriften i samlingen.'
+              : `Alle ${recipes.length} oppskriftene, i alfabetisk rekkefølge.` %></p>
             <ol>
               <% front.index.forEach(function (recipe) { %>
                 <li>

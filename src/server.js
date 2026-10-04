@@ -115,11 +115,18 @@ function frontPage(cards) {
   };
 }
 
+// The search a page was reached from, as a query string to hand on. Cards carry
+// it to the detail page, and Rediger and Slett carry it on from there, so every
+// way back — the crumb, Avbryt — lands on the search, not the top (flows §5).
+function searchQueryFor(req) {
+  const q = String(req.query.q || '').trim();
+  return q ? `?q=${encodeURIComponent(q)}` : '';
+}
+
 app.get('/', (req, res) => {
   const q = String(req.query.q || '').trim();
-  // Carried into card links (so the detail back link can return to the search,
-  // flows §5) and into the S4 retry link.
-  const searchQuery = q ? `?q=${encodeURIComponent(q)}` : '';
+  // Carried into card links and into the S4 retry link.
+  const searchQuery = searchQueryFor(req);
 
   let recipes;
   try {
@@ -167,9 +174,7 @@ app.get('/recipes/:id', (req, res) => {
     return notFound(res);
   }
 
-  // Cards carry the search in their href, so the way back lands on the search
-  // the reader came from rather than the top of the collection.
-  const q = String(req.query.q || '').trim();
+  const searchQuery = searchQueryFor(req);
 
   res.render('detail', {
     recipe,
@@ -177,7 +182,8 @@ app.get('/recipes/:id', (req, res) => {
     ingredients: view.ingredientsFor(recipe.ingredients),
     steps: view.stepsFor(recipe.instructions),
     added: view.formatLong(recipe.created_at),
-    backHref: q ? `/?q=${encodeURIComponent(q)}` : '/',
+    backHref: `/${searchQuery}`,
+    searchQuery,
     flash: flashFor(req.query.flash)
   });
 });
@@ -188,7 +194,9 @@ app.get('/recipes/:id/edit', (req, res) => {
     return notFound(res);
   }
 
-  res.render('edit', { id: recipe.id, values: recipe, errors: {}, hasErrors: false });
+  res.render('edit', {
+    id: recipe.id, values: recipe, errors: {}, hasErrors: false, searchQuery: searchQueryFor(req)
+  });
 });
 
 app.post('/recipes/:id/edit', (req, res) => {
@@ -197,14 +205,16 @@ app.post('/recipes/:id/edit', (req, res) => {
     return notFound(res);
   }
 
+  const searchQuery = searchQueryFor(req);
   const { values, recipe, errors, hasErrors } = validateRecipe(req.body);
   if (hasErrors) {
-    return res.status(400).render('edit', { id: existing.id, values, errors, hasErrors });
+    return res.status(400).render('edit', { id: existing.id, values, errors, hasErrors, searchQuery });
   }
 
   db.prepare('UPDATE recipes SET title = ?, ingredients = ?, instructions = ? WHERE id = ?')
     .run(recipe.title, recipe.ingredients, recipe.instructions, existing.id);
-  res.redirect(303, `/recipes/${existing.id}?flash=updated`);
+  const back = searchQuery ? `&${searchQuery.slice(1)}` : '';
+  res.redirect(303, `/recipes/${existing.id}?flash=updated${back}`);
 });
 
 app.post('/recipes', (req, res) => {
@@ -225,7 +235,7 @@ app.get('/recipes/:id/delete', (req, res) => {
     return notFound(res);
   }
 
-  res.render('delete', { recipe });
+  res.render('delete', { recipe, searchQuery: searchQueryFor(req) });
 });
 
 app.post('/recipes/:id/delete', (req, res) => {
@@ -239,7 +249,7 @@ app.post('/recipes/:id/delete', (req, res) => {
 });
 
 if (process.env.NODE_ENV === 'test') {
-  app.get('/__test-boom', () => {
+  app.all('/__test-boom', () => {
     throw new Error('intentional test error');
   });
 }
@@ -248,9 +258,23 @@ app.use((req, res) => {
   notFound(res, 'page');
 });
 
+// S11 "Prøv på nytt" is a plain link, so it works without JS. A failed GET
+// retries its own address; a failed form post goes back to the page the form
+// was on rather than re-sending it. Only a same-site path is ever linked.
+function retryHrefFor(req) {
+  if (req.method === 'GET') return `/${req.originalUrl.replace(/^\/+/, '')}`;
+  try {
+    const from = new URL(req.get('referer') || '/', `http://${req.get('host')}`);
+    if (from.host === req.get('host')) return `/${from.pathname.replace(/^\/+/, '')}${from.search}`;
+  } catch (err) {
+    // an unparseable Referer falls through to the front page
+  }
+  return '/';
+}
+
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(500).render('500');
+  res.status(500).render('500', { retryHref: retryHrefFor(req) });
 });
 
 if (require.main === module) {

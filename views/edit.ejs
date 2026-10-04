@@ -5,9 +5,9 @@
     <div class="form-head">
       <div class="rule"></div>
       <h1>Rediger oppskrift</h1>
-      <p><a href="/recipes/<%= id %>">Tilbake til oppskriften</a></p>
+      <p><a href="/recipes/<%= id %><%= searchQuery %>">Tilbake til oppskriften</a></p>
     </div>
-    <%- include('_form', { mode: 'edit', action: `/recipes/${id}/edit`, cancelHref: `/recipes/${id}` }) %>
+    <%- include('_form', { mode: 'edit', action: `/recipes/${id}/edit${searchQuery}`, cancelHref: `/recipes/${id}${searchQuery}` }) %>
   </div>
 </main>
 <%- include('partials/foot') %>

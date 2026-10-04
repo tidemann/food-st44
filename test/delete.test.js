@@ -93,3 +93,39 @@ test('POST /recipes/:id/delete renders the Norwegian 404 for missing and invalid
     assert.match(res.text, /Fant ikke oppskriften/);
   }
 });
+
+test('a detail page opened from a search hands the search on through Rediger and Slett and back', async () => {
+  const id = insertRecipe('Fiskekaker');
+
+  const detail = await request(app).get(`/recipes/${id}?q=fiske%20og`);
+  assert.match(detail.text, new RegExp(`<a class="btn" href="/recipes/${id}/edit\\?q=fiske%20og">Rediger</a>`));
+  assert.match(detail.text, new RegExp(`href="/recipes/${id}/delete\\?q=fiske%20og">Slett</a>`));
+
+  // Rediger → Avbryt, and the edit page's own way back.
+  const edit = await request(app).get(`/recipes/${id}/edit?q=fiske%20og`);
+  assert.match(edit.text, new RegExp(`<a class="btn btn--lg" href="/recipes/${id}\\?q=fiske%20og">Avbryt</a>`));
+  assert.match(edit.text, new RegExp(`<a href="/recipes/${id}\\?q=fiske%20og">Tilbake til oppskriften</a>`));
+
+  // Slett → Avbryt.
+  const del = await request(app).get(`/recipes/${id}/delete?q=fiske%20og`);
+  assert.match(del.text, new RegExp(`<a class="btn btn--lg" href="/recipes/${id}\\?q=fiske%20og">Avbryt</a>`));
+
+  // Back on the detail page, the crumb still returns to the search.
+  const back = await request(app).get(`/recipes/${id}?q=fiske%20og`);
+  assert.match(back.text, /<p class="crumb"><a href="\/\?q=fiske%20og">Oppskrifter<\/a>/);
+
+  // Saving keeps it too, and a failed save keeps it on the form.
+  const bad = await request(app).post(`/recipes/${id}/edit?q=fiske%20og`).type('form').send({ title: '', ingredients: '' });
+  assert.equal(bad.status, 400);
+  assert.match(bad.text, new RegExp(`href="/recipes/${id}\\?q=fiske%20og">Avbryt</a>`));
+  const saved = await request(app).post(`/recipes/${id}/edit?q=fiske%20og`).type('form').send({ title: 'Fiskekaker', ingredients: 'torsk' });
+  assert.equal(saved.headers.location, `/recipes/${id}?flash=updated&q=fiske%20og`);
+});
+
+test('without a search, Rediger, Slett and Avbryt carry no query string', async () => {
+  const id = insertRecipe('Lapper');
+  const detail = await request(app).get(`/recipes/${id}`);
+  assert.match(detail.text, new RegExp(`href="/recipes/${id}/edit">Rediger</a>`));
+  const del = await request(app).get(`/recipes/${id}/delete`);
+  assert.match(del.text, new RegExp(`href="/recipes/${id}">Avbryt</a>`));
+});

@@ -30,6 +30,7 @@
   --hint:#756D62;          /* lightest text that still clears AA on paper */
   --disp:"Bodoni Moda", Georgia, serif;
   --ui:"Archivo", "Helvetica Neue", Arial, sans-serif;
+  --tap:44px;              /* smallest touch target (style guide §7) */
 }
 
 /* ---------- base ---------- */
@@ -72,7 +73,7 @@ main:focus{outline:none}
 .search label{display:block;font-size:11px;letter-spacing:.1em;color:var(--soft);margin-bottom:5px}
 .search-field{width:100%;border:0;border-bottom:1.5px solid var(--ink);background:transparent;
   border-radius:0;font-family:var(--disp);font-size:20px;font-style:italic;color:var(--ink);
-  padding:4px 2px 7px}
+  padding:4px 2px 7px;min-height:var(--tap)}
 .search-field::placeholder{color:var(--hint);font-style:italic;opacity:1}
 .mast__nav{display:flex;align-items:baseline;gap:30px;border-top:1px solid var(--rule);
   padding:11px 0 12px;background:var(--paper)}
@@ -179,8 +180,8 @@ main:focus{outline:none}
 .notice__actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
 
 /* ---------- buttons ---------- */
-.btn{display:inline-block;font-family:var(--ui);font-size:12.5px;font-weight:600;
-  letter-spacing:.03em;border:1px solid var(--ink);border-radius:0;background:transparent;
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:var(--tap);
+  font-family:var(--ui);font-size:12.5px;font-weight:600;letter-spacing:.03em;border:1px solid var(--ink);border-radius:0;background:transparent;
   color:var(--ink);padding:9px 18px;cursor:pointer;text-decoration:none;line-height:1.4}
 .btn--lg{font-size:14px;padding:13px 26px}
 .btn--primary{background:var(--ink);color:var(--paper)}
