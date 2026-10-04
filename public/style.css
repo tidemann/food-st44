@@ -259,3 +259,10 @@ main { max-width: var(--w-content); margin-inline: auto; padding: var(--sp-4); }
     justify-content: center;
   }
 }
+
+/* ---- Delete confirm, S9 (ST-237) ---- */
+
+.confirm-page { max-width: var(--w-form); margin-inline: auto;
+                padding-top: var(--sp-6); }
+.confirm-page h1 { margin: 0 0 var(--sp-3); }
+.confirm-page p { line-height: var(--lh-body); margin: 0 0 var(--sp-6); }

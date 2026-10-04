@@ -159,18 +159,23 @@ app.post('/recipes', (req, res) => {
   res.redirect(303, `/recipes/${result.lastInsertRowid}?flash=created`);
 });
 
+app.get('/recipes/:id/delete', (req, res) => {
+  const recipe = findRecipe(req.params.id);
+  if (!recipe) {
+    return notFound(res);
+  }
+
+  res.render('delete', { recipe });
+});
+
 app.post('/recipes/:id/delete', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(404).render('404');
+  const existing = findRecipe(req.params.id);
+  if (!existing) {
+    return notFound(res);
   }
 
-  const result = db.prepare('DELETE FROM recipes WHERE id = ?').run(id);
-  if (result.changes === 0) {
-    return res.status(404).render('404');
-  }
-
-  res.redirect('/?flash=deleted');
+  db.prepare('DELETE FROM recipes WHERE id = ?').run(existing.id);
+  res.redirect(303, '/?flash=deleted');
 });
 
 if (process.env.NODE_ENV === 'test') {

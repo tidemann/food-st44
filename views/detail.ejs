@@ -22,9 +22,7 @@
       <p class="recipe-body recipe-instructions"><%= recipe.instructions %></p>
     </section>
     <p><a class="btn btn--secondary" href="/recipes/<%= recipe.id %>/edit">Rediger</a></p>
-    <form action="/recipes/<%= recipe.id %>/delete" method="POST" class="delete-form">
-      <button class="btn btn--danger-ghost" type="submit">Slett oppskrift</button>
-    </form>
+    <p><a class="btn btn--danger-ghost" href="/recipes/<%= recipe.id %>/delete">Slett</a></p>
     <p><a href="/">← Tilbake til oppskrifter</a></p>
   </main>
 </body>
