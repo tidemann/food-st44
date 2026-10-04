@@ -15,6 +15,14 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    # A push that touches only these paths leaves the live site alone: v2 has
+    # its own workflow, and docs do not change the running app. Anything else
+    # (src/, views/, public/, Dockerfile, infra/ ...) still deploys.
+    paths-ignore:
+      - 'v2/**'
+      - '.github/workflows/v2.yml'
+      - 'docs/**'
+      - '**/*.md'
 
 # A called workflow cannot grant itself more than its caller holds, so
 # packages:write has to be here for the build job to push to GHCR.
