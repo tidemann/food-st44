@@ -50,3 +50,20 @@ test('A thrown error returns 500 Norwegian page without stack trace or English',
   assert.doesNotMatch(res.text, /Error/);
   assert.doesNotMatch(res.text, /at /);
 });
+
+test('S11: Prøv på nytt is a plain link back to the failed address, no JS needed', async () => {
+  const res = await request(app).get('/__test-boom?x=1');
+  assert.equal(res.status, 500);
+  assert.match(res.text, /<a class="btn btn--lg" href="\/__test-boom\?x=1">Prøv på nytt<\/a>/);
+  assert.doesNotMatch(res.text, /onclick|location\.reload/);
+});
+
+test('S11: a failed form post retries from the page the form was on, never re-sends it', async () => {
+  let res = await request(app).post('/__test-boom').set('Referer', 'http://food.test/recipes/7/edit?q=kake')
+    .set('Host', 'food.test');
+  assert.match(res.text, /href="\/recipes\/7\/edit\?q=kake">Prøv på nytt/);
+
+  // Another site in the Referer is not linked to.
+  res = await request(app).post('/__test-boom').set('Referer', 'https://evil.example/x').set('Host', 'food.test');
+  assert.match(res.text, /<a class="btn btn--lg" href="\/">Prøv på nytt/);
+});

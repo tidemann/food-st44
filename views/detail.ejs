@@ -8,8 +8,8 @@
       <div class="rh__top">
         <p class="crumb"><a href="<%= backHref %>">Oppskrifter</a> &nbsp;/&nbsp; <%= recipe.title %></p>
         <div class="acts">
-          <a class="btn" href="/recipes/<%= recipe.id %>/edit">Rediger</a>
-          <a class="btn btn--danger-ghost" href="/recipes/<%= recipe.id %>/delete">Slett</a>
+          <a class="btn" href="/recipes/<%= recipe.id %>/edit<%= searchQuery %>">Rediger</a>
+          <a class="btn btn--danger-ghost" href="/recipes/<%= recipe.id %>/delete<%= searchQuery %>">Slett</a>
         </div>
       </div>
 

@@ -180,3 +180,19 @@ test('keyboard path: skip link → search → nav → main → first recipe, in 
   const lead = res.text.indexOf('class="lead__fig"');
   assert.ok(skip > -1 && skip < search && search < nav && nav < main && main < lead);
 });
+
+test('S1: the register reads in the singular when the collection holds one recipe', async () => {
+  insert.run('Én rett', 'a', '', '2026-10-01 10:00:00');
+  const res = await request(app).get('/');
+  assert.match(res.text, /<p class="band__sub">Den ene oppskriften i samlingen\.<\/p>/);
+  assert.doesNotMatch(res.text, /Alle 1 oppskriftene/);
+});
+
+test('every button and the search field are at least one tap tall (style guide §7)', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+  assert.match(css, /--tap:44px;/);
+  // .btn covers Rediger, Slett and every Prøv på nytt; nothing narrower may lower it.
+  assert.match(css, /\.btn\{[^}]*min-height:var\(--tap\)/);
+  assert.match(css, /\.search-field\{[^}]*min-height:var\(--tap\)/);
+  assert.doesNotMatch(css, /\.(btn|search-field)[^{]*\{[^}]*(?:max-height|min-height:(?!var\(--tap\)))/);
+});
