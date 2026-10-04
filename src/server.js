@@ -49,8 +49,21 @@ function findRecipe(idParam) {
     .get(id) || null;
 }
 
-function notFound(res) {
-  res.status(404).render('404');
+// A missing recipe and a wrong address are the same status but not the same
+// sentence: "Fant ikke oppskriften" is a lie on /nonsens/bla.
+const NOT_FOUND = Object.freeze({
+  recipe: {
+    heading: 'Fant ikke oppskriften',
+    dek: 'Den kan ha blitt slettet, eller lenken er feil.'
+  },
+  page: {
+    heading: 'Siden finnes ikke',
+    dek: 'Lenken kan være skrevet feil. Alle oppskriftene ligger samlet på forsiden.'
+  }
+});
+
+function notFound(res, kind = 'recipe') {
+  res.status(404).render('404', NOT_FOUND[kind]);
 }
 
 // One rule set for create and edit. Whitespace-only counts as empty.
@@ -232,7 +245,7 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 app.use((req, res) => {
-  res.status(404).render('404');
+  notFound(res, 'page');
 });
 
 app.use((err, req, res, next) => {

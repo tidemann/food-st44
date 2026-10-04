@@ -1,11 +1,16 @@
-<%- include('partials/head', { title: 'Fant ikke oppskriften — food.st44.no' }) %>
+<%#
+  Two readings of the same status: a recipe that is not there (a dead recipe
+  link, a deleted dish) and a path that was never a page at all.
+  Locals: heading, dek.
+%>
+<%- include('partials/head', { title: heading + ' — food.st44.no' }) %>
 <%- include('partials/mast', { nav: '', home: false }) %>
 <main id="main" tabindex="-1">
   <div class="wrap">
     <div class="notice">
       <div class="notice__rule"></div>
-      <h1>Fant ikke oppskriften</h1>
-      <p>Den kan ha blitt slettet, eller lenken er feil.</p>
+      <h1><%= heading %></h1>
+      <p><%= dek %></p>
       <div class="notice__actions">
         <a class="btn btn--lg" href="/">Til alle oppskrifter</a>
       </div>
