@@ -17,6 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Each check runs even if an earlier one failed, so one red run shows every broken rail.
   backend:
     name: Backend (ruff, mypy, pytest, OpenAPI)
     runs-on: ubuntu-24.04
@@ -33,22 +34,28 @@ jobs:
           cache-dependency-glob: v2/backend/uv.lock
 
       - name: Install (lockfile must be current)
+        id: install
         run: uv sync --locked
 
       - name: ruff format
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: uv run ruff format --check .
 
       - name: ruff lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: uv run ruff check --output-format=github .
 
       - name: mypy --strict
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: uv run mypy .
 
       - name: pytest
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: uv run pytest
 
       # The frontend's API types are generated from openapi.json, so it must match the code.
       - name: openapi.json is current
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         env:
           DJANGO_SECRET_KEY: ci-only
         run: |
@@ -73,21 +80,28 @@ jobs:
           cache: npm
           cache-dependency-path: v2/frontend/package-lock.json
 
-      - run: npm ci --no-audit --no-fund
+      - name: Install
+        id: install
+        run: npm ci --no-audit --no-fund
 
       - name: stylelint (Søndag palette)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run lint:css
 
       - name: stylelint rule self-test
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:stylelint
 
       - name: eslint (angular-eslint, strict TS)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run lint
 
       - name: Unit tests
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm test
 
       - name: Build (strict templates, generated API types)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
 
   image:
