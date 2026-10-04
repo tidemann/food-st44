@@ -15,12 +15,17 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    # A push that touches only these paths leaves the live site alone: v2 has
-    # its own workflow, and docs do not change the running app. Anything else
-    # (src/, views/, public/, Dockerfile, infra/ ...) still deploys.
+    # The live site is the v2 image (./Dockerfile builds v2/), so v2/ changes
+    # deploy. A push that touches only these paths leaves the live site alone:
+    # the v1 Express sources are no longer in the image, and docs do not change
+    # the running app. Anything else (v2/, Dockerfile, infra/ ...) deploys.
     paths-ignore:
-      - 'v2/**'
-      - '.github/workflows/v2.yml'
+      - 'src/**'
+      - 'views/**'
+      - 'public/**'
+      - 'test/**'
+      - 'package.json'
+      - 'package-lock.json'
       - 'docs/**'
       - '**/*.md'
 

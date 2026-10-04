@@ -6,25 +6,6 @@
     "description": ""
   },
   "paths": {
-    "/healthz": {
-      "get": {
-        "operationId": "healthz",
-        "summary": "Healthz",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Health"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/recipes": {
       "get": {
         "operationId": "list_recipes",
@@ -240,20 +221,6 @@
   },
   "components": {
     "schemas": {
-      "Health": {
-        "properties": {
-          "status": {
-            "const": "ok",
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "status"
-        ],
-        "title": "Health",
-        "type": "object"
-      },
       "RecipeOut": {
         "properties": {
           "id": {

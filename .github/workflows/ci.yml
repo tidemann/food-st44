@@ -141,36 +141,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Smoke test the image
+      # The image that ships is v2 (./Dockerfile builds v2/). Run it through
+      # the deploy compose file against a v1 volume as the live site leaves it,
+      # so the one-time recipe import, the ids, /healthz = ok and an unchanged
+      # v1 file are all proven here and not first on spzmf.
+      - name: Smoke test the deploy (compose, v1 import)
         run: |
           set -euo pipefail
-          TAG="$(head -n1 <<<'${{ steps.meta.outputs.tags }}')"
-          echo "testing $TAG"
-
-          # Dump the container log on any failure below; without it a red run
-          # here tells you only that curl was unhappy.
-          cleanup() {
-            rc=$?
-            [ "$rc" -eq 0 ] || docker logs smoke || true
-            docker rm -f smoke >/dev/null 2>&1 || true
-            exit "$rc"
-          }
-          trap cleanup EXIT
-
-          docker run -d --name smoke -p 8080:80 "$TAG"
-
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then break; fi
-            if [ "$i" = 30 ]; then echo '::error::container never became healthy'; exit 1; fi
-            sleep 1
-          done
-
-          # Same /healthz contract as the old nginx image, now served by Express.
-          test "$(curl -fsS http://127.0.0.1:8080/healthz)" = "ok"
-
-          # The index has to render through EJS and read the SQLite table, so a
-          # broken view or an unwritable DB path fails here and not on spzmf.
-          curl -fsS http://127.0.0.1:8080/ | grep -q 'Oppskrifter'
+          command -v sqlite3 >/dev/null || { sudo apt-get update -q && sudo apt-get install -yq sqlite3; }
+          infra/smoke-deploy.sh "$(head -n1 <<<'${{ steps.meta.outputs.tags }}')"
 
       - name: Summary
         run: |

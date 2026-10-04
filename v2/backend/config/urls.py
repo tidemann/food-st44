@@ -1,11 +1,12 @@
 from django.urls import URLPattern, URLResolver, path, re_path
 
 from food.api import api
-from food.views import not_found, recipe_action, recipe_detail, spa
+from food.views import healthz, not_found, recipe_action, recipe_detail, spa
 
 # The client routes (frontend/src/app/app.routes.ts) mirrored here, so a path the SPA would
 # answer with a 404 page also gets a 404 status. A trailing slash is accepted, as in v1.
 urlpatterns: list[URLPattern | URLResolver] = [
+    path("healthz", healthz),
     # The front page is the SPA. Mounted at the root, Ninja adds its own "home" view at "",
     # which 404s when the docs live elsewhere, so this has to come before api.urls.
     path("", spa),

@@ -8,8 +8,9 @@ from pytest_django import Settings
 def test_healthz_returns_ok(client: Client) -> None:
     response = client.get("/healthz")
 
+    # The deploy's public gate requires exactly this body.
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.content == b"ok"
 
 
 def test_the_spa_404s_when_the_frontend_is_not_built(

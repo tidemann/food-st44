@@ -24,18 +24,34 @@ services:
     restart: unless-stopped
     # Deliberately no `ports:`. nginx-proxy terminates TLS and reaches this
     # container at http://food-st44:80 over the shared network below.
+    environment:
+      # nginx-proxy sends food.st44.no; food-st44 and 127.0.0.1 are the
+      # health checks by service name and inside the container.
+      DJANGO_ALLOWED_HOSTS: food.st44.no,food-st44,localhost,127.0.0.1
+      DJANGO_DB_PATH: /data/food.sqlite3
+      # Created on first start on the data volume (docker-entrypoint.sh), so
+      # no secret is provisioned on the host or passed through CI.
+      DJANGO_SECRET_KEY_FILE: /data/secret_key
+      # The v1 recipes, copied into the v2 database once, same ids. The
+      # entrypoint writes /data/v1-imported and never imports again.
+      V1_DB_PATH: /v1/recipes.db
     volumes:
-      # The app keeps its SQLite database at /data/recipes.db (DB_PATH in the
-      # Dockerfile). A named volume keeps that file across container recreation
-      # and redeploys. Compose creates it automatically on first `up`; nothing
-      # needs provisioning on the host.
-      - food-st44-data:/data
+      # The v2 SQLite database (DJANGO_DB_PATH) and its secret key. Compose
+      # creates the volume on first `up`; nothing needs provisioning on the host.
+      - food-st44-v2-data:/data
+      # The v1 site's volume, read-only: v2 can read recipes.db but cannot
+      # change or delete it, so a rollback to v1 finds it exactly as it was.
+      # Mounting it also keeps it in use, so a volume prune cannot remove it.
+      - food-st44-data:/v1:ro
     networks:
       - st44_default
 
-# The app's persistent SQLite database, keyed to this project so the volume
-# survives `--force-recreate` redeploys.
+# Both keyed to this project, so they survive `--force-recreate` redeploys.
 volumes:
+  # v2's database. New with the switch to v2.
+  food-st44-v2-data:
+  # v1's database (/data/recipes.db in the v1 image). Kept for rollback; v1
+  # mounts it read-write at /data again if the switch is reverted.
   food-st44-data:
 
 # Owned by the existing stack. `external: true` makes compose attach to it and
