@@ -1,0 +1,35 @@
+<%#
+  The masthead of a Saturday supplement: a dated line, the wordmark with a
+  crimson rule running out of it to the edge, the search, then the nav rule.
+  Locals: nav ('list' | 'new' | ''), home (true on the front page, where the
+  wordmark is the page heading), q (echoed into the search field).
+%>
+<% const query = typeof q === 'undefined' ? '' : q; %>
+<% const tag = home ? 'h1' : 'p'; %>
+<header class="mast">
+  <div class="wrap">
+    <p class="mast__meta">
+      <span><%= site.today %></span>
+      <span><b>Familiekjøkkenet</b></span>
+    </p>
+    <div class="mast__brand">
+      <<%= tag %> class="wordmark"><a href="/">food<span class="dot">.</span>st44<span class="dot">.</span>no</a></<%= tag %>>
+      <span class="mast__brandline"></span>
+      <% if (!site.known || site.total > 0) { %>
+        <form class="search" method="get" action="/" role="search">
+          <label for="q">Søk</label>
+          <input class="search-field" type="search" id="q" name="q"
+                 placeholder="brun saus, kål, torsk …" value="<%= query %>">
+          <button class="visually-hidden-focusable" type="submit">Søk</button>
+        </form>
+      <% } %>
+    </div>
+    <nav class="mast__nav">
+      <a href="/"<%- nav === 'list' ? ' aria-current="page"' : '' %>>Oppskrifter</a>
+      <a href="/recipes/new"<%- nav === 'new' ? ' aria-current="page"' : '' %>>Ny oppskrift</a>
+      <% if (site.known && site.total > 0) { %>
+        <span class="count"><%= site.total %> <%= site.total === 1 ? 'oppskrift' : 'oppskrifter' %> i samlingen</span>
+      <% } %>
+    </nav>
+  </div>
+</header>

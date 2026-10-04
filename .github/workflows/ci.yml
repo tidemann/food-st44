@@ -75,10 +75,16 @@ jobs:
               esac
             done
 
-      - name: Page template looks like a page
+      # Every page opens with the shared head partial, so that is where the
+      # doctype and the title live. Each page template must pull it in.
+      - name: Pages look like pages
         run: |
-          grep -qi '<!doctype html>' views/list.ejs || { echo '::error::no doctype'; exit 1; }
-          grep -qi '<title>' views/list.ejs || { echo '::error::no <title>'; exit 1; }
+          grep -qi '<!doctype html>' views/partials/head.ejs || { echo '::error::no doctype'; exit 1; }
+          grep -qi '<title>' views/partials/head.ejs || { echo '::error::no <title>'; exit 1; }
+          for page in views/*.ejs; do
+            [ "$page" = "views/_form.ejs" ] && continue
+            grep -q "include('partials/head'" "$page" || { echo "::error::$page does not include the head partial"; exit 1; }
+          done
 
       - name: No committed env files
         run: |

@@ -16,7 +16,7 @@ function insertRecipe() {
 test('detail page links to the edit form', async () => {
   const id = insertRecipe();
   const res = await request(app).get(`/recipes/${id}`);
-  assert.match(res.text, new RegExp(`<a class="btn btn--secondary" href="/recipes/${id}/edit">Rediger</a>`));
+  assert.match(res.text, new RegExp(`<a class="btn" href="/recipes/${id}/edit">Rediger</a>`));
 });
 
 test('GET /recipes/:id/edit renders the shared form prefilled', async () => {
@@ -29,7 +29,7 @@ test('GET /recipes/:id/edit renders the shared form prefilled', async () => {
   assert.match(res.text, /400 g torskefilet\n5 dl melk<\/textarea>/);
   assert.match(res.text, /Kok opp melken.<\/textarea>/);
   assert.match(res.text, /Lagre endringer/);
-  assert.match(res.text, new RegExp(`<a class="btn btn--secondary" href="/recipes/${id}">Avbryt</a>`));
+  assert.match(res.text, new RegExp(`<a class="btn btn--lg" href="/recipes/${id}">Avbryt</a>`));
   assert.match(res.text, /Fremgangsmåte \(valgfritt\)/);
   assert.doesNotMatch(res.text, /aria-invalid/);
 });
@@ -46,7 +46,8 @@ test('POST /recipes/:id/edit saves and 303-redirects to the detail page with fla
 
   const detail = await request(app).get(`/recipes/${id}`);
   assert.match(detail.text, /Fiskegrateng med bacon/);
-  assert.match(detail.text, /100 g bacon/);
+  // The detail page sets the amount in its own column, so the line is split.
+  assert.match(detail.text, /<b>100 g<\/b>\s*<span>bacon<\/span>/);
 });
 
 test('POST /recipes/:id/edit with empty fields returns 400, marks both fields and keeps input', async () => {
@@ -74,7 +75,7 @@ test('POST /recipes with empty title and ingredients shows summary and per-field
 
   assert.equal(res.status, 400);
   assert.match(res.text, /<title>Feil — Ny oppskrift<\/title>/);
-  assert.match(res.text, /class="alert alert--error" id="error-summary" role="alert" tabindex="-1" autofocus/);
+  assert.match(res.text, /class="alert" id="error-summary" role="alert" tabindex="-1" autofocus/);
   assert.match(res.text, /Oppskriften ble ikke lagret/);
   assert.match(res.text, /<p class="field__error" id="title-error">.*Tittelen må fylles ut\.<\/p>/);
   assert.match(res.text, /<p class="field__error" id="ingredients-error">.*Skriv inn minst én ingrediens\.<\/p>/);
@@ -109,11 +110,11 @@ test('new and edit render from the same form partial', async () => {
   const edit = await request(app).get(`/recipes/${id}/edit`);
   for (const res of [fresh, edit]) {
     assert.match(res.text, /<label for="ingredients">Ingredienser<\/label>/);
-    assert.match(res.text, /<p class="field__hint" id="ingredients-hint">Én ingrediens per linje.<\/p>/);
+    assert.match(res.text, /<p class="field__hint" id="ingredients-hint">Én ingrediens per linje\./);
     assert.match(res.text, /<label for="instructions">Fremgangsmåte \(valgfritt\)<\/label>/);
   }
   assert.match(fresh.text, /Lagre oppskrift/);
-  assert.match(fresh.text, /<a class="btn btn--secondary" href="\/">Avbryt<\/a>/);
+  assert.match(fresh.text, /<a class="btn btn--lg" href="\/">Avbryt<\/a>/);
 });
 
 test('unknown or invalid id on edit renders the Norwegian 404 for GET and POST', async () => {
