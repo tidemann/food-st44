@@ -21,6 +21,38 @@ function flashFor(key) {
   return FLASH_MESSAGES[key] || null;
 }
 
+function findRecipe(idParam) {
+  const id = parseInt(idParam, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return null;
+  }
+  return db
+    .prepare('SELECT id, title, ingredients, instructions, created_at FROM recipes WHERE id = ?')
+    .get(id) || null;
+}
+
+function notFound(res) {
+  res.status(404).render('404');
+}
+
+// One rule set for create and edit. Whitespace-only counts as empty.
+function validateRecipe(body) {
+  const values = {
+    title: String(body.title || ''),
+    ingredients: String(body.ingredients || ''),
+    instructions: String(body.instructions || '')
+  };
+  const recipe = {
+    title: values.title.trim(),
+    ingredients: values.ingredients.trim(),
+    instructions: values.instructions.trim()
+  };
+  const errors = {};
+  if (!recipe.title) errors.title = 'Tittelen må fylles ut.';
+  if (!recipe.ingredients) errors.ingredients = 'Skriv inn minst én ingrediens.';
+  return { values, recipe, errors, hasErrors: Object.keys(errors).length > 0 };
+}
+
 app.get('/healthz', (req, res) => {
   res.status(200).send('ok');
 });
@@ -78,40 +110,53 @@ app.get('/', (req, res) => {
 });
 
 app.get('/recipes/new', (req, res) => {
-  res.render('new', { error: null, values: {} });
+  res.render('new', { values: {}, errors: {}, hasErrors: false });
 });
 
 app.get('/recipes/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(404).render('404');
-  }
-
-  const recipe = db
-    .prepare('SELECT id, title, ingredients, instructions, created_at FROM recipes WHERE id = ?')
-    .get(id);
-
+  const recipe = findRecipe(req.params.id);
   if (!recipe) {
-    return res.status(404).render('404');
+    return notFound(res);
   }
 
   res.render('detail', { recipe, flash: flashFor(req.query.flash) });
 });
 
-app.post('/recipes', (req, res) => {
-  const title = String(req.body.title || '').trim();
-  const ingredients = String(req.body.ingredients || '').trim();
-  const instructions = String(req.body.instructions || '').trim();
-
-  if (!title || !ingredients) {
-    return res.status(400).render('new', {
-      error: 'Tittel og minst én ingrediens må fylles ut.',
-      values: { title: req.body.title, ingredients: req.body.ingredients, instructions: req.body.instructions }
-    });
+app.get('/recipes/:id/edit', (req, res) => {
+  const recipe = findRecipe(req.params.id);
+  if (!recipe) {
+    return notFound(res);
   }
 
-  const result = db.prepare('INSERT INTO recipes (title, ingredients, instructions) VALUES (?, ?, ?)').run(title, ingredients, instructions);
-  res.redirect(`/recipes/${result.lastInsertRowid}?flash=created`);
+  res.render('edit', { id: recipe.id, values: recipe, errors: {}, hasErrors: false });
+});
+
+app.post('/recipes/:id/edit', (req, res) => {
+  const existing = findRecipe(req.params.id);
+  if (!existing) {
+    return notFound(res);
+  }
+
+  const { values, recipe, errors, hasErrors } = validateRecipe(req.body);
+  if (hasErrors) {
+    return res.status(400).render('edit', { id: existing.id, values, errors, hasErrors });
+  }
+
+  db.prepare('UPDATE recipes SET title = ?, ingredients = ?, instructions = ? WHERE id = ?')
+    .run(recipe.title, recipe.ingredients, recipe.instructions, existing.id);
+  res.redirect(303, `/recipes/${existing.id}?flash=updated`);
+});
+
+app.post('/recipes', (req, res) => {
+  const { values, recipe, errors, hasErrors } = validateRecipe(req.body);
+  if (hasErrors) {
+    return res.status(400).render('new', { values, errors, hasErrors });
+  }
+
+  const result = db
+    .prepare('INSERT INTO recipes (title, ingredients, instructions) VALUES (?, ?, ?)')
+    .run(recipe.title, recipe.ingredients, recipe.instructions);
+  res.redirect(303, `/recipes/${result.lastInsertRowid}?flash=created`);
 });
 
 app.post('/recipes/:id/delete', (req, res) => {

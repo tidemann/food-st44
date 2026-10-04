@@ -15,7 +15,7 @@ test('GET /recipes/new returns 200 and shows the form', async () => {
   assert.match(res.text, /Lagre oppskrift/);
 });
 
-test('POST /recipes with valid data creates a recipe and redirects to detail with flash=created', async () => {
+test('POST /recipes with valid data creates a recipe and 303-redirects to detail with flash=created', async () => {
   const res = await request(app)
     .post('/recipes')
     .type('form')
@@ -25,7 +25,7 @@ test('POST /recipes with valid data creates a recipe and redirects to detail wit
       instructions: 'Bland alt sammen. Stek på middels varme.'
     });
 
-  assert.equal(res.status, 302);
+  assert.equal(res.status, 303);
   assert.match(res.headers.location, /^\/recipes\/\d+\?flash=created$/);
 });
 
