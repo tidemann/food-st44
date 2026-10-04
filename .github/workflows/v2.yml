@@ -145,8 +145,11 @@ jobs:
           curl -isS http://127.0.0.1:8080/healthz | tee healthz.txt
           echo
           grep -q '^HTTP/1.1 200' healthz.txt
-          # Django serves the built SPA, including for client-side routes.
-          curl -fsS http://127.0.0.1:8080/recipes/1 | grep -q '<app-root>'
+          # Django serves the built SPA: 200 for a client route, 404 (still the SPA) for an unknown
+          # path. Recipe URLs need a migrated database with data, so they are covered by pytest.
+          curl -fsS http://127.0.0.1:8080/ | grep -q '<app-root>'
+          test "$(curl -sS -o nope.html -w '%{http_code}' http://127.0.0.1:8080/nope)" = 404
+          grep -q '<app-root>' nope.html
           {
             echo '### `curl -i localhost:8080/healthz`'
             echo '```'
