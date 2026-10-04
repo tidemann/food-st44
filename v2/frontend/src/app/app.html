@@ -1,0 +1,7 @@
+<header class="mast">
+  <p class="wordmark">Oppskrifter<span class="dot">.</span></p>
+  @if (health.value(); as h) {
+    <p class="status">API: {{ h.status }}</p>
+  }
+</header>
+<router-outlet />

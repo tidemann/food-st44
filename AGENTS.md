@@ -1,0 +1,96 @@
+# AGENTS.md — food.st44.no
+
+Food-specific rules only. Angular practice comes from the angular/skills pack, Django Ninja
+practice from the `django-ninja` skill; this file does not repeat them. Decision record:
+ADR 0002 (Angular + Django).
+
+## Two apps in one repo
+
+| Path | What | Status |
+|---|---|---|
+| `src/`, `views/`, `public/`, `Dockerfile`, `infra/` | Express + EJS site | **Live** on food.st44.no. Do not touch for v2 work. |
+| `v2/` | Angular + Django rebuild | Not deployed yet. All new work goes here. |
+
+```
+v2/
+  Dockerfile              one image: Angular build stage → Python runtime (Django serves the SPA)
+  backend/                Django + Django Ninja, managed by uv
+    config/               settings, urls, wsgi
+    food/                 the app: api.py (NinjaAPI), views.py (SPA fallback)
+    tests/                pytest + pytest-django
+    openapi.json          exported API schema — committed, CI checks it is current
+  frontend/               Angular (standalone, signals, zoneless)
+    src/styles.css        Søndag fonts, the six colour tokens, base type
+    src/app/api/types.ts  named aliases over generated API types
+    stylelint/            the sondag/palette rule and its self-test
+.github/workflows/v2.yml  CI for v2/ (ci.yml keeps guarding the live site)
+```
+
+## Commands
+
+Backend (`cd v2/backend`):
+
+```bash
+uv sync                          # install from uv.lock
+uv run ruff format . && uv run ruff check .
+uv run mypy .                    # --strict + django-stubs
+uv run pytest
+DJANGO_DEBUG=1 uv run python manage.py runserver
+uv run python manage.py export_openapi_schema --api food.api.api --indent 2 --output openapi.json
+```
+
+Frontend (`cd v2/frontend`):
+
+```bash
+npm ci
+npm run lint        # angular-eslint + typescript-eslint strictTypeChecked
+npm run lint:css    # stylelint incl. sondag/palette
+npm test            # vitest
+npm run build       # regenerates API types first (prebuild)
+npm start           # dev server; run the backend alongside it
+```
+
+Image: `docker build -t food-v2 v2 && docker run --rm -p 8080:80 -e DJANGO_SECRET_KEY=dev food-v2`,
+then `curl localhost:8080/healthz`.
+
+## Rules CI enforces
+
+Everything in `.github/workflows/v2.yml` must be green. Do not weaken a rule, add an ignore,
+or a `# type: ignore` / `eslint-disable` to get green — fix the code. If a rule is wrong, say
+so on the task.
+
+- **API contract.** The frontend never hand-writes an API type. Change the Ninja schema,
+  re-export `openapi.json`, and import from `src/app/api/types.ts`. A stale `openapi.json` fails
+  CI; a breaking API change fails `ng build`.
+- **URLs.** `/healthz` stays at the root (deploy contract). Every other endpoint lives under
+  `/api/` (`api.add_router("/api/…", router)`). Any other path serves the SPA.
+- **Python.** Fully typed (`mypy --strict`); ruff rules in `pyproject.toml`. Dependencies only
+  via `uv add`, so `uv.lock` is always committed with them.
+- **Angular.** Standalone components, signals (`input()`, `output()`, `viewChild()`…),
+  `@if`/`@for`, `inject()`, OnPush, zoneless. No NgModules, `CommonModule`, `*ngIf`/`*ngFor`,
+  decorators like `@Input`, or experimental / developer-preview APIs. Strict TS and strict
+  templates.
+
+## Design: Søndag
+
+The look is Søndag (Bodoni Moda display, Archivo interface). **Six colours, no others:**
+
+| Token | Value |
+|---|---|
+| `--paper` | `#FBFAF7` |
+| `--ink` | `#14110E` |
+| `--soft` | `#5B544C` |
+| `--rule` | `#DED8CE` |
+| `--red` | `#A4142E` |
+| `--tint` | `#F2EFE8` |
+
+They are defined once, in `v2/frontend/src/styles.css`. Component CSS uses `var(--token)`;
+hex, `rgb()`/`hsl()`/`oklch()`/`color-mix()` and named colours fail stylelint. Plain CSS
+only: no Tailwind, Sass or component library. A new colour is a design decision for Maria,
+not something to add to get CI green.
+
+## Runtime settings
+
+`DJANGO_SECRET_KEY` (required unless `DJANGO_DEBUG=1`), `DJANGO_ALLOWED_HOSTS`
+(comma-separated), `DJANGO_DB_PATH` (SQLite file, `/data/food.sqlite3` in the image),
+`SPA_DIR` (built Angular app).
