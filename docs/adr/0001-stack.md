@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 0002](0002-angular-django.md) (2026-10-04).
 
 ## Context
 
