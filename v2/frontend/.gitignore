@@ -1,0 +1,8 @@
+/dist
+/node_modules
+/.angular/cache
+/coverage
+/out-tsc
+
+# Generated from ../backend/openapi.json by `npm run generate:api`
+/src/app/api/schema.d.ts

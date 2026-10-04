@@ -1,0 +1,142 @@
+name: v2
+
+# The Angular + Django app in v2/ (ADR 0002). Separate from ci.yml, which keeps guarding the
+# live Express site. Every check here is a rail: drift from AGENTS.md turns this red.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (ruff, mypy, pytest, OpenAPI)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: v2/backend
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: 0.12.23
+          enable-cache: true
+          cache-dependency-glob: v2/backend/uv.lock
+
+      - name: Install (lockfile must be current)
+        run: uv sync --locked
+
+      - name: ruff format
+        run: uv run ruff format --check .
+
+      - name: ruff lint
+        run: uv run ruff check --output-format=github .
+
+      - name: mypy --strict
+        run: uv run mypy .
+
+      - name: pytest
+        run: uv run pytest
+
+      # The frontend's API types are generated from openapi.json, so it must match the code.
+      - name: openapi.json is current
+        env:
+          DJANGO_SECRET_KEY: ci-only
+        run: |
+          uv run python manage.py export_openapi_schema --api food.api.api --indent 2 --output /tmp/openapi.json
+          if ! diff -u openapi.json /tmp/openapi.json; then
+            echo '::error file=v2/backend/openapi.json::openapi.json is stale. Run: uv run python manage.py export_openapi_schema --api food.api.api --indent 2 --output openapi.json'
+            exit 1
+          fi
+
+  frontend:
+    name: Frontend (eslint, stylelint, test, build)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: v2/frontend
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: v2/frontend/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: stylelint (Søndag palette)
+        run: npm run lint:css
+
+      - name: stylelint rule self-test
+        run: npm run test:stylelint
+
+      - name: eslint (angular-eslint, strict TS)
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build (strict templates, generated API types)
+        run: npm run build
+
+  image:
+    name: Image (build + /healthz)
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: v2
+          load: true
+          push: false
+          tags: food-st44-v2:ci
+          cache-from: type=gha,scope=v2
+          cache-to: type=gha,scope=v2,mode=max
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          cleanup() {
+            rc=$?
+            [ "$rc" -eq 0 ] || docker logs smoke-v2 || true
+            docker rm -f smoke-v2 >/dev/null 2>&1 || true
+            exit "$rc"
+          }
+          trap cleanup EXIT
+
+          docker run -d --name smoke-v2 -e DJANGO_SECRET_KEY=ci-only -p 8080:80 food-st44-v2:ci
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then break; fi
+            if [ "$i" = 30 ]; then echo '::error::container never became healthy'; exit 1; fi
+            sleep 1
+          done
+
+          curl -isS http://127.0.0.1:8080/healthz | tee healthz.txt
+          echo
+          grep -q '^HTTP/1.1 200' healthz.txt
+          # Django serves the built SPA, including for client-side routes.
+          curl -fsS http://127.0.0.1:8080/recipes/1 | grep -q '<app-root>'
+          {
+            echo '### `curl -i localhost:8080/healthz`'
+            echo '```'
+            cat healthz.txt
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

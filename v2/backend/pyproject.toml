@@ -1,0 +1,45 @@
+[project]
+name = "food"
+version = "0.1.0"
+description = "food.st44.no v2 backend: Django + Django Ninja"
+requires-python = ">=3.13"
+dependencies = [
+    "django~=6.1",
+    "django-ninja~=1.7",
+    "gunicorn~=26.2",
+    "whitenoise~=6.12",
+]
+
+[dependency-groups]
+dev = [
+    "django-stubs>=6.1.1",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
+    "ruff>=0.16.10",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+# DJ = flake8-django. ANN makes ruff flag untyped defs too, ahead of mypy.
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "DJ", "ANN", "S", "PT", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.mypy]
+strict = true
+plugins = ["mypy_django_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+addopts = "--strict-markers"

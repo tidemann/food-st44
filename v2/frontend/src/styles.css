@@ -1,0 +1,95 @@
+/* ============================================================================
+   food.st44.no — SØNDAG, global stylesheet.
+   Bodoni Moda for display, Archivo for interface. The six colour tokens below
+   are the only colours in the app; stylelint (sondag/palette) rejects any other.
+   Component CSS uses var(--token) and nothing else for colour.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/bodoni-moda-italic.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/bodoni-moda-400.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/bodoni-moda-700.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('/fonts/bodoni-moda-900.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: Archivo;
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/archivo-400.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: Archivo;
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/archivo-600.ttf') format('truetype');
+}
+
+:root {
+  /* colour tokens — exactly these six */
+  --paper: #fbfaf7;
+  --ink: #14110e;
+  --soft: #5b544c;
+  --rule: #ded8ce;
+  --red: #a4142e;
+  --tint: #f2efe8;
+
+  /* type and layout */
+  --disp: 'Bodoni Moda', georgia, serif;
+  --ui: archivo, 'Helvetica Neue', arial, sans-serif;
+  --tap: 44px; /* smallest touch target (style guide §7) */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 3px;
+}

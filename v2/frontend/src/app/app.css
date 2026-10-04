@@ -1,0 +1,26 @@
+.mast {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 26px 40px 16px;
+  border-bottom: 3px solid var(--red);
+}
+
+.wordmark {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 900;
+  font-size: 76px;
+  line-height: 0.86;
+  letter-spacing: -0.025em;
+}
+
+.dot {
+  color: var(--red);
+}
+
+.status {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--soft);
+}
