@@ -3,6 +3,8 @@ process.env.DB_PATH = ':memory:';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
+const fs = require('node:fs');
+const path = require('node:path');
 const app = require('../src/server');
 const db = require('../src/db');
 
@@ -82,6 +84,41 @@ test('POST /recipes with empty title and ingredients shows summary and per-field
   assert.match(res.text, /aria-invalid="true" aria-describedby="title-error"/);
   assert.match(res.text, /aria-describedby="ingredients-hint ingredients-error"\s+aria-invalid="true"/);
   assert.match(res.text, /Kok opp melken og rør inn melet.<\/textarea>/);
+});
+
+test('every link in the error summary lands its field with the label, hint line and all', async () => {
+  // QA (ST-403) found the Ingredienser link scrolling the label under the sticky
+  // bar: the scroll margin cleared the bar and a label, but not the hint line
+  // standing between the label and the control. Assert the relationship rather
+  // than one number, so adding a hint to another field cannot reintroduce it.
+  const res = await request(app)
+    .post('/recipes')
+    .type('form')
+    .send({ title: '', ingredients: '' });
+  const markup = res.text.replace(/\s+/g, ' ');
+
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+  const margin = (selector) => {
+    const rule = css.match(new RegExp(`${selector}[^{]*\\{[^}]*scroll-margin-top:(\\d+)px`));
+    assert.ok(rule, `no scroll-margin-top for ${selector}`);
+    return Number(rule[1]);
+  };
+  const plain = margin('\\.field input,\\.field textarea');
+  const afterHint = margin('\\.field__hint\\+input,\\.field__hint\\+textarea');
+  assert.ok(afterHint > plain, 'a field with a hint needs more room above it, not the same');
+
+  // 96px clears the 48px bar and a label; 124px also clears a hint line. Both
+  // were measured in a browser at 360 and 390 px — the label lands at y 70 either way.
+  assert.equal(plain, 96);
+  assert.equal(afterHint, 124);
+
+  const targets = [...markup.matchAll(/<li><a href="#([\w-]+)">/g)].map((m) => m[1]);
+  assert.deepEqual(targets, ['title', 'ingredients']);
+  for (const id of targets) {
+    const before = markup.slice(0, markup.indexOf(`id="${id}"`));
+    const hinted = /<p class="field__hint"[^>]*>[^<]*<\/p> *<(input|textarea)[^>]*$/.test(before);
+    assert.equal(hinted, id === 'ingredients', `#${id}: the hint line moved, so the margin must too`);
+  }
 });
 
 test('only the failing field is marked', async () => {
