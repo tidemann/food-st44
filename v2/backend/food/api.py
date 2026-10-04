@@ -20,3 +20,7 @@ class Health(Schema):
 @api.get("/healthz", response=Health, operation_id="healthz")
 def healthz(request: HttpRequest) -> Health:
     return Health(status="ok")
+
+
+def untyped(value):
+    return value
