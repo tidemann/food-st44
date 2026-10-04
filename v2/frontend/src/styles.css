@@ -175,12 +175,22 @@ a {
   margin-top: 26px;
 }
 
+.flash,
 .alert {
   background: var(--tint);
   border-left: 3px solid var(--red);
   padding: 14px 20px;
   font-size: 14.5px;
   line-height: 1.5;
+}
+
+.flash {
+  margin: 22px 0 0;
+}
+
+/* The error summary is focused, so it needs room for its focus ring and must not sit on the
+   first field label. */
+.alert {
   margin: 26px 0 32px;
 }
 
@@ -193,6 +203,19 @@ a {
 
 .alert p {
   margin: 0;
+}
+
+.alert ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.alert li {
+  padding: 2px 0;
+}
+
+.alert a {
+  color: var(--red);
 }
 
 /* buttons */
@@ -225,9 +248,20 @@ a {
   color: var(--paper);
 }
 
+.btn-danger {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--paper);
+}
+
 .btn-danger-ghost {
   border-color: var(--red);
   color: var(--red);
+}
+
+.btn[disabled] {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .alert .btn {

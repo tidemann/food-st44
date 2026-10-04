@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input } f
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import type { Recipe } from '../api/types';
+import { Flash } from '../pages/flash';
 import { Site } from '../site';
 import { pluralise, toCard, toIndex } from './format';
 
@@ -21,7 +22,7 @@ const SIDE_SUB = [
  */
 @Component({
   selector: 'app-recipe-list',
-  imports: [RouterLink],
+  imports: [RouterLink, Flash],
   templateUrl: './recipe-list.html',
   styleUrl: './recipe-list.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,6 +32,8 @@ export class RecipeList {
 
   /** The `q` query parameter. */
   readonly q = input<string>();
+  /** `?flash=deleted` after a delete (§3.3); any of the three keys is shown (§3.4). */
+  readonly flash = input<string>();
   protected readonly term = computed(() => (this.q() ?? '').trim());
 
   private readonly hits = httpResource<Recipe[]>(() => {

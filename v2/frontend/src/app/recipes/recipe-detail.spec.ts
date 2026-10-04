@@ -1,16 +1,10 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { Recipe } from '../api/types';
-import { open, SEED, setUp, text, title } from '../../testing/app';
+import { open, seed, setUp, text, title } from '../../testing/app';
 
 function openRecipe(url: string, recipe: Recipe | number): Promise<HTMLElement> {
   return open(url, { recipe });
-}
-
-function seed(id: number): Recipe {
-  const recipe = SEED.find((r) => r.id === id);
-  if (!recipe) throw new Error(`no seed recipe ${String(id)}`);
-  return recipe;
 }
 
 const kjottkaker = seed(9);
