@@ -57,6 +57,12 @@ export const SEED: Recipe[] = [
   },
 ];
 
+export function seed(id: number): Recipe {
+  const recipe = SEED.find((r) => r.id === id);
+  if (!recipe) throw new Error(`no seed recipe ${String(id)}`);
+  return recipe;
+}
+
 /** What the fake backend answers. A number is an error status. */
 export interface Answers {
   /** GET /api/recipes, the whole collection (default: SEED). */
@@ -112,12 +118,25 @@ export function answer(answers: Answers): void {
 
 /** Opens `url` in the real routes, answers the backend and lets the page render. */
 export async function open(url: string, answers: Answers = {}): Promise<HTMLElement> {
+  return page(await openHarness(url, answers));
+}
+
+/** Like `open`, but keeps the harness, for pages that navigate on their own (after a save). */
+export async function openHarness(
+  url: string,
+  answers: Answers = {},
+): Promise<RouterTestingHarness> {
   const harness = await RouterTestingHarness.create();
   await harness.navigateByUrl(url);
   answer(answers);
   await harness.fixture.whenStable();
+  return harness;
+}
+
+/** What the harness shows now. */
+export function page(harness: RouterTestingHarness): HTMLElement {
   const el = harness.routeNativeElement;
-  if (!el) throw new Error(`nothing rendered at ${url}`);
+  if (!el) throw new Error('nothing rendered');
   return el;
 }
 
