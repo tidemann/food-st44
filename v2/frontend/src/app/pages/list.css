@@ -1,0 +1,379 @@
+:host {
+  display: contents;
+}
+
+/* ---------- the lead ---------- */
+.lead {
+  padding: 46px 0 18px;
+}
+
+.lead-fig {
+  grid-column: 1 / 8;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.lead-fig img,
+.lead-fig .plate {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 470px;
+  max-height: 760px;
+  object-fit: cover;
+  filter: saturate(0.92) contrast(1.04);
+}
+
+.lead-fig .plate {
+  max-height: 640px;
+  filter: none;
+}
+
+.lead-plate {
+  position: relative;
+  margin: -60px 0 0;
+  background: var(--paper);
+  padding: 28px 40px 0 0;
+}
+
+.kicker {
+  font-family: var(--disp);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--red);
+  margin: 0 0 6px;
+}
+
+.lead-plate h2 {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 58px;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+}
+
+.lead-link,
+.sideitem,
+.card {
+  text-decoration: none;
+}
+
+.lead-link:hover,
+.lead-link:focus-visible {
+  text-decoration: underline 2px var(--red);
+  text-underline-offset: 6px;
+}
+
+.lead-dek {
+  margin: 0;
+  font-family: var(--disp);
+  font-style: italic;
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--ink);
+  max-width: 40ch;
+}
+
+/* ---------- the register beside it ---------- */
+.lead-side {
+  grid-column: 8 / 13;
+}
+
+.band {
+  border-top: 3px solid var(--ink);
+  padding-top: 12px;
+}
+
+.band-head {
+  font-family: var(--disp);
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.band-sub,
+.more-head p {
+  font-size: 12.5px;
+  color: var(--soft);
+  margin: 0 0 18px;
+}
+
+.sideitem {
+  display: grid;
+  grid-template-columns: 86px 1fr;
+  gap: 16px;
+  padding: 16px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.sideitem img,
+.sideitem .plate {
+  width: 86px;
+  height: 86px;
+  object-fit: cover;
+  filter: saturate(0.9);
+}
+
+.sideitem .plate {
+  filter: none;
+}
+
+.side-title {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.12;
+  margin: 0 0 5px;
+  letter-spacing: -0.01em;
+}
+
+.sideitem:hover .side-title,
+.sideitem:focus-visible .side-title {
+  text-decoration: underline var(--red);
+  text-underline-offset: 4px;
+}
+
+.m {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--soft);
+}
+
+/* the alphabetical register with dotted leaders */
+.index {
+  margin-top: 34px;
+}
+
+.index-first {
+  margin-top: 0;
+}
+
+.index ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.index li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 14px;
+}
+
+.index-link {
+  text-decoration: none;
+  font-family: var(--disp);
+  font-size: 17px;
+}
+
+.index-link:hover,
+.index-link:focus-visible {
+  text-decoration: underline var(--red);
+  text-underline-offset: 3px;
+}
+
+.index li .d {
+  flex: 1;
+  border-bottom: 1px dotted var(--soft);
+  transform: translateY(-4px);
+}
+
+.index li .t {
+  font-size: 11.5px;
+  color: var(--soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- the rest, as plates ---------- */
+.more {
+  padding: 40px 0 70px;
+}
+
+.more-head,
+.results-head {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  border-top: 3px solid var(--ink);
+  padding-top: 12px;
+  margin-bottom: 26px;
+}
+
+.more-head h2 {
+  font-family: var(--disp);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.more-head p {
+  margin: 0;
+}
+
+.cards {
+  --cols: 4;
+
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 30px;
+  max-width: calc(var(--cols) * 275px + (var(--cols) - 1) * 30px);
+}
+
+.cols-1 {
+  --cols: 1;
+}
+
+.cols-2 {
+  --cols: 2;
+}
+
+.cols-3 {
+  --cols: 3;
+}
+
+.card {
+  display: block;
+}
+
+.card img,
+.card .plate {
+  width: 100%;
+  height: 235px;
+  object-fit: cover;
+  filter: saturate(0.92);
+}
+
+.card .plate {
+  filter: none;
+}
+
+.card-title {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 25px;
+  line-height: 1.1;
+  margin: 14px 0 7px;
+  letter-spacing: -0.01em;
+}
+
+.card:hover .card-title,
+.card:focus-visible .card-title {
+  text-decoration: underline var(--red);
+  text-underline-offset: 4px;
+}
+
+.card .m {
+  padding-top: 9px;
+  border-top: 1px solid var(--rule);
+  letter-spacing: 0.05em;
+}
+
+/* ---------- search results: a register, not an opening spread ---------- */
+.results {
+  padding: 36px 0 70px;
+}
+
+.results-head {
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.result-count {
+  font-family: var(--disp);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.clear {
+  font-size: 13px;
+  color: var(--red);
+  margin: 0;
+}
+
+.hits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 46px;
+}
+
+@media (width <= 760px) {
+  .lead {
+    padding: 26px 0 10px;
+  }
+
+  .lead-fig,
+  .lead-side {
+    grid-column: auto;
+  }
+
+  .lead-fig img {
+    min-height: 0;
+    height: 280px;
+    flex: 0 0 auto;
+  }
+
+  .lead-fig .plate {
+    height: 220px;
+  }
+
+  .lead-dek {
+    font-size: 17px;
+  }
+
+  .lead-plate {
+    margin: -34px 16px 0 0;
+    padding: 18px 18px 0 0;
+  }
+
+  .lead-plate h2 {
+    font-size: 36px;
+  }
+
+  .lead-side {
+    margin-top: 34px;
+  }
+
+  .more {
+    padding: 30px 0 50px;
+  }
+
+  .more-head {
+    flex-direction: column;
+    gap: 5px;
+    align-items: flex-start;
+  }
+
+  .index {
+    margin-top: 28px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    max-width: none;
+  }
+
+  .card img,
+  .card .plate {
+    height: 215px;
+  }
+
+  .hits {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .results {
+    padding: 26px 0 50px;
+  }
+}

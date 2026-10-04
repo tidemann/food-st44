@@ -1,0 +1,41 @@
+/* The head over the new and edit forms. */
+:host {
+  display: contents;
+}
+
+.form-head {
+  padding: 40px 0 0;
+}
+
+.form-head h1 {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 52px;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  margin: 0 0 6px;
+}
+
+.form-head p {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  color: var(--soft);
+}
+
+.form-head .rule {
+  height: 0;
+  border-top: 3px solid var(--red);
+  width: 120px;
+  margin-bottom: 20px;
+}
+
+@media (width <= 760px) {
+  .form-head {
+    padding: 26px 0 0;
+  }
+
+  .form-head h1 {
+    font-size: 36px;
+  }
+}

@@ -12,13 +12,14 @@ def test_healthz_returns_ok(client: Client) -> None:
     assert response.json() == {"status": "ok"}
 
 
+@pytest.mark.parametrize("path", ["/", "/?q=k%C3%A5l", "/recipes/42", "/nonsens/bla"])
 def test_client_routes_get_the_spa_index(
-    client: Client, settings: Settings, tmp_path: Path
+    client: Client, settings: Settings, tmp_path: Path, path: str
 ) -> None:
     (tmp_path / "index.html").write_text("<app-root></app-root>")
     settings.SPA_DIR = tmp_path
 
-    response = client.get("/recipes/42")
+    response = client.get(path)
 
     assert response.status_code == 200
     assert b"<app-root>" in b"".join(response.streaming_content)  # type: ignore[attr-defined]

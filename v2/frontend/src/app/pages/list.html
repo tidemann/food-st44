@@ -1,0 +1,178 @@
+<app-mast nav="list" [home]="true" [q]="query()" />
+<main id="main" tabindex="-1">
+  <app-flash [key]="flash()" />
+
+  @switch (state()) {
+    @case ('empty') {
+      <div class="wrap">
+        <div class="notice">
+          <div class="notice-rule"></div>
+          <h2>Ingen oppskrifter ennå</h2>
+          <p>Legg inn den første, så finner dere den igjen her.</p>
+          <div class="notice-actions">
+            <a class="btn btn-primary btn-lg" routerLink="/recipes/new"
+              >Legg til den første oppskriften</a
+            >
+          </div>
+        </div>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="wrap">
+        <div class="alert" role="alert">
+          <p class="alert-title">Kunne ikke hente oppskriftene.</p>
+          <p>Prøv igjen om litt.</p>
+          <a class="btn" [href]="retryHref()">Prøv på nytt</a>
+        </div>
+      </div>
+    }
+
+    @case ('no-hits') {
+      <div class="wrap">
+        <div class="notice">
+          <div class="notice-rule"></div>
+          <h2>Ingen treff på «{{ query() }}»</h2>
+          <p>Prøv et kortere søk, eller se alle oppskriftene.</p>
+          <div class="notice-actions">
+            <a class="btn btn-lg" routerLink="/">Vis alle oppskrifter</a>
+          </div>
+        </div>
+      </div>
+    }
+
+    @case ('hits') {
+      <!-- A search answers with a register of hits: no lead dish, nothing chosen for you. -->
+      <section class="results">
+        <div class="wrap">
+          <h2 class="visually-hidden">Søkeresultater</h2>
+          <div class="results-head">
+            <p class="result-count" role="status">{{ count() }}</p>
+            <p class="clear"><a routerLink="/">Tøm søk</a></p>
+          </div>
+          <ul class="hits">
+            @for (card of cards(); track card.id) {
+              <li>
+                <a
+                  class="sideitem"
+                  [routerLink]="['/recipes', card.id]"
+                  [queryParams]="{ q: query() }"
+                >
+                  @if (card.photo; as photo) {
+                    <img [ngSrc]="photo.src" [width]="photo.width" [height]="photo.height" alt="" />
+                  } @else {
+                    <span class="plate plate-thumb"></span>
+                  }
+                  <div>
+                    <h3 class="side-title">{{ card.title }}</h3>
+                    <p class="m">{{ card.meta }}</p>
+                  </div>
+                </a>
+              </li>
+            }
+          </ul>
+        </div>
+      </section>
+    }
+
+    @case ('front') {
+      @let page = front();
+      <!-- The unsearched front page: one dish large, the archive beside it. -->
+      <section class="lead">
+        <div class="wrap grid">
+          @if (page.lead; as lead) {
+            <figure class="lead-fig">
+              @if (lead.photo; as photo) {
+                <img
+                  [ngSrc]="photo.src"
+                  [width]="photo.width"
+                  [height]="photo.height"
+                  alt=""
+                  priority
+                />
+              } @else {
+                <span class="plate"></span>
+              }
+              <figcaption class="lead-plate">
+                <p class="kicker">Sist lagt inn</p>
+                <h2>
+                  <a class="lead-link" [routerLink]="['/recipes', lead.id]">{{ lead.title }}</a>
+                </h2>
+                <p class="lead-dek">
+                  {{ lead.ingredientCount }}
+                  {{ lead.ingredientCount === 1 ? 'ingrediens' : 'ingredienser'
+                  }}{{ lead.added ? ', lagt inn ' + lead.added : '' }}.
+                </p>
+              </figcaption>
+            </figure>
+          }
+
+          <div class="lead-side">
+            @if (page.side.length) {
+              <div class="band">
+                <h2 class="band-head">Nylig lagt inn</h2>
+                <p class="band-sub">{{ page.sideSub }}</p>
+                @for (card of page.side; track card.id) {
+                  <a class="sideitem" [routerLink]="['/recipes', card.id]">
+                    @if (card.photo; as photo) {
+                      <img
+                        [ngSrc]="photo.src"
+                        [width]="photo.width"
+                        [height]="photo.height"
+                        alt=""
+                      />
+                    } @else {
+                      <span class="plate plate-thumb"></span>
+                    }
+                    <div>
+                      <h3 class="side-title">{{ card.title }}</h3>
+                      <p class="m">{{ card.meta }}</p>
+                    </div>
+                  </a>
+                }
+              </div>
+            }
+
+            <div class="band index" [class.index-first]="!page.side.length">
+              <h2 class="band-head">Hele samlingen</h2>
+              <p class="band-sub">{{ page.indexSub }}</p>
+              <ol>
+                @for (card of page.index; track card.id) {
+                  <li>
+                    <a class="index-link" [routerLink]="['/recipes', card.id]">{{ card.title }}</a>
+                    <span class="d"></span>
+                    <span class="t">{{ card.date }}</span>
+                  </li>
+                }
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      @if (page.rest.length) {
+        <section class="more">
+          <div class="wrap">
+            <div class="more-head">
+              <h2>Resten av samlingen</h2>
+              <p>Eldre oppskrifter, nyest først.</p>
+            </div>
+            <div class="cards" [class]="'cols-' + (page.rest.length < 4 ? page.rest.length : 4)">
+              @for (card of page.rest; track card.id) {
+                <a class="card" [routerLink]="['/recipes', card.id]">
+                  @if (card.photo; as photo) {
+                    <img [ngSrc]="photo.src" [width]="photo.width" [height]="photo.height" alt="" />
+                  } @else {
+                    <span class="plate"></span>
+                  }
+                  <h3 class="card-title">{{ card.title }}</h3>
+                  <p class="m">{{ card.meta }}</p>
+                </a>
+              }
+            </div>
+          </div>
+        </section>
+      }
+    }
+  }
+</main>

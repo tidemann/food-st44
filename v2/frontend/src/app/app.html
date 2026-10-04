@@ -1,7 +1,12 @@
-<header class="mast">
-  <p class="wordmark">Oppskrifter<span class="dot">.</span></p>
-  @if (health.value(); as h) {
-    <p class="status">API: {{ h.status }}</p>
-  }
-</header>
+<a class="skip-link visually-hidden-focusable" href="#main" (click)="skipToMain($event)"
+  >Hopp til innhold</a
+>
 <router-outlet />
+<footer class="foot">
+  <div class="wrap">
+    <span>food.st44.no — familiens oppskrifter</span>
+    @if (site.updated(); as updated) {
+      <span>Sist oppdatert {{ updated }}</span>
+    }
+  </div>
+</footer>

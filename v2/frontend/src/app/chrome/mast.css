@@ -1,0 +1,163 @@
+/* display: contents, so .mastbar's sticky (phone) has the whole page to travel, not this host. */
+:host {
+  display: contents;
+}
+
+.mastbar {
+  background: var(--paper);
+  border-bottom: 1px solid var(--ink);
+}
+
+.mast-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin: 0;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--soft);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.mast-meta b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.mast-brand {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  padding: 26px 0 16px;
+}
+
+.wordmark {
+  font-family: var(--disp);
+  font-weight: 900;
+  font-size: 76px;
+  line-height: 0.86;
+  letter-spacing: -0.025em;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.wordmark a {
+  text-decoration: none;
+}
+
+.wordmark .dot {
+  color: var(--red);
+}
+
+.mast-brandline {
+  flex: 1;
+  height: 0;
+  border-bottom: 3px solid var(--red);
+  margin-bottom: 14px;
+}
+
+.search {
+  flex: 0 0 320px;
+  margin-bottom: 6px;
+}
+
+.search label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--soft);
+  margin-bottom: 5px;
+}
+
+.search-field {
+  width: 100%;
+  border: 0;
+  border-bottom: 1.5px solid var(--ink);
+  background: transparent;
+  border-radius: 0;
+  font-family: var(--disp);
+  font-size: 20px;
+  font-style: italic;
+  color: var(--ink);
+  padding: 4px 2px 7px;
+  min-height: var(--tap);
+}
+
+.search-field::placeholder {
+  color: var(--soft);
+  font-style: italic;
+  opacity: 1;
+}
+
+.mast-nav {
+  display: flex;
+  align-items: baseline;
+  gap: 30px;
+  border-top: 1px solid var(--rule);
+  padding: 11px 0 12px;
+  background: var(--paper);
+}
+
+.mast-nav a {
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  padding-bottom: 3px;
+}
+
+.mast-nav a[aria-current] {
+  border-bottom: 2.5px solid var(--red);
+}
+
+.mast-nav .count {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--soft);
+  letter-spacing: 0.06em;
+}
+
+@media (width <= 760px) {
+  .mast-meta {
+    font-size: 10.5px;
+  }
+
+  .mast-brand {
+    display: block;
+    padding: 18px 0 10px;
+  }
+
+  .wordmark {
+    font-size: 40px;
+    letter-spacing: -0.02em;
+  }
+
+  .mast-brandline {
+    display: none;
+  }
+
+  .search {
+    margin: 16px 0 4px;
+  }
+
+  .search-field {
+    font-size: 17px;
+  }
+
+  /* the nav stays reachable, so adding a recipe is never more than one tap away */
+  .mastbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .mast-nav {
+    gap: 20px;
+    padding: 10px 0;
+  }
+
+  .mast-nav .count {
+    display: none;
+  }
+}
