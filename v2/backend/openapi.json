@@ -257,15 +257,17 @@
       "RecipeOut": {
         "properties": {
           "id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
+            "title": "Id",
+            "type": "integer"
+          },
+          "instructions": {
+            "title": "Instructions",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -274,26 +276,12 @@
           "ingredients": {
             "title": "Ingredients",
             "type": "string"
-          },
-          "instructions": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": "",
-            "title": "Instructions"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
           }
         },
         "required": [
+          "id",
+          "instructions",
+          "created_at",
           "title",
           "ingredients"
         ],

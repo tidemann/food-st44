@@ -1,0 +1,50 @@
+<header class="mast">
+  <div class="wrap">
+    <p class="mast-meta">
+      <span>{{ today }}</span>
+      <span><b>Familiekjøkkenet</b></span>
+    </p>
+    <div class="mast-brand">
+      @if (home()) {
+        <h1 class="wordmark">
+          <a routerLink="/">food<span class="dot">.</span>st44<span class="dot">.</span>no</a>
+        </h1>
+      } @else {
+        <p class="wordmark">
+          <a routerLink="/">food<span class="dot">.</span>st44<span class="dot">.</span>no</a>
+        </p>
+      }
+      <span class="mast-brandline"></span>
+      @if (showSearch()) {
+        <form class="search" role="search" action="/" method="get" (submit)="search($event, field)">
+          <label for="q">Søk</label>
+          <input
+            #field
+            class="search-field"
+            type="search"
+            id="q"
+            name="q"
+            placeholder="brun saus, kål, torsk …"
+            [value]="q()"
+          />
+          <button class="visually-hidden-focusable" type="submit">Søk</button>
+        </form>
+      }
+    </div>
+  </div>
+</header>
+<!-- The nav bar is its own full-width bar outside the header, so the sticky it gets under 760 px
+     can travel the whole page (this host is display: contents). -->
+<div class="mastbar">
+  <div class="wrap">
+    <nav class="mast-nav">
+      <a routerLink="/" [attr.aria-current]="nav() === 'list' ? 'page' : null">Oppskrifter</a>
+      <a routerLink="/recipes/new" [attr.aria-current]="nav() === 'new' ? 'page' : null"
+        >Ny oppskrift</a
+      >
+      @if (count(); as count) {
+        <span class="count">{{ count }}</span>
+      }
+    </nav>
+  </div>
+</div>

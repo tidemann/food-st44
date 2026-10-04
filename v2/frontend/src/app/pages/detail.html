@@ -1,0 +1,110 @@
+@switch (recipe.state()) {
+  @case ('not-found') {
+    <app-not-found />
+  }
+  @case ('error') {
+    <app-error-page />
+  }
+  @default {
+    <app-mast />
+    <main id="main" tabindex="-1">
+      @if (view(); as v) {
+        <app-flash [key]="flash()" />
+
+        <section class="rh">
+          <div class="wrap">
+            <div class="rh-top">
+              <p class="crumb">
+                <a routerLink="/" [queryParams]="search()">Oppskrifter</a> &nbsp;/&nbsp;
+                {{ v.recipe.title }}
+              </p>
+              <div class="acts">
+                <a
+                  class="btn"
+                  [routerLink]="['/recipes', v.recipe.id, 'edit']"
+                  [queryParams]="search()"
+                  >Rediger</a
+                >
+                <a
+                  class="btn btn-danger-ghost"
+                  [routerLink]="['/recipes', v.recipe.id, 'delete']"
+                  [queryParams]="search()"
+                  >Slett</a
+                >
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="rt">
+                <h1>{{ v.recipe.title }}</h1>
+              </div>
+              <div class="rmeta">
+                <dl>
+                  <div>
+                    <dt>Ingredienser</dt>
+                    <dd>{{ v.ingredients.length }}</dd>
+                  </div>
+                  <div>
+                    <dt>Fremgangsmåte</dt>
+                    <dd>{{ v.steps.length }} steg</dd>
+                  </div>
+                  @if (v.added) {
+                    <div>
+                      <dt>Lagt inn</dt>
+                      <dd>{{ v.added }}</dd>
+                    </div>
+                  }
+                </dl>
+              </div>
+            </div>
+
+            @if (v.photo; as photo) {
+              <figure class="rhero">
+                <img
+                  [ngSrc]="photo.src"
+                  [width]="photo.width"
+                  [height]="photo.height"
+                  [alt]="v.recipe.title"
+                  priority
+                />
+              </figure>
+            }
+          </div>
+        </section>
+
+        <section class="rbody">
+          <div class="wrap grid">
+            <aside class="ing">
+              <h2>Ingredienser</h2>
+              <ul>
+                @for (item of v.ingredients; track $index) {
+                  <li [class.li-plain]="!item.amount">
+                    @if (item.amount) {
+                      <b>{{ item.amount }}</b>
+                    }
+                    <span>{{ item.name }}</span>
+                  </li>
+                }
+              </ul>
+            </aside>
+
+            <div class="steps">
+              <h2>Fremgangsmåte</h2>
+              @for (step of v.steps; track $index) {
+                <div class="step">
+                  <span class="n">{{ $index + 1 }}</span>
+                  <p>{{ step }}</p>
+                </div>
+              } @empty {
+                <p class="steps-none">
+                  Ingen fremgangsmåte er skrevet inn ennå.
+                  <a [routerLink]="['/recipes', v.recipe.id, 'edit']">Skriv den inn</a>.
+                </p>
+              }
+            </div>
+          </div>
+        </section>
+      }
+    </main>
+  }
+}

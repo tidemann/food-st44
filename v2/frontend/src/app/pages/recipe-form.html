@@ -1,0 +1,85 @@
+<form class="recipe-form" novalidate (submit)="submit($event)">
+  @if (titleError() || ingredientsError()) {
+    <div #summary class="alert" id="error-summary" role="alert" tabindex="-1">
+      <p class="alert-title">Oppskriften ble ikke lagret</p>
+      <ul>
+        @if (titleError(); as message) {
+          <li>
+            <a href="#title" (click)="focusField($event, titleField)">{{ message }}</a>
+          </li>
+        }
+        @if (ingredientsError(); as message) {
+          <li>
+            <a href="#ingredients" (click)="focusField($event, ingredientsField)">{{ message }}</a>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  <div class="field" [class.field-error]="titleError()">
+    <label for="title">Tittel</label>
+    <input
+      #titleField
+      type="text"
+      id="title"
+      name="title"
+      [value]="title()"
+      (input)="title.set(valueOf($event))"
+      [attr.aria-invalid]="titleError() ? 'true' : null"
+      [attr.aria-describedby]="titleError() ? 'title-error' : null"
+    />
+    @if (titleError(); as message) {
+      <p class="field-message" id="title-error">{{ message }}</p>
+    }
+  </div>
+
+  <div class="field" [class.field-error]="ingredientsError()">
+    <label for="ingredients">Ingredienser</label>
+    <p class="field-hint" id="ingredients-hint">
+      Én ingrediens per linje. Mengden først: «600 g kjøttdeig».
+    </p>
+    <textarea
+      #ingredientsField
+      id="ingredients"
+      name="ingredients"
+      rows="10"
+      [value]="ingredients()"
+      (input)="ingredients.set(valueOf($event))"
+      [attr.aria-invalid]="ingredientsError() ? 'true' : null"
+      [attr.aria-describedby]="
+        ingredientsError() ? 'ingredients-hint ingredients-error' : 'ingredients-hint'
+      "
+    ></textarea>
+    @if (ingredientsError(); as message) {
+      <p class="field-message" id="ingredients-error">{{ message }}</p>
+    }
+  </div>
+
+  <div class="field">
+    <label for="instructions">Fremgangsmåte (valgfritt)</label>
+    <p class="field-hint" id="instructions-hint">
+      Ett steg per avsnitt. Stegene nummereres når oppskriften vises.
+    </p>
+    <textarea
+      id="instructions"
+      name="instructions"
+      rows="12"
+      aria-describedby="instructions-hint"
+      [value]="instructions()"
+      (input)="instructions.set(valueOf($event))"
+    ></textarea>
+  </div>
+
+  <div class="form-actions">
+    <button
+      class="btn btn-primary btn-lg"
+      type="submit"
+      [disabled]="saving()"
+      [attr.aria-busy]="saving() ? 'true' : null"
+    >
+      {{ saving() ? 'Lagrer…' : submitLabel() }}
+    </button>
+    <a class="btn btn-lg" [routerLink]="cancelLink()" [queryParams]="cancelParams()">Avbryt</a>
+  </div>
+</form>
