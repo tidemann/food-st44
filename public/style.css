@@ -55,7 +55,9 @@ main:focus{outline:none}
   padding:10px 16px;font-size:13.5px;font-weight:600;text-decoration:none}
 
 /* ---------- masthead ---------- */
-.mast{border-bottom:1px solid var(--ink)}
+/* The nav bar closes the masthead with the full-bleed ink rule, and is a child
+   of <body> so its mobile sticky has the page to travel. */
+.mastbar{background:var(--paper);border-bottom:1px solid var(--ink)}
 .mast__meta{display:flex;justify-content:space-between;align-items:center;gap:20px;
   font-size:11.5px;letter-spacing:.06em;color:var(--soft);padding:10px 0;
   border-bottom:1px solid var(--rule)}
@@ -82,7 +84,9 @@ main:focus{outline:none}
 .flash,.alert{background:var(--tint);border-left:3px solid var(--red);padding:14px 20px;
   font-size:14.5px;line-height:1.5}
 .flash{margin:22px 0 0}
-.alert{margin:26px 0 0;color:var(--body)}
+/* The summary is autofocused, so it needs room for its focus ring and must not
+   sit on the first field label. */
+.alert{margin:26px 0 32px;color:var(--body)}
 .alert__title{font-family:var(--disp);font-size:20px;font-weight:700;color:var(--ink);margin:0 0 4px}
 .alert p{margin:0}
 .alert ul{margin:8px 0 0;padding-left:18px}
@@ -229,7 +233,10 @@ main:focus{outline:none}
 .field{margin-bottom:26px}
 .field label{display:block;font-size:13px;font-weight:600;letter-spacing:.02em;margin-bottom:6px}
 .field__hint{margin:0 0 8px;font-size:12.5px;color:var(--soft)}
-.field input,.field textarea{width:100%;font-family:var(--ui);font-size:16px;line-height:1.55;
+/* a link from the error summary must land the field with its label, not with
+   the label cropped off the top of the screen or hidden by the sticky nav */
+.field input,.field textarea{scroll-margin-top:96px;
+  width:100%;font-family:var(--ui);font-size:16px;line-height:1.55;
   color:var(--ink);background:var(--tint);border:1px solid var(--rule);
   border-bottom:1.5px solid var(--ink);border-radius:0;padding:11px 13px}
 .field textarea{resize:vertical;min-height:7em}
@@ -258,8 +265,10 @@ main:focus{outline:none}
   .search{margin:16px 0 4px}
   .search-field{font-size:17px}
   /* the nav stays reachable, so adding a recipe is never more than one tap away */
-  .mast__nav{gap:20px;padding:10px 0;position:sticky;top:0;z-index:5;
-    border-bottom:1px solid var(--ink)}
+  .mastbar{position:sticky;top:0;z-index:5}
+  .mast__nav{gap:20px;padding:10px 0}
+  /* …and the skip link does not land the content under it */
+  main{scroll-margin-top:56px}
   .mast__nav .count{display:none}
   .lead{padding:26px 0 10px}
   .lead__fig,.lead__side,.rt,.rmeta,.ing,.steps{grid-column:auto}

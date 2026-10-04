@@ -40,10 +40,18 @@ test('S1: adding is one nav link, reachable at every viewport', async () => {
   assert.match(res.text, /<nav class="mast__nav">[\s\S]*?<a href="\/recipes\/new">Ny oppskrift<\/a>[\s\S]*?<\/nav>/);
 });
 
-test('S1: the masthead nav stays put on small screens, so adding is always one tap away', () => {
+test('S1: the masthead nav stays put on small screens, so adding is always one tap away', async () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
   const mobile = css.slice(css.indexOf('@media (max-width:760px)'));
-  assert.match(mobile, /\.mast__nav\{[^}]*position:sticky;top:0/);
+  assert.match(mobile, /\.mastbar\{[^}]*position:sticky;top:0/);
+
+  // A sticky element only sticks inside its own parent, so the bar that sticks
+  // must not be nested in the masthead's .wrap — there it would scroll away
+  // with the masthead (QA found exactly that on ST-398).
+  const res = await request(app).get('/');
+  const markup = res.text.replace(/\s+/g, ' ');
+  assert.match(markup, /<\/header> <div class="mastbar"> <div class="wrap"> <nav class="mast__nav">/);
+  assert.doesNotMatch(markup.slice(0, markup.indexOf('</header>')), /mastbar/);
 });
 
 test('S1: the register shows title and meta only — no ingredients or instructions', async () => {
