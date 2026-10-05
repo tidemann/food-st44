@@ -22,6 +22,13 @@ FROM python:3.13-slim@sha256:3dd7cc108ec1493442514f5c2a871af6af0ec31d768ff6e378a
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.23@sha256:61d393e44e249f2e4b526b6c7ddcecce245946826e608e11c93ad4f5bba55b21 /uv /usr/local/bin/uv
 
+# wget is part of the deploy contract, not a convenience: the host's deploy.sh gates every
+# deploy on `docker exec food-st44 wget -qO- http://food-st44:80/healthz` (deploy-workflows
+# README). The slim base has no wget, so without it that gate can never pass.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends wget \
+ && rm -rf /var/lib/apt/lists/*
+
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/app/.venv \
@@ -50,5 +57,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
 # The entrypoint migrates the database and, when V1_DB_PATH is set, copies the v1 recipes once.
 # DJANGO_SECRET_KEY (or DJANGO_SECRET_KEY_FILE) must be set at run time; without either the app
 # refuses to start.
+# --no-control-socket: gunicorn's runtime control socket (gunicornc) is unused here, and its
+# default path is under $HOME, which the `app` system user does not have.
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:80", "--workers", "2", "--access-logfile", "-"]
+CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:80", "--workers", "2", "--access-logfile", "-", "--no-control-socket"]

@@ -65,18 +65,25 @@ compose up -d
 ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' food-st44)"
 # nginx-proxy and the host's health gate reach the container by service name.
 get() { curl -sS -H 'Host: food-st44' "$@"; }
+# The host's deploy.sh gate, word for word: wget inside the container, by service name on
+# st44_default. The deploy fails unless this prints `ok`.
 wait_healthy() {
   for i in $(seq 1 60); do
-    if [ "$(get -o /dev/null -w '%{http_code}' "http://$ip/healthz" 2>/dev/null)" = 200 ]; then
+    if [ "$(docker exec food-st44 wget -qO- http://food-st44:80/healthz 2>/dev/null || true)" = ok ]; then
       return 0
     fi
-    [ "$i" != 60 ] || { echo '::error::container never answered /healthz'; return 1; }
+    [ "$i" != 60 ] || { echo '::error::deploy.sh health gate (docker exec wget) never got ok'; return 1; }
     sleep 1
   done
 }
 wait_healthy
 
 test "$(get "http://$ip/healthz")" = ok
+# gunicorn starts without errors (its control socket once failed on the missing $HOME).
+if compose logs food-st44 | grep -F '[ERROR]'; then
+  echo '::error::gunicorn logged an error at start'
+  exit 1
+fi
 get -H 'Host: food.st44.no' -fo /dev/null "http://$ip/"
 get "http://$ip/api/recipes" | jq -e 'map(.id) | sort == [1, 3]' >/dev/null
 test "$(get -o /dev/null -w '%{http_code}' "http://$ip/recipes/3")" = 200
