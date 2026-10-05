@@ -16,3 +16,24 @@ class Recipe(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+
+class Editor(models.Model):
+    """A household member who may add, edit and delete recipes: a Google account's email.
+    Managed in the admin. Everyone else, signed in or not, can only read."""
+
+    email = models.EmailField(unique=True, verbose_name="e-post")
+    name = models.CharField(max_length=100, blank=True, verbose_name="navn")
+    added_at = models.DateTimeField(default=timezone.now, verbose_name="lagt til")
+
+    class Meta:
+        ordering = ("email",)
+        verbose_name = "redaktør"
+        verbose_name_plural = "redaktører"
+
+    def __str__(self) -> str:
+        return self.email
+
+    def clean(self) -> None:
+        # Google's addresses are compared lower-case (food.google); store them that way.
+        self.email = self.email.strip().lower()

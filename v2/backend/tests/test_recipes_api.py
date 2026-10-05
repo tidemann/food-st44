@@ -1,15 +1,25 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from django.contrib.auth.models import User
 from django.test import Client
 
 from food.api import api
-from food.models import Recipe
+from food.models import Editor, Recipe
 
 pytestmark = pytest.mark.django_db
 
 NOW = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)
 JSON = "application/json"
+
+
+@pytest.fixture(autouse=True)
+def _signed_in_editor(client: Client) -> None:
+    """Writes need an editor; who gets 403 is tests/test_auth.py. These tests are about the
+    recipes themselves, so every request here comes from a signed-in editor."""
+    user = User.objects.create(username="google:editor", email="editor@example.com")
+    Editor.objects.create(email=user.email)
+    client.force_login(user)
 
 
 def make(title: str, *, days_ago: int = 0, ingredients: str = "x") -> Recipe:
@@ -226,7 +236,7 @@ def test_every_response_code_is_in_the_schema() -> None:
     paths = api.get_openapi_schema()["paths"]
 
     assert set(paths["/api/recipes"]["get"]["responses"]) == {200}
-    assert set(paths["/api/recipes"]["post"]["responses"]) == {201, 422}
+    assert set(paths["/api/recipes"]["post"]["responses"]) == {201, 403, 422}
     assert set(paths["/api/recipes/{recipe_id}"]["get"]["responses"]) == {200, 404}
-    assert set(paths["/api/recipes/{recipe_id}"]["put"]["responses"]) == {200, 404, 422}
-    assert set(paths["/api/recipes/{recipe_id}"]["delete"]["responses"]) == {204, 404}
+    assert set(paths["/api/recipes/{recipe_id}"]["put"]["responses"]) == {200, 403, 404, 422}
+    assert set(paths["/api/recipes/{recipe_id}"]["delete"]["responses"]) == {204, 403, 404}

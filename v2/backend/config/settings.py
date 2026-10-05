@@ -15,7 +15,12 @@ ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "food.st44.no,localhost,1
 )
 
 INSTALLED_APPS = [
+    # SimpleAdminConfig: no autodiscover, so food.admin.site is the only admin.
+    "django.contrib.admin.apps.SimpleAdminConfig",
+    "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
     "django.contrib.staticfiles",
     "ninja",
     "food",
@@ -24,9 +29,27 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+# Only the admin renders Django templates; the site itself is the SPA.
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -52,3 +75,39 @@ SPA_DIR = Path(os.environ.get("SPA_DIR", str(BASE_DIR.parent / "frontend/dist/fr
 WHITENOISE_ROOT = SPA_DIR if SPA_DIR.is_dir() else None
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# The admin's own CSS and JS: WhiteNoise serves them straight from the installed apps, so the
+# image needs no collectstatic step. It is a few hundred small files, indexed once at start.
+WHITENOISE_USE_FINDERS = True
+
+# --- Sign-in (food.auth, food.google) ---
+
+# A Google OAuth "Web application" client. Without both, the site runs read-only: /api/auth/me
+# says sign_in_available=false and nobody can change recipes.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+# Must match an "Authorized redirect URI" on the client exactly.
+GOOGLE_REDIRECT_URI = os.environ.get(
+    "GOOGLE_REDIRECT_URI",
+    "http://localhost:8000/api/auth/google/callback"
+    if DEBUG
+    else "https://food.st44.no/api/auth/google/callback",
+)
+# Comma-separated. Always editors, and the only accounts that can open /api/admin/ to manage
+# the editor list. Stig's address goes here.
+FOOD_ADMIN_EMAILS = os.environ.get("FOOD_ADMIN_EMAILS", "").split(",")
+
+# The session cookie a sign-in sets. A household signs in rarely: keep it for 90 days.
+SESSION_COOKIE_AGE = 90 * 24 * 60 * 60
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"  # sent on Google's top-level redirect back to the callback
+
+# CSRF on recipe writes, named the way Angular's HttpClient already reads and sends it.
+CSRF_COOKIE_NAME = "XSRF-TOKEN"
+CSRF_HEADER_NAME = "HTTP_X_XSRF_TOKEN"
+CSRF_COOKIE_SECURE = not DEBUG
+# TLS ends at nginx-proxy, so Django sees http; the browser's Origin is the https site.
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    "DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost:4200" if DEBUG else "https://food.st44.no"
+).split(",")

@@ -34,6 +34,15 @@ services:
       # The v1 recipes, copied into the v2 database once, same ids. The
       # entrypoint writes /data/v1-imported and never imports again.
       V1_DB_PATH: /v1/recipes.db
+    # Google sign-in (M2): GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and
+    # FOOD_ADMIN_EMAILS, one KEY=value per line, in a file the owner puts on the
+    # server by hand (mode 600, owned by the deploy user). It is not in git and
+    # not in CI, and every deploy leaves it alone: deploy.sh only replaces the
+    # compose file. Optional, so a deploy before it exists still starts — the
+    # site is then read-only, with no "Logg inn" (needs Compose 2.24+).
+    env_file:
+      - path: /srv/apps/food-st44/google-oauth.env
+        required: false
     volumes:
       # The v2 SQLite database (DJANGO_DB_PATH) and its secret key. Compose
       # creates the volume on first `up`; nothing needs provisioning on the host.

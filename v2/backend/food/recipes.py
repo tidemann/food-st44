@@ -3,10 +3,11 @@ from django.shortcuts import get_object_or_404
 from ninja import Router, Status
 
 from food import services
+from food.auth import editor_auth
 from food.models import Recipe
 from food.schemas import ErrorOut, RecipeIn, RecipeOut, ValidationErrors
 
-# No auth until M2: like the live site, anyone can add, edit and delete.
+# Reads are public. Writes need a signed-in editor (food.auth); anyone else gets 403.
 router = Router(tags=["recipes"])
 
 
@@ -17,7 +18,8 @@ def list_recipes(request: HttpRequest, q: str = "") -> list[Recipe]:
 
 @router.post(
     "",
-    response={201: RecipeOut, 422: ValidationErrors},
+    response={201: RecipeOut, 403: ErrorOut, 422: ValidationErrors},
+    auth=editor_auth,
     operation_id="create_recipe",
 )
 def create_recipe(request: HttpRequest, payload: RecipeIn) -> Status[Recipe]:
@@ -35,7 +37,8 @@ def get_recipe(request: HttpRequest, recipe_id: int) -> Recipe:
 
 @router.put(
     "/{recipe_id}",
-    response={200: RecipeOut, 404: ErrorOut, 422: ValidationErrors},
+    response={200: RecipeOut, 403: ErrorOut, 404: ErrorOut, 422: ValidationErrors},
+    auth=editor_auth,
     operation_id="update_recipe",
 )
 def update_recipe(request: HttpRequest, recipe_id: int, payload: RecipeIn) -> Recipe:
@@ -45,7 +48,8 @@ def update_recipe(request: HttpRequest, recipe_id: int, payload: RecipeIn) -> Re
 
 @router.delete(
     "/{recipe_id}",
-    response={204: None, 404: ErrorOut},
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+    auth=editor_auth,
     operation_id="delete_recipe",
 )
 def delete_recipe(request: HttpRequest, recipe_id: int) -> Status[None]:
