@@ -60,7 +60,11 @@
                 [routerLink]="['/recipes', recipe.id]"
                 [queryParams]="{ q: term() }"
               >
-                <span class="plate plate-thumb"></span>
+                @if (recipe.photo) {
+                  <span class="shot"><img [ngSrc]="recipe.photo" alt="" fill /></span>
+                } @else {
+                  <span class="plate plate-thumb"></span>
+                }
                 <div>
                   <h3>{{ recipe.title }}</h3>
                   <p class="m">{{ recipe.meta }}</p>
@@ -79,7 +83,11 @@
       <section class="lead">
         <div class="wrap grid">
           <figure class="lead-fig">
-            <span class="plate"></span>
+            @if (lead.photo) {
+              <span class="shot"><img [ngSrc]="lead.photo" alt="" fill priority /></span>
+            } @else {
+              <span class="plate"></span>
+            }
             <figcaption class="lead-plate">
               <p class="kicker">Sist lagt inn</p>
               <h2>
@@ -96,7 +104,11 @@
                 <p class="band-sub">{{ sideSub() }}</p>
                 @for (recipe of side(); track recipe.id) {
                   <a class="sideitem" [routerLink]="['/recipes', recipe.id]">
-                    <span class="plate plate-thumb"></span>
+                    @if (recipe.photo) {
+                      <span class="shot"><img [ngSrc]="recipe.photo" alt="" fill /></span>
+                    } @else {
+                      <span class="plate plate-thumb"></span>
+                    }
                     <div>
                       <h3>{{ recipe.title }}</h3>
                       <p class="m">{{ recipe.meta }}</p>
@@ -140,7 +152,11 @@
           <div class="cards" [attr.data-cols]="restCols()">
             @for (recipe of rest(); track recipe.id) {
               <a class="card" [routerLink]="['/recipes', recipe.id]">
-                <span class="plate"></span>
+                @if (recipe.photo) {
+                  <span class="shot"><img [ngSrc]="recipe.photo" alt="" fill /></span>
+                } @else {
+                  <span class="plate"></span>
+                }
                 <h3>{{ recipe.title }}</h3>
                 <p class="m">{{ recipe.meta }}</p>
               </a>

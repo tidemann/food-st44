@@ -114,6 +114,8 @@ export interface Card {
   date: string;
   /** "2. oktober 2026" */
   added: string;
+  /** The dish's photo, or null: the plate stands in for it. */
+  photo: string | null;
 }
 
 export function toCard(recipe: Recipe): Card {
@@ -127,6 +129,7 @@ export function toCard(recipe: Recipe): Card {
     meta: date ? `${count} · ${date}` : count,
     date,
     added: formatLong(recipe.created_at),
+    photo: recipe.photo_url,
   };
 }
 

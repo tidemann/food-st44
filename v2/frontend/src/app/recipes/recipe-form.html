@@ -1,23 +1,28 @@
 <form class="recipe-form" novalidate (submit)="submit($event)">
   @if (invalid()) {
     <div class="alert" id="error-summary" role="alert" tabindex="-1" #summary>
-      <p class="alert-title">Oppskriften ble ikke lagret</p>
+      <p class="alert-title">{{ summaryTitle() }}</p>
       <ul>
-        @if (errors().title; as error) {
+        @if (shown().title; as error) {
           <li>
             <a href="#title" (click)="jump($event, titleField)">{{ error }}</a>
           </li>
         }
-        @if (errors().ingredients; as error) {
+        @if (shown().ingredients; as error) {
           <li>
             <a href="#ingredients" (click)="jump($event, ingredientsField)">{{ error }}</a>
+          </li>
+        }
+        @if (shown().photo; as error) {
+          <li>
+            <a href="#photo" (click)="jump($event, photoField)">{{ error }}</a>
           </li>
         }
       </ul>
     </div>
   }
 
-  <div class="field" [class.field-invalid]="errors().title">
+  <div class="field" [class.field-invalid]="shown().title">
     <label for="title">Tittel</label>
     <input
       #titleField
@@ -26,15 +31,15 @@
       name="title"
       [value]="draft().title"
       (input)="edit('title', titleField.value)"
-      [attr.aria-invalid]="errors().title ? 'true' : null"
-      [attr.aria-describedby]="errors().title ? 'title-error' : null"
+      [attr.aria-invalid]="shown().title ? 'true' : null"
+      [attr.aria-describedby]="shown().title ? 'title-error' : null"
     />
-    @if (errors().title; as error) {
+    @if (shown().title; as error) {
       <p class="field-error" id="title-error">{{ error }}</p>
     }
   </div>
 
-  <div class="field" [class.field-invalid]="errors().ingredients">
+  <div class="field" [class.field-invalid]="shown().ingredients">
     <label for="ingredients">Ingredienser</label>
     <p class="field-hint" id="ingredients-hint">
       Én ingrediens per linje. Mengden først: «600 g kjøttdeig».
@@ -46,12 +51,12 @@
       rows="10"
       [value]="draft().ingredients"
       (input)="edit('ingredients', ingredientsField.value)"
-      [attr.aria-invalid]="errors().ingredients ? 'true' : null"
+      [attr.aria-invalid]="shown().ingredients ? 'true' : null"
       [attr.aria-describedby]="
-        errors().ingredients ? 'ingredients-hint ingredients-error' : 'ingredients-hint'
+        shown().ingredients ? 'ingredients-hint ingredients-error' : 'ingredients-hint'
       "
     ></textarea>
-    @if (errors().ingredients; as error) {
+    @if (shown().ingredients; as error) {
       <p class="field-error" id="ingredients-error">{{ error }}</p>
     }
   </div>
@@ -71,6 +76,15 @@
       (input)="edit('instructions', instructionsField.value)"
     ></textarea>
   </div>
+
+  <app-photo-field
+    #photoField
+    [current]="currentPhoto()"
+    [error]="shown().photo"
+    [value]="photo()"
+    (valueChange)="photoChanged($event)"
+    [(rejected)]="rejected"
+  />
 
   <div class="form-actions">
     <button

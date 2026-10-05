@@ -10,12 +10,19 @@ import {
 } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
-import type { Recipe, RecipeInput } from '../api/types';
+import type { Recipe } from '../api/types';
 import { NotFound } from '../pages/not-found';
 import { ServerError } from '../pages/server-error';
 import { Site } from '../site';
 import { carry, type LoadState, loadRecipe } from './load';
-import { type FieldErrors, RecipeForm, saveFailure } from './recipe-form';
+import { PhotoStepError, saveWithPhoto } from './photo';
+import {
+  type FieldErrors,
+  hasErrors,
+  RecipeForm,
+  type RecipeSave,
+  saveFailure,
+} from './recipe-form';
 
 /** `/recipes/:id/edit`: S-EDIT and S-EDIT-ERR (§2.9, §2.10), or S-404R / S-500. */
 @Component({
@@ -47,6 +54,7 @@ import { type FieldErrors, RecipeForm, saveFailure } from './recipe-form';
               [cancelLink]="['/recipes', stored.id]"
               [cancelQuery]="carried()"
               [errors]="errors()"
+              [photoOnly]="photoOnly()"
               [busy]="busy()"
               (save)="update(stored.id, $event)"
             />
@@ -76,6 +84,7 @@ export class RecipeEdit {
 
   protected readonly errors = signal<FieldErrors>({});
   protected readonly busy = signal(false);
+  protected readonly photoOnly = signal(false);
   /** A save that failed with something the form cannot show: the recipe is gone, or S-500. */
   private readonly failure = signal<'not-found' | 'error' | null>(null);
   protected readonly state = computed<LoadState>(() => this.failure() ?? this.load.state());
@@ -84,14 +93,16 @@ export class RecipeEdit {
     const title = inject(Title);
     effect(() => {
       if (this.state() !== 'ready') return;
-      const invalid = this.errors().title ?? this.errors().ingredients;
-      title.setTitle(invalid ? 'Feil — Rediger oppskrift' : 'Rediger oppskrift — food.st44.no');
+      title.setTitle(
+        hasErrors(this.errors()) ? 'Feil — Rediger oppskrift' : 'Rediger oppskrift — food.st44.no',
+      );
     });
   }
 
-  protected update(id: number, input: RecipeInput): void {
+  protected update(id: number, { recipe: input, photo }: RecipeSave): void {
     this.busy.set(true);
-    this.http.put<Recipe>(`/api/recipes/${String(id)}`, input).subscribe({
+    const text = this.http.put<Recipe>(`/api/recipes/${String(id)}`, input);
+    saveWithPhoto(this.http, text, photo).subscribe({
       next: (recipe) => {
         this.site.recipes.reload();
         void this.router.navigate(['/recipes', recipe.id], {
@@ -100,6 +111,9 @@ export class RecipeEdit {
       },
       error: (error: unknown) => {
         this.busy.set(false);
+        // The text is saved; only the photo was refused.
+        this.photoOnly.set(error instanceof PhotoStepError);
+        if (error instanceof PhotoStepError) this.site.recipes.reload();
         const failure = saveFailure(error);
         if (typeof failure === 'string') this.failure.set(failure);
         else this.errors.set(failure);

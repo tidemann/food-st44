@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
@@ -11,7 +12,7 @@ import { carry, loadRecipe } from './load';
 /** `/recipes/:id` (S-DETAIL, §2.6), or S-404R / S-500 when it cannot be shown. */
 @Component({
   selector: 'app-recipe-detail',
-  imports: [RouterLink, NotFound, ServerError, Flash],
+  imports: [NgOptimizedImage, RouterLink, NotFound, ServerError, Flash],
   templateUrl: './recipe-detail.html',
   styleUrl: './recipe-detail.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

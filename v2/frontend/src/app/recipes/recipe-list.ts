@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { Title } from '@angular/platform-browser';
@@ -23,7 +24,7 @@ const SIDE_SUB = [
  */
 @Component({
   selector: 'app-recipe-list',
-  imports: [RouterLink, Flash],
+  imports: [NgOptimizedImage, RouterLink, Flash],
   templateUrl: './recipe-list.html',
   styleUrl: './recipe-list.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
