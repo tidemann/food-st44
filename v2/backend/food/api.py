@@ -2,6 +2,7 @@ from django.http import HttpRequest, HttpResponse
 from ninja import NinjaAPI
 from ninja.errors import ValidationError
 
+from food.auth import router as auth_router
 from food.recipes import router as recipes_router
 
 # Every endpoint goes under /api/ (add routers with api.add_router("/api/...")), which the SPA
@@ -12,6 +13,7 @@ api = NinjaAPI(
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
+api.add_router("/api/auth", auth_router)
 api.add_router("/api/recipes", recipes_router)
 
 

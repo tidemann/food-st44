@@ -88,13 +88,21 @@ get -H 'Host: food.st44.no' -fo /dev/null "http://$ip/"
 get "http://$ip/api/recipes" | jq -e 'map(.id) | sort == [1, 3]' >/dev/null
 test "$(get -o /dev/null -w '%{http_code}' "http://$ip/recipes/3")" = 200
 test "$(get -o /dev/null -w '%{http_code}' "http://$ip/recipes/4")" = 404
+# Writes need a signed-in editor (M2); nobody is signed in here.
+status() { get -o /dev/null -w '%{http_code}' "$@"; }
+test "$(status -X POST -H 'Content-Type: application/json' \
+  -d '{"title":"Ny","ingredients":"x","instructions":""}' "http://$ip/api/recipes")" = 403
+test "$(status -X DELETE "http://$ip/api/recipes/1")" = 403
+# So the database checks below go through the app's own code inside the container.
+django() { docker exec food-st44 python manage.py shell -v 0 -c "$1"; }
+
 # A new recipe must not reuse v1's deleted id 4.
-new_id="$(get -f -X POST -H 'Content-Type: application/json' \
-  -d '{"title":"Ny","ingredients":"x","instructions":""}' "http://$ip/api/recipes" | jq -e .id)"
+new_id="$(django 'from food import services
+print(services.create_recipe(title="Ny", ingredients="x", instructions="").id)')"
 test "$new_id" = 5
 
 # The import runs once: a recipe deleted on v2 stays deleted across a restart.
-test "$(get -o /dev/null -w '%{http_code}' -X DELETE "http://$ip/api/recipes/1")" = 204
+django 'from food.models import Recipe; Recipe.objects.filter(pk=1).delete()'
 compose restart
 ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' food-st44)"
 wait_healthy

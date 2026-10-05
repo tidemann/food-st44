@@ -108,4 +108,8 @@ not something to add to get CI green.
 entrypoint creates and reads that file), `DJANGO_ALLOWED_HOSTS` (comma-separated),
 `DJANGO_DB_PATH` (SQLite file, `/data/food.sqlite3` in the image), `SPA_DIR` (built Angular
 app), `V1_DB_PATH` (v1 `recipes.db`; imported once on start, see `docker-entrypoint.sh`).
+Sign-in: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (without both the site is read-only),
+`GOOGLE_REDIRECT_URI` (defaults to the food.st44.no callback, or localhost:8000 with
+`DJANGO_DEBUG=1`), `FOOD_ADMIN_EMAILS` (comma-separated: always editors, and the only accounts
+that can open `/api/admin/` to manage the editor list), `DJANGO_CSRF_TRUSTED_ORIGINS`.
 Production values are in `infra/docker-compose.yml`.

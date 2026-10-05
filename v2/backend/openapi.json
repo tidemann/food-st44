@@ -6,6 +6,125 @@
     "description": ""
   },
   "paths": {
+    "/api/auth/me": {
+      "get": {
+        "operationId": "get_me",
+        "summary": "Me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Sign Out",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/google/login": {
+      "get": {
+        "operationId": "google_login",
+        "summary": "Start Google sign-in (a browser navigation, not an XHR)",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "next",
+            "schema": {
+              "default": "/",
+              "title": "Next",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found"
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/google/callback": {
+      "get": {
+        "operationId": "google_callback",
+        "summary": "Google's redirect target; signs in and redirects back into the site",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "schema": {
+              "default": "",
+              "title": "Code",
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "default": "",
+              "title": "State",
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "schema": {
+              "default": "",
+              "title": "Error",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/recipes": {
       "get": {
         "operationId": "list_recipes",
@@ -57,6 +176,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Unprocessable Content",
             "content": {
@@ -80,7 +209,12 @@
             }
           },
           "required": true
-        }
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
       }
     },
     "/api/recipes/{recipe_id}": {
@@ -149,6 +283,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -182,7 +326,12 @@
             }
           },
           "required": true
-        }
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
       },
       "delete": {
         "operationId": "delete_recipe",
@@ -202,6 +351,16 @@
           "204": {
             "description": "No Content"
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -215,12 +374,63 @@
         },
         "tags": [
           "recipes"
+        ],
+        "security": [
+          {
+            "EditorAuth": []
+          }
         ]
       }
     }
   },
   "components": {
     "schemas": {
+      "MeOut": {
+        "properties": {
+          "signed_in": {
+            "title": "Signed In",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "initial": {
+            "title": "Initial",
+            "type": "string"
+          },
+          "is_editor": {
+            "title": "Is Editor",
+            "type": "boolean"
+          },
+          "sign_in_available": {
+            "title": "Sign In Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "signed_in",
+          "name",
+          "initial",
+          "is_editor",
+          "sign_in_available"
+        ],
+        "title": "MeOut",
+        "type": "object"
+      },
+      "ErrorOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorOut",
+        "type": "object"
+      },
       "RecipeOut": {
         "properties": {
           "id": {
@@ -295,19 +505,13 @@
         ],
         "title": "RecipeIn",
         "type": "object"
-      },
-      "ErrorOut": {
-        "properties": {
-          "detail": {
-            "title": "Detail",
-            "type": "string"
-          }
-        },
-        "required": [
-          "detail"
-        ],
-        "title": "ErrorOut",
-        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "EditorAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
       }
     }
   },
