@@ -6,12 +6,16 @@
       <div class="notice">
         <div class="notice-rule"></div>
         <h2>Ingen oppskrifter ennå</h2>
-        <p>Legg inn den første, så finner dere den igjen her.</p>
-        <div class="notice-actions">
-          <a class="btn btn-primary btn-lg" routerLink="/recipes/new"
-            >Legg til den første oppskriften</a
-          >
-        </div>
+        @if (editor()) {
+          <p>Legg inn den første, så finner dere den igjen her.</p>
+          <div class="notice-actions">
+            <a class="btn btn-primary btn-lg" routerLink="/recipes/new"
+              >Legg til den første oppskriften</a
+            >
+          </div>
+        } @else {
+          <p>Når husstanden legger inn oppskrifter, finner du dem her.</p>
+        }
       </div>
     </div>
   }

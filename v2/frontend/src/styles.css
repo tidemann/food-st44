@@ -125,6 +125,22 @@ a {
   border: 0;
 }
 
+/* the signed-in account's initial, in the nav and on "Ingen tilgang" (M2) */
+.initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+}
+
 /* plates: the stand-in where a photograph will go */
 .plate {
   display: block;

@@ -15,20 +15,22 @@
               <a routerLink="/" [queryParams]="carried()">Oppskrifter</a> &nbsp;/&nbsp;
               {{ v.recipe.title }}
             </p>
-            <div class="acts">
-              <a
-                class="btn"
-                [routerLink]="['/recipes', v.recipe.id, 'edit']"
-                [queryParams]="carried()"
-                >Rediger</a
-              >
-              <a
-                class="btn btn-danger-ghost"
-                [routerLink]="['/recipes', v.recipe.id, 'delete']"
-                [queryParams]="carried()"
-                >Slett</a
-              >
-            </div>
+            @if (editor()) {
+              <div class="acts">
+                <a
+                  class="btn"
+                  [routerLink]="['/recipes', v.recipe.id, 'edit']"
+                  [queryParams]="carried()"
+                  >Rediger</a
+                >
+                <a
+                  class="btn btn-danger-ghost"
+                  [routerLink]="['/recipes', v.recipe.id, 'delete']"
+                  [queryParams]="carried()"
+                  >Slett</a
+                >
+              </div>
+            }
           </div>
 
           <div class="grid">
@@ -83,7 +85,9 @@
             } @empty {
               <p class="steps-none">
                 Ingen fremgangsmåte er skrevet inn ennå.
-                <a [routerLink]="['/recipes', v.recipe.id, 'edit']">Skriv den inn</a>.
+                @if (editor()) {
+                  <a [routerLink]="['/recipes', v.recipe.id, 'edit']">Skriv den inn</a>.
+                }
               </p>
             }
           </div>
