@@ -83,7 +83,8 @@
     [error]="shown().photo"
     [value]="photo()"
     (valueChange)="photoChanged($event)"
-    [(rejected)]="rejected"
+    [rejected]="rejected()"
+    (rejectedChange)="rejectedChanged($event)"
   />
 
   <div class="form-actions">

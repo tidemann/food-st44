@@ -21,7 +21,7 @@ import {
   submit,
   submitButton,
 } from '../../testing/form';
-import { formatSize, NOT_AN_IMAGE, photoProblem, TOO_LARGE } from './photo';
+import { formatSize, NOT_AN_IMAGE, PHOTO_NOT_SAVED, photoProblem, TOO_LARGE } from './photo';
 
 const PHOTO_URL = '/photos/10-abc.webp';
 const SERVER_NOT_AN_IMAGE = 'Filen er ikke et bilde. Velg et JPEG-, PNG- eller WEBP-bilde.';
@@ -164,10 +164,10 @@ describe('the photo field', () => {
       const el = page(harness);
       choose(el, photoFile('oppskrift.pdf', 'application/pdf', 310 * 1024));
 
-      expect(text(el.querySelector('.photo-rejected'))).toBe('Avvist: oppskrift.pdf — 310 kB');
+      expect(text(el.querySelector('.photo-rejected-file'))).toBe('Avvist: oppskrift.pdf — 310 kB');
       expect(text(el.querySelector('#photo-error'))).toBe(NOT_AN_IMAGE);
       expect(el.querySelector('.photo')?.classList).toContain('field-invalid');
-      expect(buttons(el)).toEqual(['Ta bilde', 'Velg bilde']);
+      expect(buttons(el)).toEqual(['Fjern', 'Ta bilde', 'Velg bilde']);
 
       fill(el, 'title', 'Kjøttkaker');
       submitButton(el).click();
@@ -188,7 +188,7 @@ describe('the photo field', () => {
     it('refuses a photo over 25 MB', async () => {
       const el = await open('/recipes/new');
       choose(el, photoFile('middag.jpg', 'image/jpeg', 26 * 2 ** 20));
-      expect(text(el.querySelector('.photo-rejected'))).toBe('Avvist: middag.jpg — 26 MB');
+      expect(text(el.querySelector('.photo-rejected-file'))).toBe('Avvist: middag.jpg — 26 MB');
       expect(text(el.querySelector('#photo-error'))).toBe(
         'Bildet er for stort. Velg et bilde under 25 MB.',
       );
@@ -212,6 +212,30 @@ describe('the photo field', () => {
       expect(el.querySelector('.photo-rejected')).toBeNull();
       expect(el.querySelector('#photo-error')).toBeNull();
       expect(text(el.querySelector('.photo-name'))).toBe('kjottkaker.jpg');
+    });
+
+    it('"Fjern" drops the refused file, and "Lagre" saves the recipe without a photo', async () => {
+      const harness = await openHarness('/recipes/new');
+      const el = page(harness);
+      fill(el, 'title', 'Lapskaus');
+      choose(el, photoFile('oppskrift.pdf', 'application/pdf'));
+      submitButton(el).click();
+      TestBed.tick();
+      await harness.fixture.whenStable();
+      http().expectNone(() => true);
+
+      el.querySelector<HTMLButtonElement>('.photo-dismiss')?.click();
+      await harness.fixture.whenStable();
+      expect(el.querySelector('.photo-rejected')).toBeNull();
+      expect(el.querySelector('#photo-error')).toBeNull();
+      expect(el.querySelector('.alert')).toBeNull();
+      expect(text(document.activeElement)).toBe('Velg bilde');
+
+      const navigated = navigation();
+      submit(el, 'POST', '/api/recipes').flush(lapskaus, { status: 201, statusText: 'Created' });
+      http().expectNone({ url: '/api/recipes/10/photo' });
+      expect((await navigated).url).toBe('/recipes/10?flash=created');
+      answer({ recipe: lapskaus });
     });
   });
 
@@ -291,6 +315,33 @@ describe('the photo field', () => {
       await harness.fixture.whenStable();
       expect(text(el.querySelector('#photo-error'))).toBe(TOO_LARGE);
     });
+
+    it('says the recipe was saved, not S-500, when the photo request fails with a 5xx', async () => {
+      const harness = await openHarness('/recipes/new');
+      const el = page(harness);
+      fill(el, 'title', 'Lapskaus');
+      choose(el, photoFile('lapskaus.jpg', 'image/jpeg'));
+      submit(el, 'POST', '/api/recipes').flush(lapskaus, { status: 201, statusText: 'Created' });
+      http()
+        .expectOne({ method: 'POST', url: '/api/recipes/10/photo' })
+        .flush('', { status: 502, statusText: 'Bad Gateway' });
+      answer({});
+      await harness.fixture.whenStable();
+
+      expect(el.querySelector('app-server-error')).toBeNull();
+      expect(text(el.querySelector('.alert-title'))).toBe('Oppskriften er lagret, men ikke bildet');
+      expect(text(el.querySelector('#photo-error'))).toBe(PHOTO_NOT_SAVED);
+      // The photo is still chosen, so "Lagre" tries it again on the saved recipe.
+      expect(text(el.querySelector('.photo-name'))).toBe('lapskaus.jpg');
+      submit(el, 'PUT', '/api/recipes/10').flush(lapskaus);
+      http()
+        .expectOne({ method: 'POST', url: '/api/recipes/10/photo' })
+        .flush('', { status: 403, statusText: 'Forbidden' });
+      answer({});
+      await harness.fixture.whenStable();
+      expect(el.querySelector('app-server-error')).toBeNull();
+      expect(text(el.querySelector('#photo-error'))).toBe(PHOTO_NOT_SAVED);
+    });
   });
 
   describe('editing', () => {
@@ -347,6 +398,28 @@ describe('the photo field', () => {
         .flush(withPhoto(kjottkaker, null));
       await navigated;
       answer({ recipe: seed(9) });
+    });
+
+    it('"Fjern" by a refused file keeps the stored photo, and "Lagre" deletes nothing', async () => {
+      const harness = await openHarness('/recipes/9/edit', { recipe: kjottkaker });
+      const el = page(harness);
+      choose(el, photoFile('oppskrift.pdf', 'application/pdf'));
+      expect(buttons(el)).toEqual(['Fjern', 'Bytt bilde', 'Fjern bilde']);
+
+      el.querySelector<HTMLButtonElement>('.photo-dismiss')?.click();
+      await harness.fixture.whenStable();
+      expect(el.querySelector('.photo-rejected')).toBeNull();
+      expect(el.querySelector('.photo-preview img')?.getAttribute('src')).toBe(
+        '/photos/9-old.webp',
+      );
+      expect(el.querySelector('.photo-note')).toBeNull();
+
+      const navigated = navigation();
+      submit(el, 'PUT', '/api/recipes/9').flush(kjottkaker);
+      http().expectNone({ method: 'DELETE', url: '/api/recipes/9/photo' });
+      http().expectNone({ url: '/api/recipes/9/photo' });
+      await navigated;
+      answer({ recipe: kjottkaker });
     });
 
     it('says the text was saved when only the photo was refused', async () => {

@@ -16,6 +16,8 @@ const PHOTO_MAX_BYTES = PHOTO_MAX_MB * 2 ** 20;
 
 export const TOO_LARGE = `Bildet er for stort. Velg et bilde under ${String(PHOTO_MAX_MB)} MB.`;
 export const NOT_AN_IMAGE = 'Denne filen er ikke et bilde. Velg en JPEG, PNG eller WEBP.';
+/** The photo request failed for a reason the user cannot fix in the field (403, 5xx). */
+export const PHOTO_NOT_SAVED = 'Bildet ble ikke lagret. Prøv å lagre igjen.';
 
 /** Why the file cannot be the recipe's photo, or null if it may be sent. */
 export function photoProblem(file: File): string | null {

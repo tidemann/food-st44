@@ -5,7 +5,10 @@
   </p>
   @if (rejected(); as file) {
     <p class="photo-rejected">
-      Avvist: <b>{{ file.name }} — {{ file.size }}</b>
+      <span class="photo-rejected-file"
+        >Avvist: <b>{{ file.name }} — {{ file.size }}</b></span
+      >
+      <button class="photo-dismiss" type="button" (click)="dismiss()">Fjern</button>
     </p>
   }
 

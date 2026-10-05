@@ -14,7 +14,7 @@ import {
 import { RouterLink } from '@angular/router';
 import type { Recipe, RecipeInput, ValidationErrors } from '../api/types';
 import { failureOf } from './load';
-import { type PhotoChange, PhotoStepError, TOO_LARGE } from './photo';
+import { PHOTO_NOT_SAVED, type PhotoChange, PhotoStepError, TOO_LARGE } from './photo';
 import { PhotoField, type Rejected } from './photo-field';
 
 /** The API's message per field (§3.2): title and ingredients, and the photo (M3). */
@@ -41,7 +41,11 @@ export const EMPTY: RecipeInput = { title: '', ingredients: '', instructions: ''
  * photo), or S-404R / S-500. The rules live in the API; this only reads its answer.
  */
 export function saveFailure(error: unknown): FieldErrors | 'not-found' | 'error' {
-  if (error instanceof PhotoStepError) return saveFailure(error.cause);
+  if (error instanceof PhotoStepError) {
+    // The recipe is saved, so a 403 or 5xx on the photo is the photo's error, not S-500.
+    const failure = saveFailure(error.cause);
+    return typeof failure === 'string' ? { photo: PHOTO_NOT_SAVED } : failure;
+  }
   if (error instanceof HttpErrorResponse && (error.status === 422 || error.status === 413)) {
     // A 413 from nginx, before Django, is its own HTML page.
     const body = error.error as Partial<ValidationErrors> | string | null;
@@ -128,6 +132,16 @@ export class RecipeForm {
   /** A new photo or "Fjern bilde" answers the photo's error, so the summary drops it. */
   protected photoChanged(photo: PhotoChange): void {
     this.photo.set(photo);
+    this.dropPhotoError();
+  }
+
+  /** "Fjern" by a refused file answers its error too. */
+  protected rejectedChanged(rejected: Rejected | null): void {
+    this.rejected.set(rejected);
+    if (!rejected) this.dropPhotoError();
+  }
+
+  private dropPhotoError(): void {
     if (this.shown().photo) {
       const rest = { ...this.shown() };
       delete rest.photo;

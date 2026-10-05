@@ -122,6 +122,13 @@ export class PhotoField {
     this.value.set(this.current() ? 'remove' : 'keep');
   }
 
+  /** "Fjern" by a refused file: drops only the refusal; the photo or choice before it stays. */
+  protected dismiss(): void {
+    this.rejected.set(null);
+    // The button is gone; the field's own button keeps focus in the field.
+    this.focus();
+  }
+
   private take(file: File): void {
     this.apiError.set(undefined);
     const problem = photoProblem(file);
