@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
+import { Auth } from '../auth';
 import { Flash } from '../pages/flash';
 import { NotFound } from '../pages/not-found';
 import { ServerError } from '../pages/server-error';
@@ -24,6 +25,8 @@ export class RecipeDetail {
   readonly flash = input<string>();
 
   protected readonly carried = computed(() => carry(this.q()));
+  /** "Rediger" and "Slett" are only for the household's editors (M2). */
+  protected readonly editor = inject(Auth).isEditor;
 
   private readonly load = loadRecipe(this.id);
   protected readonly recipe = this.load.recipe;

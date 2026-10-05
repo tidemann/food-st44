@@ -6,8 +6,9 @@ import { TestBed } from '@angular/core/testing';
 import { Title } from '@angular/platform-browser';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { ApiError, Recipe } from '../app/api/types';
+import type { ApiError, Me, Recipe } from '../app/api/types';
 import { routes } from '../app/app.routes';
+import { Auth } from '../app/auth';
 
 const at = (day: string): string => `2026-${day}T10:00:00Z`;
 
@@ -63,8 +64,35 @@ export function seed(id: number): Recipe {
   return recipe;
 }
 
+/** Design row 2: Stig, on the household's editor list. The default in every test. */
+export const EDITOR: Me = {
+  signed_in: true,
+  name: 'Stig',
+  initial: 'S',
+  is_editor: true,
+  sign_in_available: true,
+};
+/** Design row 1: nobody signed in. */
+export const READER: Me = {
+  signed_in: false,
+  name: '',
+  initial: '',
+  is_editor: false,
+  sign_in_available: true,
+};
+/** Design row 3: a Google account that is not on the list. */
+export const OUTSIDER: Me = {
+  signed_in: true,
+  name: 'kari.eksempel@gmail.com',
+  initial: 'K',
+  is_editor: false,
+  sign_in_available: true,
+};
+
 /** What the fake backend answers. A number is an error status. */
 export interface Answers {
+  /** GET /api/auth/me (default: EDITOR). */
+  me?: Me | number;
   /** GET /api/recipes, the whole collection (default: SEED). */
   all?: Recipe[] | number;
   /** GET /api/recipes?q=… */
@@ -86,7 +114,7 @@ export function setUp(): void {
 function reply(
   http: HttpTestingController,
   match: (url: string, q: boolean) => boolean,
-  body: Recipe | Recipe[] | number,
+  body: Me | Recipe | Recipe[] | number,
   expect: boolean,
 ): void {
   const requests = http.match((r) => match(r.url, r.params.has('q')));
@@ -101,6 +129,15 @@ function reply(
       request.flush(body);
     }
   }
+}
+
+/**
+ * Answers /api/auth/me. Call it before navigating: the routes to the forms wait for it, so a
+ * navigation started first would never finish.
+ */
+export function signIn(me: Me | number = EDITOR): void {
+  TestBed.inject(Auth);
+  reply(TestBed.inject(HttpTestingController), (url) => url === '/api/auth/me', me, true);
 }
 
 /** Answers the requests in flight. The collection is only asked for when something uses Site. */
@@ -127,6 +164,7 @@ export async function openHarness(
   answers: Answers = {},
 ): Promise<RouterTestingHarness> {
   const harness = await RouterTestingHarness.create();
+  signIn(answers.me);
   await harness.navigateByUrl(url);
   answer(answers);
   await harness.fixture.whenStable();

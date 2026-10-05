@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input } f
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import type { Recipe } from '../api/types';
+import { Auth } from '../auth';
 import { Flash } from '../pages/flash';
 import { Site } from '../site';
 import { pluralise, toCard, toIndex } from './format';
@@ -29,6 +30,8 @@ const SIDE_SUB = [
 })
 export class RecipeList {
   private readonly site = inject(Site);
+  /** Only an editor is offered to add the first recipe (M2). */
+  protected readonly editor = inject(Auth).isEditor;
 
   /** The `q` query parameter. */
   readonly q = input<string>();

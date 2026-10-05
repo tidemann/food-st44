@@ -2,13 +2,14 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { App } from './app';
-import { answer, type Answers, SEED, setUp, text, title } from '../testing/app';
+import { answer, type Answers, SEED, setUp, signIn, text, title } from '../testing/app';
 
 let fixture: ComponentFixture<App>;
 
 /** The whole app, chrome included, at `url`, with the backend answering `answers`. */
 async function render(url: string, answers: Answers = {}): Promise<HTMLElement> {
   fixture = TestBed.createComponent(App);
+  signIn(answers.me);
   await TestBed.inject(Router).navigateByUrl(url);
   answer(answers);
   await fixture.whenStable();

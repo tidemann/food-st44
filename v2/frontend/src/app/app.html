@@ -54,16 +54,44 @@
         }"
         >Oppskrifter</a
       >
-      <a routerLink="/recipes/new" routerLinkActive ariaCurrentWhenActive="page">Ny oppskrift</a>
+      @if (auth.isEditor()) {
+        <a routerLink="/recipes/new" routerLinkActive ariaCurrentWhenActive="page">Ny oppskrift</a>
+      }
       @if (site.total() > 0) {
         <span class="count">{{ count() }} i samlingen</span>
+      }
+      <!-- M2: who is reading. Nothing until /api/auth/me answers, so no "Logg inn" flashes. -->
+      @if (auth.me(); as me) {
+        @if (me.signed_in) {
+          <span class="who">
+            <span class="initial" aria-hidden="true">{{ me.initial }}</span>
+            <span class="who-name">{{ me.name }}</span>
+            <button class="who-link" type="button" (click)="signOut()">Logg ut</button>
+          </span>
+        } @else if (me.sign_in_available) {
+          <span class="who">
+            <a class="who-link" [href]="signInHref()">Logg inn</a>
+          </span>
+        }
       }
     </nav>
   </div>
 </div>
 
 <main id="main" tabindex="-1" #main>
-  <router-outlet />
+  @if (login() === 'failed') {
+    <div class="wrap">
+      <p class="flash" role="status">Innloggingen ble ikke fullført. Prøv igjen.</p>
+    </div>
+  }
+  @switch (page()) {
+    @case ('page') {
+      <router-outlet />
+    }
+    @case ('denied') {
+      <app-no-access />
+    }
+  }
 </main>
 
 <footer class="foot">

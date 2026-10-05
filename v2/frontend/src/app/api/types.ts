@@ -9,3 +9,5 @@ export type RecipeInput = components['schemas']['RecipeIn'];
 export type ApiError = components['schemas']['ErrorOut'];
 /** 422 body: one message per field, e.g. `{ errors: { title: "Tittelen må fylles ut." } }`. */
 export type ValidationErrors = components['schemas']['ValidationErrors'];
+/** `GET /api/auth/me`: who is reading, and whether they may change recipes. */
+export type Me = components['schemas']['MeOut'];
