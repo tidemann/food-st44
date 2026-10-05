@@ -42,6 +42,10 @@ RUN uv sync --locked --no-dev
 COPY v2/backend/ ./
 COPY --from=frontend /src/frontend/dist/frontend/browser /app/spa
 
+# v1's recipe photos, moved onto their recipes once by the entrypoint (V1_PHOTOS_DIR).
+COPY public/img/recipes/ /app/v1-photos/
+
+# Uploaded photos live next to the database: FOOD_PHOTOS_DIR defaults to /data/photos.
 ENV SPA_DIR=/app/spa \
     DJANGO_DB_PATH=/data/food.sqlite3
 

@@ -65,6 +65,7 @@ describe('format', () => {
       ingredients: '1 egg\n2 dl melk',
       instructions: '',
       created_at: '2026-10-02T10:00:00Z',
+      photo_url: null,
     };
     const card = toCard(recipe);
     expect(card.meta).toBe('2 ingredienser · 2. okt');

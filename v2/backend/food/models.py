@@ -10,6 +10,8 @@ class Recipe(models.Model):
     ingredients = models.TextField()  # newline-separated lines
     instructions = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(default=timezone.now)
+    # The file name of the recipe's one photo in settings.PHOTOS_DIR; "" when it has none.
+    photo = models.CharField(max_length=100, blank=True, default="")
 
     class Meta:
         ordering = ("-created_at", "-id")

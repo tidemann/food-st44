@@ -1,8 +1,9 @@
+from django.conf import settings
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
-from ninja import Router, Status
+from ninja import File, Router, Status, UploadedFile
 
-from food import services
+from food import photos, services
 from food.auth import editor_auth
 from food.models import Recipe
 from food.schemas import ErrorOut, RecipeIn, RecipeOut, ValidationErrors
@@ -53,5 +54,44 @@ def update_recipe(request: HttpRequest, recipe_id: int, payload: RecipeIn) -> Re
     operation_id="delete_recipe",
 )
 def delete_recipe(request: HttpRequest, recipe_id: int) -> Status[None]:
-    get_object_or_404(Recipe, pk=recipe_id).delete()
+    services.delete_recipe(get_object_or_404(Recipe, pk=recipe_id))
     return Status(204, None)
+
+
+# --- the recipe's photo (food.photos) ---
+
+
+@router.post(
+    "/{recipe_id}/photo",
+    response={
+        200: RecipeOut,
+        403: ErrorOut,
+        404: ErrorOut,
+        413: ValidationErrors,
+        422: ValidationErrors,
+    },
+    auth=editor_auth,
+    operation_id="set_recipe_photo",
+    summary="Add or replace the recipe's photo: multipart/form-data, the file in `photo`",
+)
+def set_recipe_photo(
+    request: HttpRequest, recipe_id: int, photo: File[UploadedFile]
+) -> Recipe | Status[dict[str, dict[str, str]]]:
+    recipe = get_object_or_404(Recipe, pk=recipe_id)
+    if photo.size is None or photo.size > settings.PHOTO_MAX_UPLOAD_BYTES:
+        return Status(413, {"errors": {"photo": photos.TOO_LARGE}})
+    try:
+        return photos.save(recipe, photo)
+    except photos.PhotoError as exc:
+        return Status(422, {"errors": {"photo": str(exc)}})
+
+
+@router.delete(
+    "/{recipe_id}/photo",
+    response={200: RecipeOut, 403: ErrorOut, 404: ErrorOut},
+    auth=editor_auth,
+    operation_id="delete_recipe_photo",
+    summary="Remove the recipe's photo (no error if it has none)",
+)
+def delete_recipe_photo(request: HttpRequest, recipe_id: int) -> Recipe:
+    return photos.remove(get_object_or_404(Recipe, pk=recipe_id))

@@ -1,9 +1,10 @@
 import re
 
 from django.conf import settings
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.utils.html import escape
 
+from food import photos
 from food.models import Recipe
 
 SITE = "food.st44.no"
@@ -69,6 +70,17 @@ def recipe_action(request: HttpRequest, raw_id: str) -> HttpResponse:
     if _find(raw_id) is None:
         return _index(RECIPE_NOT_FOUND, status=404)
     return _index()
+
+
+def photo(request: HttpRequest, name: str) -> FileResponse:
+    """`/photos/<name>`: a recipe photo from settings.PHOTOS_DIR. A name is never reused (a new
+    upload gets a new one), so browsers may keep the file for good."""
+    found = photos.path(name)
+    if found is None:
+        raise Http404("no such photo")
+    response = FileResponse(found.open("rb"), content_type="image/webp")
+    response["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
 
 
 def not_found(request: HttpRequest) -> HttpResponse:

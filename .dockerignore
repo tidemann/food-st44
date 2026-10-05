@@ -1,7 +1,9 @@
 # The image is built from the repo root (the shared deploy route builds ./Dockerfile with `.` as
-# context) but only needs v2/. Everything else stays out of the build context.
+# context) but only needs v2/, plus v1's recipe photos, which the entrypoint moves onto their
+# recipes once (import_v1_photos). Everything else stays out of the build context.
 *
 !v2/
+!public/img/recipes/
 v2/**/node_modules
 v2/**/.angular
 v2/**/dist
