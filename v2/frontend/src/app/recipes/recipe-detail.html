@@ -56,6 +56,12 @@
               </dl>
             </div>
           </div>
+
+          @if (v.recipe.photo_url; as photo) {
+            <figure class="rhero shot">
+              <img [ngSrc]="photo" [alt]="v.recipe.title" fill priority />
+            </figure>
+          }
         </div>
       </section>
 

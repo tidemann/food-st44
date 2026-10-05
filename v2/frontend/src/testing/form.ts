@@ -41,6 +41,22 @@ export function navigation(): Promise<NavigationEnd> {
   );
 }
 
+/** A file as the browser hands it over. `size` stands in for the bytes, so 30 MB costs nothing. */
+export function photoFile(name: string, type: string, size = 2.4 * 2 ** 20): File {
+  const file = new File(['x'], name, { type });
+  Object.defineProperty(file, 'size', { value: size });
+  return file;
+}
+
+/** Picks `file` in the photo field's file input: `photo` ("Velg bilde") or `photo-camera`. */
+export function choose(el: HTMLElement, file: File, id = 'photo'): void {
+  const input = el.querySelector<HTMLInputElement>(`#${id}`);
+  if (!input) throw new Error(`no file input #${id}`);
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  input.dispatchEvent(new Event('change'));
+  TestBed.tick();
+}
+
 /** Answers a save with the API's 422 for the form's fields. */
 export function reject(request: TestRequest, errors: ValidationErrors['errors']): void {
   const body: ValidationErrors = { errors };

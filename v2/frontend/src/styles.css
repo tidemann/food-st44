@@ -154,6 +154,18 @@ a {
   background-image: none;
 }
 
+/* a photograph in place of the plate: the frame has the size, the image (ngSrc fill) covers it */
+.shot {
+  position: relative;
+  display: block;
+  margin: 0;
+  overflow: hidden;
+}
+
+.shot img {
+  object-fit: cover;
+}
+
 /* a quiet page of its own: empty, no hits, 404, 500 */
 .notice {
   max-width: 38rem;
@@ -231,6 +243,33 @@ a {
 }
 
 .alert a {
+  color: var(--red);
+}
+
+/* form fields: the recipe form and its photo field */
+.field {
+  margin-bottom: 26px;
+}
+
+.field label,
+.field legend {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
+
+.field-hint {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--soft);
+}
+
+.field-error {
+  margin: 7px 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--red);
 }
 

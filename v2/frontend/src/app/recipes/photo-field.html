@@ -1,0 +1,87 @@
+<fieldset class="field photo" [class.field-invalid]="message()">
+  <legend>Bilde <span class="opt">(valgfritt)</span></legend>
+  <p class="field-hint" id="photo-hint">
+    Ett bilde av den ferdige retten. JPEG, PNG eller WEBP, høyst {{ maxMb }} MB.
+  </p>
+  @if (rejected(); as file) {
+    <p class="photo-rejected">
+      <span class="photo-rejected-file"
+        >Avvist: <b>{{ file.name }} — {{ file.size }}</b></span
+      >
+      <button class="photo-dismiss" type="button" (click)="dismiss()">Fjern</button>
+    </p>
+  }
+
+  <input #chooser id="photo" type="file" hidden [accept]="accept" (change)="picked(chooser)" />
+  <input
+    #camera
+    id="photo-camera"
+    type="file"
+    hidden
+    capture="environment"
+    [accept]="accept"
+    (change)="picked(camera)"
+  />
+
+  @if (chosen() || stored()) {
+    <div class="photo-box photo-chosen">
+      @if (chosen(); as file) {
+        <canvas #canvas class="photo-preview" role="img" aria-label="Valgt bilde"></canvas>
+      } @else if (stored(); as src) {
+        <span class="photo-preview shot">
+          <img [ngSrc]="src" alt="Bildet på oppskriften" fill />
+        </span>
+      }
+      <div class="photo-info">
+        @if (chosen(); as file) {
+          <p class="photo-name">{{ file.name }}</p>
+          <p class="photo-meta">{{ file.meta }}</p>
+        } @else {
+          <p class="photo-name">Bildet på oppskriften</p>
+        }
+        <div class="photo-actions">
+          <button
+            #primary
+            class="btn"
+            type="button"
+            [attr.aria-describedby]="message() ? 'photo-hint photo-error' : 'photo-hint'"
+            (click)="chooser.click()"
+          >
+            Bytt bilde
+          </button>
+          <button class="btn btn-danger-ghost" type="button" (click)="remove()">Fjern bilde</button>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div
+      class="photo-box photo-empty"
+      [class.photo-over]="dragging()"
+      (dragover)="dragOver($event)"
+      (dragleave)="dragging.set(false)"
+      (drop)="drop($event)"
+    >
+      <span class="plate photo-plate" aria-hidden="true"></span>
+      <div class="photo-actions">
+        <button class="btn photo-camera" type="button" (click)="camera.click()">Ta bilde</button>
+        <button
+          #primary
+          class="btn"
+          type="button"
+          [attr.aria-describedby]="message() ? 'photo-hint photo-error' : 'photo-hint'"
+          (click)="chooser.click()"
+        >
+          Velg bilde
+        </button>
+        <p class="photo-drop">… eller slipp bildefilen her.</p>
+      </div>
+    </div>
+    @if (removing()) {
+      <p class="field-hint photo-note">Bildet fjernes når du lagrer oppskriften.</p>
+    }
+  }
+
+  @if (message(); as error) {
+    <p class="field-error" id="photo-error">{{ error }}</p>
+  }
+</fieldset>
