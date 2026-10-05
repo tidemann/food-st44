@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request
 
+import anthropic
+import httpx2
 import pytest
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -383,12 +385,179 @@ def test_openai_compatible_without_a_usable_url_and_model_is_off(
     assert provider.request is None
 
 
+# --- anthropic: Claude through the official SDK, the client mocked (no real calls) ---
+
+ANTHROPIC_REQUEST = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+
+
+def anthropic_status(error: type[anthropic.APIStatusError], status: int) -> Exception:
+    response = httpx2.Response(status, request=ANTHROPIC_REQUEST)
+    return error(f"HTTP {status}", response=response, body=None)
+
+
+class FakeAnthropic:
+    """Stands in for anthropic.Anthropic: records the client options and the request, and
+    answers with a real SDK Message, or raises a real SDK error."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.text = json.dumps(
+            {
+                "readable": True,
+                "title": "Fiskeboller i hvit saus",
+                "ingredients": ["1 boks fiskeboller", "2 ss smør", "2 ss hvetemel"],
+                "instructions": ["Lag sausen.", "Varm fiskebollene i sausen."],
+            }
+        )
+        self.stop_reason = "end_turn"
+        self.error: Exception | None = None
+        self.options: dict[str, Any] = {}
+        self.sent: dict[str, Any] = {}
+        self.messages = self  # so that client.messages.create is self.create
+        monkeypatch.setattr("food.reader.anthropic.Anthropic", self.client)
+
+    def client(self, **options: object) -> "FakeAnthropic":
+        self.options = options
+        return self
+
+    def create(self, **request: object) -> anthropic.types.Message:
+        self.sent = request
+        if self.error is not None:
+            raise self.error
+        return anthropic.types.Message.model_validate(
+            {
+                "id": "msg_test",
+                "type": "message",
+                "role": "assistant",
+                "model": request["model"],
+                "content": [{"type": "text", "text": self.text}],
+                "stop_reason": self.stop_reason,
+                "stop_sequence": None,
+                "usage": {"input_tokens": 1700, "output_tokens": 120},
+            }
+        )
+
+
+@pytest.fixture
+def claude(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> FakeAnthropic:
+    settings.FOOD_AI_PROVIDER = "anthropic"
+    settings.FOOD_AI_API_KEY = "sk-ant-test"
+    return FakeAnthropic(monkeypatch)
+
+
+def test_anthropic_sends_the_photo_as_an_image_block_and_returns_the_draft(
+    client: Client, editor: User, claude: FakeAnthropic
+) -> None:
+    assert available(client) is True
+
+    response = read(client, recipe_photo("WEBP"), name="side.webp")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "readable": True,
+        "title": "Fiskeboller i hvit saus",
+        "ingredients": "1 boks fiskeboller\n2 ss smør\n2 ss hvetemel",
+        "instructions": "Lag sausen.\nVarm fiskebollene i sausen.",
+    }
+    # One try within the timeout: the SDK's own retries would take the editor past 30 s.
+    assert claude.options == {"api_key": "sk-ant-test", "timeout": 25.0, "max_retries": 0}
+    assert claude.sent["model"] == "claude-haiku-4-5"
+    assert claude.sent["system"] == reader.PROMPT
+    image, text = claude.sent["messages"][0]["content"]
+    assert text["type"] == "text"
+    assert image["type"] == "image"
+    assert image["source"]["type"] == "base64"
+    assert image["source"]["media_type"] == "image/jpeg"
+    with Image.open(BytesIO(base64.b64decode(image["source"]["data"]))) as sent:
+        assert (sent.format, sent.size) == ("JPEG", (600, 800))
+    read_row = PhotoRead.objects.get()
+    assert (read_row.provider, read_row.model, read_row.outcome) == (
+        "anthropic",
+        "claude-haiku-4-5",
+        PhotoRead.Outcome.READ,
+    )
+
+
+def test_anthropic_model_is_a_setting(
+    client: Client, editor: User, claude: FakeAnthropic, settings: Settings
+) -> None:
+    settings.FOOD_AI_MODEL = " claude-sonnet-5 "
+
+    assert read(client, recipe_photo()).status_code == 200
+    assert claude.sent["model"] == "claude-sonnet-5"
+    assert PhotoRead.objects.get().model == "claude-sonnet-5"
+
+
+def test_anthropic_without_a_key_is_off(
+    client: Client, editor: User, claude: FakeAnthropic, settings: Settings
+) -> None:
+    settings.FOOD_AI_API_KEY = " "
+
+    assert available(client) is False
+    assert read(client, recipe_photo()).status_code == 503
+    assert claude.sent == {}
+
+
+def test_anthropic_finding_no_recipe_could_not_be_read(
+    client: Client, editor: User, claude: FakeAnthropic
+) -> None:
+    claude.text = '```json\n{"readable": false}\n```'
+
+    response = read(client, recipe_photo())
+
+    assert response.status_code == 200
+    assert response.json()["readable"] is False
+    assert PhotoRead.objects.get().outcome == PhotoRead.Outcome.UNREADABLE
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "message"),
+    [
+        (anthropic.APITimeoutError(ANTHROPIC_REQUEST), 504, reader.TIMED_OUT),
+        (anthropic.APIConnectionError(request=ANTHROPIC_REQUEST), 502, reader.FAILED),
+        (anthropic_status(anthropic.AuthenticationError, 401), 502, reader.FAILED),
+        (anthropic_status(anthropic.RateLimitError, 429), 502, reader.FAILED),
+        (anthropic_status(anthropic.OverloadedError, 529), 502, reader.FAILED),
+    ],
+)
+def test_an_anthropic_error_or_timeout_is_a_clear_answer(
+    client: Client,
+    editor: User,
+    claude: FakeAnthropic,
+    error: Exception,
+    status: int,
+    message: str,
+) -> None:
+    claude.error = error
+
+    response = read(client, recipe_photo())
+
+    assert response.status_code == status
+    assert response.json() == {"detail": message}
+    assert PhotoRead.objects.get().outcome == PhotoRead.Outcome.FAILED
+
+
+@pytest.mark.parametrize("stop_reason", ["max_tokens", "refusal"])
+def test_an_anthropic_answer_cut_short_is_a_provider_error(
+    client: Client, editor: User, claude: FakeAnthropic, stop_reason: str
+) -> None:
+    claude.stop_reason = stop_reason
+
+    assert read(client, recipe_photo()).status_code == 502
+    assert PhotoRead.objects.get().outcome == PhotoRead.Outcome.FAILED
+
+
 # --- switching provider is a setting, not code ---
 
 
 def test_switching_provider_by_settings_only(
-    client: Client, editor: User, provider: FakeProvider, settings: Settings
+    client: Client,
+    editor: User,
+    provider: FakeProvider,
+    settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    FakeAnthropic(monkeypatch)
+
     def title() -> object:
         response = read(client, recipe_photo())
         return response.json().get("title", response.status_code)
@@ -402,10 +571,13 @@ def test_switching_provider_by_settings_only(
     assert title() == 503
     settings.FOOD_AI_PROVIDER = " OpenAI_Compatible "
     assert title() == "Mormors kjøttkaker"
+    settings.FOOD_AI_PROVIDER = "anthropic"  # the same FOOD_AI_API_KEY and FOOD_AI_MODEL
+    assert title() == "Fiskeboller i hvit saus"
     assert list(PhotoRead.objects.values_list("provider", flat=True).order_by("id")) == [
         "openai_compatible",
         "fake",
         "openai_compatible",
+        "anthropic",
     ]
 
 
@@ -448,6 +620,27 @@ def test_the_admin_says_when_reading_is_off_and_no_cost_is_set(client: Client) -
 
     assert "Leverandør: <strong>av (off)</strong>" in page
     assert "Kostnad per bilde: <strong>ikke oppgitt</strong>" in page
+
+
+def test_the_admin_shows_claudes_cost_unless_the_setting_says_otherwise(
+    client: Client, settings: Settings
+) -> None:
+    settings.FOOD_AI_PROVIDER = "anthropic"
+    settings.FOOD_AI_API_KEY = "sk-ant-test"
+    user = sign_in_as(client, "stig@example.com", editor=False)
+    user.is_staff = user.is_superuser = True
+    user.save()
+
+    def cost() -> str:
+        page = client.get("/api/admin/food/photoread/").content.decode()
+        assert "Leverandør: <strong>anthropic</strong>" in page
+        return page.split("Kostnad per bilde: <strong>")[1].split("</strong>")[0]
+
+    assert cost() == "ca. $0.007 per bilde (Claude Haiku 4.5)"
+    settings.FOOD_AI_MODEL = "claude-sonnet-5"  # another price: only the setting can say it
+    assert cost() == "ikke oppgitt"
+    settings.FOOD_AI_COST_PER_PHOTO = "ca. 0,25 kr"
+    assert cost() == "ca. 0,25 kr"
 
 
 # --- over a real socket: a local stand-in server, slow or not ---

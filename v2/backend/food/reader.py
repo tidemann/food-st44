@@ -1,9 +1,10 @@
 """Read a recipe from a photo of a paper recipe: a draft for the "Ny oppskrift" form.
 
 One interface, `RecipeReader`, and a provider chosen by settings only (FOOD_AI_PROVIDER, see
-config.settings): `off`, `fake`, or `openai_compatible` for any chat API that takes images the
-way OpenAI's does. Nothing is saved but a PhotoRead row (who, when, which provider, how it went)
-for the admin's count: not the draft, and never the photo, which only goes to the provider.
+config.settings): `off`, `fake`, `anthropic` for Claude through Anthropic's own Messages API,
+or `openai_compatible` for any chat API that takes images the way OpenAI's does. Nothing is
+saved but a PhotoRead row (who, when, which provider, how it went) for the admin's count: not
+the draft, and never the photo, which only goes to the provider.
 """
 
 import base64
@@ -16,6 +17,7 @@ from typing import IO, Any, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+import anthropic
 from django.conf import settings
 from PIL import Image
 
@@ -43,7 +45,8 @@ If the image holds no recipe, or too little of it can be read, answer {"readable
 
 
 class ReaderOff(Exception):
-    """FOOD_AI_PROVIDER is off, or openai_compatible without a base URL and a model."""
+    """FOOD_AI_PROVIDER is off, anthropic without a key, or openai_compatible without a base URL
+    and a model."""
 
 
 class ProviderError(Exception):
@@ -74,6 +77,7 @@ UNREADABLE = Draft()
 class RecipeReader(Protocol):
     name: str
     model: str
+    cost: str  # what one photo costs, for the admin when FOOD_AI_COST_PER_PHOTO is not set
 
     def read(self, jpeg: bytes) -> Draft:
         """The recipe in the photo, or UNREADABLE. ProviderError if the provider failed."""
@@ -86,6 +90,7 @@ class FakeReader:
 
     name = "fake"
     model = ""
+    cost = "0 (testleverandør)"
 
     DRAFT = Draft(
         title="Sveler",
@@ -111,6 +116,7 @@ class OpenAICompatibleReader:
     Ollama, vLLM or llama.cpp."""
 
     name = "openai_compatible"
+    cost = ""  # depends on the service and the model; FOOD_AI_COST_PER_PHOTO says it
 
     def __init__(self, base_url: str, model: str, api_key: str, timeout: float) -> None:
         self.url = base_url.rstrip("/") + "/chat/completions"
@@ -162,6 +168,59 @@ class OpenAICompatibleReader:
         return parse(content)
 
 
+class AnthropicReader:
+    """Claude through Anthropic's Messages API (the official SDK), the photo as a base64 image
+    block. One try only, within the timeout: the SDK's retries would take the editor past 30 s."""
+
+    name = "anthropic"
+    DEFAULT_MODEL = "claude-haiku-4-5"
+    # Haiku 4.5 at $1 / $5 per million input / output tokens: a photo is at most ~1,600 image
+    # tokens plus the prompt, and a recipe up to ~1,000 tokens of JSON back.
+    DEFAULT_COST = "ca. $0.007 per bilde (Claude Haiku 4.5)"
+    MAX_TOKENS = 4096  # a long recipe as JSON fits easily; a cut-off answer is a ProviderError
+
+    def __init__(self, model: str, api_key: str, timeout: float) -> None:
+        self.model = model or self.DEFAULT_MODEL
+        self.cost = self.DEFAULT_COST if self.model == self.DEFAULT_MODEL else ""
+        self.api_key = api_key
+        self.timeout = timeout
+
+    def read(self, jpeg: bytes) -> Draft:
+        # Made here, not in __init__: get_reader runs on every "is the button on?" request.
+        client = anthropic.Anthropic(api_key=self.api_key, timeout=self.timeout, max_retries=0)
+        try:
+            message = client.messages.create(
+                model=self.model,
+                max_tokens=self.MAX_TOKENS,
+                system=PROMPT,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/jpeg",
+                                    "data": base64.standard_b64encode(jpeg).decode(),
+                                },
+                            },
+                            {"type": "text", "text": "Read the recipe in this photo as JSON."},
+                        ],
+                    }
+                ],
+            )
+        except anthropic.APITimeoutError as exc:  # before APIConnectionError: a subclass of it
+            raise ProviderError("timed out", timed_out=True) from exc
+        except anthropic.APIStatusError as exc:
+            raise ProviderError(f"HTTP {exc.status_code}") from exc
+        except anthropic.APIConnectionError as exc:
+            raise ProviderError(f"unreachable: {exc}") from exc
+        if message.stop_reason not in ("end_turn", "stop_sequence"):
+            raise ProviderError(f"stopped early: {message.stop_reason}")
+        return parse("".join(block.text for block in message.content if block.type == "text"))
+
+
 _FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL)
 
 
@@ -201,6 +260,11 @@ def get_reader() -> RecipeReader | None:
     provider = settings.FOOD_AI_PROVIDER.strip().lower()
     if provider == "fake":
         return FakeReader()
+    if provider == "anthropic":
+        api_key = settings.FOOD_AI_API_KEY.strip()
+        if not api_key:
+            return None
+        return AnthropicReader(settings.FOOD_AI_MODEL.strip(), api_key, settings.FOOD_AI_TIMEOUT)
     if provider == "openai_compatible":
         base_url = settings.FOOD_AI_BASE_URL.strip()
         model = settings.FOOD_AI_MODEL.strip()

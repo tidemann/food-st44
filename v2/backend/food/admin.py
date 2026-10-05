@@ -78,7 +78,9 @@ class PhotoReadAdmin(_PhotoReadAdminBase):
         reading = reader.get_reader()
         context = {
             "photo_read_provider": reading.name if reading else "av (off)",
-            "photo_read_cost": settings.FOOD_AI_COST_PER_PHOTO or "ikke oppgitt",
+            "photo_read_cost": settings.FOOD_AI_COST_PER_PHOTO
+            or (reading.cost if reading else "")
+            or "ikke oppgitt",
             "photo_read_count": PhotoRead.objects.count(),
             **(extra_context or {}),
         }

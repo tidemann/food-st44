@@ -75,18 +75,22 @@ PHOTO_MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 # --- Reading a recipe from a photo (food.reader) ---
 
 # Which provider reads the photo: "off" (no button, the API answers 503), "fake" (a fixed
-# recipe, for tests and a local demo) or "openai_compatible" (any chat API that takes images in
-# OpenAI's format: OpenAI, a hosted gateway, or a local model behind Ollama or llama.cpp).
-# Switching is a setting and a restart. Off by default: nothing is paid for until it is chosen.
+# recipe, for tests and a local demo), "anthropic" (Claude, Anthropic's Messages API) or
+# "openai_compatible" (any chat API that takes images in OpenAI's format: OpenAI, a hosted
+# gateway, or a local model behind Ollama or llama.cpp). Switching is a setting and a restart.
+# Off by default: nothing is paid for until it is chosen. In production these come from the
+# optional /srv/apps/food-st44/food-ai.env (infra/docker-compose.yml).
 FOOD_AI_PROVIDER = os.environ.get("FOOD_AI_PROVIDER", "off")
-# For openai_compatible: the API root (the part before /chat/completions), the model, the key.
+# For openai_compatible: the API root (the part before /chat/completions). Not used by anthropic.
 FOOD_AI_BASE_URL = os.environ.get("FOOD_AI_BASE_URL", "")
+# The model (for anthropic, empty means claude-haiku-4-5) and the key (anthropic needs one).
 FOOD_AI_MODEL = os.environ.get("FOOD_AI_MODEL", "")
 FOOD_AI_API_KEY = os.environ.get("FOOD_AI_API_KEY", "")
 # Seconds to wait for the provider. Below gunicorn's 30 s worker timeout, so the editor always
 # gets an answer, and in under 30 s.
 FOOD_AI_TIMEOUT = float(os.environ.get("FOOD_AI_TIMEOUT", "25"))
 # What one photo costs with the chosen provider, as text for the admin (e.g. "ca. 0,01 kr").
+# Unset with anthropic and its default model, the admin shows "ca. $0.007 per bilde".
 FOOD_AI_COST_PER_PHOTO = os.environ.get("FOOD_AI_COST_PER_PHOTO", "")
 
 LANGUAGE_CODE = "nb"
