@@ -1,12 +1,22 @@
+from dataclasses import asdict
+
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import File, Router, Status, UploadedFile
 
-from food import photos, services
-from food.auth import editor_auth
+from food import photos, reader, services
+from food.auth import editor_auth, is_editor
 from food.models import Recipe
-from food.schemas import ErrorOut, RecipeIn, RecipeOut, ValidationErrors
+from food.schemas import (
+    ErrorOut,
+    PhotoReadingOut,
+    RecipeDraftOut,
+    RecipeIn,
+    RecipeOut,
+    ValidationErrors,
+)
 
 # Reads are public. Writes need a signed-in editor (food.auth); anyone else gets 403.
 router = Router(tags=["recipes"])
@@ -25,6 +35,58 @@ def list_recipes(request: HttpRequest, q: str = "") -> list[Recipe]:
 )
 def create_recipe(request: HttpRequest, payload: RecipeIn) -> Status[Recipe]:
     return Status(201, services.create_recipe(**payload.model_dump()))
+
+
+# --- reading a recipe from a photo (food.reader) ---
+
+
+@router.get(
+    "/read-photo",
+    response=PhotoReadingOut,
+    operation_id="get_photo_reading",
+    summary="Whether this visitor can read a recipe from a photo (the button shows only then)",
+)
+def get_photo_reading(request: HttpRequest) -> dict[str, bool]:
+    return {"available": reader.available() and is_editor(request.user)}
+
+
+@router.post(
+    "/read-photo",
+    response={
+        200: RecipeDraftOut,
+        403: ErrorOut,
+        413: ValidationErrors,
+        422: ValidationErrors,
+        502: ErrorOut,
+        503: ErrorOut,
+        504: ErrorOut,
+    },
+    auth=editor_auth,
+    operation_id="read_recipe_photo",
+    summary="Read a recipe from a photo into a draft; saves nothing, not even the photo",
+    description=(
+        "multipart/form-data, the file in `photo`. 200 with `readable: false` when no recipe "
+        "could be read. 503 when reading is off; 502 or 504 when the provider failed or was "
+        "too slow."
+    ),
+)
+def read_recipe_photo(
+    request: HttpRequest, photo: File[UploadedFile]
+) -> dict[str, object] | Status[dict[str, object]]:
+    if photo.size is None or photo.size > settings.PHOTO_MAX_UPLOAD_BYTES:
+        return Status(413, {"errors": {"photo": photos.TOO_LARGE}})
+    user = request.user
+    try:
+        draft = reader.read_photo(photo, editor=user.email if isinstance(user, User) else "")
+    except reader.ReaderOff as exc:
+        return Status(503, {"detail": str(exc)})
+    except photos.PhotoError as exc:
+        return Status(422, {"errors": {"photo": str(exc)}})
+    except reader.ProviderError as exc:
+        if exc.timed_out:
+            return Status(504, {"detail": reader.TIMED_OUT})
+        return Status(502, {"detail": reader.FAILED})
+    return {"readable": draft.readable, **asdict(draft)}
 
 
 @router.get(

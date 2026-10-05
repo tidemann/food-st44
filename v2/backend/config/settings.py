@@ -72,6 +72,23 @@ PHOTOS_DIR = Path(
 # A phone photo is often 5 to 15 MB; anything up to this is accepted and resized on save.
 PHOTO_MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
+# --- Reading a recipe from a photo (food.reader) ---
+
+# Which provider reads the photo: "off" (no button, the API answers 503), "fake" (a fixed
+# recipe, for tests and a local demo) or "openai_compatible" (any chat API that takes images in
+# OpenAI's format: OpenAI, a hosted gateway, or a local model behind Ollama or llama.cpp).
+# Switching is a setting and a restart. Off by default: nothing is paid for until it is chosen.
+FOOD_AI_PROVIDER = os.environ.get("FOOD_AI_PROVIDER", "off")
+# For openai_compatible: the API root (the part before /chat/completions), the model, the key.
+FOOD_AI_BASE_URL = os.environ.get("FOOD_AI_BASE_URL", "")
+FOOD_AI_MODEL = os.environ.get("FOOD_AI_MODEL", "")
+FOOD_AI_API_KEY = os.environ.get("FOOD_AI_API_KEY", "")
+# Seconds to wait for the provider. Below gunicorn's 30 s worker timeout, so the editor always
+# gets an answer, and in under 30 s.
+FOOD_AI_TIMEOUT = float(os.environ.get("FOOD_AI_TIMEOUT", "25"))
+# What one photo costs with the chosen provider, as text for the admin (e.g. "ca. 0,01 kr").
+FOOD_AI_COST_PER_PHOTO = os.environ.get("FOOD_AI_COST_PER_PHOTO", "")
+
 LANGUAGE_CODE = "nb"
 TIME_ZONE = "Europe/Oslo"
 USE_I18N = True
