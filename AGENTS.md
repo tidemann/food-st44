@@ -8,15 +8,17 @@ ADR 0002 (Angular + Django).
 
 | Path | What | Status |
 |---|---|---|
-| `src/`, `views/`, `public/`, `Dockerfile`, `infra/` | Express + EJS site | **Live** on food.st44.no. Do not touch for v2 work. |
-| `v2/` | Angular + Django rebuild | Not deployed yet. All new work goes here. |
+| `v2/`, `Dockerfile`, `infra/` | Angular + Django app | **Live** on food.st44.no. All new work goes here. A merge to `main` that touches these deploys. |
+| `src/`, `views/`, `public/` | Express + EJS site (v1) | Retired; kept for reference and rollback (DEPLOY.md). Not in the image. |
 
 ```
+Dockerfile                one image from the repo root: Angular build stage → Python runtime
+infra/                    the deploy compose file; smoke-deploy.sh runs it in CI
 v2/
-  Dockerfile              one image: Angular build stage → Python runtime (Django serves the SPA)
   backend/                Django + Django Ninja, managed by uv
     config/               settings, urls, wsgi
-    food/                 the app: api.py (NinjaAPI), views.py (SPA fallback)
+    docker-entrypoint.sh  container start: secret key, migrate, one-time v1 import
+    food/                 the app: api.py (NinjaAPI), views.py (SPA fallback, /healthz)
     tests/                pytest + pytest-django
     openapi.json          exported API schema — committed, CI checks it is current
   frontend/               Angular (standalone, signals, zoneless)
@@ -50,8 +52,9 @@ npm run build       # regenerates API types first (prebuild)
 npm start           # dev server; run the backend alongside it
 ```
 
-Image: `docker build -t food-v2 v2 && docker run --rm -p 8080:80 -e DJANGO_SECRET_KEY=dev food-v2`,
-then `curl localhost:8080/healthz`.
+Image (from the repo root): `docker build -t food-v2 . && docker run --rm -p 8080:80 -e DJANGO_SECRET_KEY=dev food-v2`,
+then `curl localhost:8080/healthz`. `infra/smoke-deploy.sh food-v2` runs it through the deploy
+compose file with a v1 volume (CI only, never on the server).
 
 ## Rules CI enforces
 
@@ -62,7 +65,8 @@ so on the task.
 - **API contract.** The frontend never hand-writes an API type. Change the Ninja schema,
   re-export `openapi.json`, and import from `src/app/api/types.ts`. A stale `openapi.json` fails
   CI; a breaking API change fails `ng build`.
-- **URLs.** `/healthz` stays at the root (deploy contract). Every other endpoint lives under
+- **URLs.** `/healthz` stays at the root and answers plain `ok` (deploy contract: the public gate
+  compares the body). Every other endpoint lives under
   `/api/` (`api.add_router("/api/…", router)`). Any other path serves the SPA.
 - **Python.** Fully typed (`mypy --strict`); ruff rules in `pyproject.toml`. Dependencies only
   via `uv add`, so `uv.lock` is always committed with them.
@@ -91,6 +95,8 @@ not something to add to get CI green.
 
 ## Runtime settings
 
-`DJANGO_SECRET_KEY` (required unless `DJANGO_DEBUG=1`), `DJANGO_ALLOWED_HOSTS`
-(comma-separated), `DJANGO_DB_PATH` (SQLite file, `/data/food.sqlite3` in the image),
-`SPA_DIR` (built Angular app).
+`DJANGO_SECRET_KEY` (required unless `DJANGO_DEBUG=1`, or set `DJANGO_SECRET_KEY_FILE` and the
+entrypoint creates and reads that file), `DJANGO_ALLOWED_HOSTS` (comma-separated),
+`DJANGO_DB_PATH` (SQLite file, `/data/food.sqlite3` in the image), `SPA_DIR` (built Angular
+app), `V1_DB_PATH` (v1 `recipes.db`; imported once on start, see `docker-entrypoint.sh`).
+Production values are in `infra/docker-compose.yml`.

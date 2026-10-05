@@ -39,6 +39,12 @@ def _index(title: str | None = None, status: int = 200) -> HttpResponse:
     return HttpResponse(html, content_type="text/html; charset=utf-8", status=status)
 
 
+def healthz(request: HttpRequest) -> HttpResponse:
+    """The deploy contract, same as v1: 200 with the body `ok`. The deploy's public gate compares
+    the body to `ok`, so this is plain text, not JSON, and not part of the API schema."""
+    return HttpResponse("ok", content_type="text/plain; charset=utf-8")
+
+
 def spa(request: HttpRequest) -> HttpResponse:
     """A client route that exists whatever is in the database: `/` and `/recipes/new`."""
     return _index()

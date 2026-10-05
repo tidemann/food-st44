@@ -119,9 +119,11 @@ immediately if it is exposed.
 | Container port | `80` (HTTP) |
 | Docker network | `st44_default`, shared with `nginx-proxy` |
 | Published host ports | None, by design |
-| Environment variables | None |
-| Volumes | Named volume `food-st44-data` at `/data` (SQLite database) |
-| Runtime secrets | None |
+| Image | v2 (Angular + Django), built from `./Dockerfile`, which copies `v2/` |
+| Environment variables | Set in the compose file: `DJANGO_ALLOWED_HOSTS`, `DJANGO_DB_PATH`, `DJANGO_SECRET_KEY_FILE`, `V1_DB_PATH` |
+| Volumes | `food-st44-v2-data` at `/data` (v2 SQLite database, secret key, `v1-imported` marker); `food-st44-data` at `/v1`, **read-only** (the v1 site's `recipes.db`, kept for rollback) |
+| Runtime secrets | None provisioned. The Django secret key is created on first start in `/data/secret_key` |
+| Start-up | `docker-entrypoint.sh`: create the secret key if missing, `migrate`, copy the v1 recipes once (`import_v1_recipes`, same ids), then gunicorn |
 | Restart policy | `unless-stopped` |
 | Hostname | `food.st44.no` |
 | nginx upstream | `http://food-st44:80` |
@@ -149,21 +151,48 @@ summary echoes it, for example:
 previous-image: food-st44=ghcr.io/tidemann/food-st44:<previous-sha>
 ```
 
-Rolling back means re-running the deploy workflow with `image-tag` set to that
-previous SHA — no rebuild, because the previous image is still in GHCR under its
-own SHA tag:
+There is **no** rollback by `image-tag` from CI. `deploy.yml` declares no
+`workflow_dispatch` inputs, and the shared workflow's `image-tag` input does not
+mean "deploy this old tag": it *builds the checked-out commit* and pushes it
+under that tag. Pointed at a previous SHA, it would overwrite the good image in
+GHCR with a build of the current code.
 
-```bash
-gh workflow run deploy.yml --repo tidemann/food-st44 --ref main \
-  -f image-tag=<previous-sha>
-```
+The two rollbacks that work:
 
-Every commit that reached `main` has an immutable SHA tag in GHCR, so any of
-them is a valid target.
+1. **Revert in git (CI).** Revert the bad merge on `main` (a PR, merged by
+   Maria). The deploy workflow builds the reverted source and deploys it. This
+   is the permanent fix and needs nothing on the host.
+2. **Previous compose file (host, fastest).** `deploy.sh` keeps the compose file
+   it replaced as `docker-compose.yml.prev`, with the previous image tag in it.
+   Run as the deploy user on spzmf:
 
-Note that the next push to `main` re-deploys that commit. A rollback is
-therefore a stop-gap: follow it by reverting the bad commit in git, which makes
-the revert the newest build and the rollback permanent.
+   ```bash
+   cd /srv/apps/food-st44/infra
+   cp docker-compose.yml docker-compose.yml.bad
+   cp docker-compose.yml.prev docker-compose.yml
+   docker compose -p food-st44 up -d --force-recreate
+   curl -fsS https://food.st44.no/healthz
+   ```
+
+   The next push to `main` re-deploys `main`, so follow it with the revert
+   (1).
+
+### Rolling back the v2 switch-over
+
+The switch from v1 to v2 left the v1 data where it was: the volume
+`food-st44_food-st44-data`, file `recipes.db`, which v2 only mounts read-only.
+Both rollbacks put the v1 image back on that volume, read-write, with the data
+exactly as it was at the switch. Recipes added or edited on v2 after the switch
+are only in `food-st44_food-st44-v2-data`; they are not copied back.
+
+For the host rollback, do not use `docker-compose.yml.prev`: it is the v1 file
+only until the next deploy to `main`, and after that it is a v2 file. Use
+`docker-compose.v1.yml`, the copy of the v1 compose file saved before the
+switch. Never just change the image in the v2 compose file: v1 would then get
+the v2 volume at `/data`, create an empty `recipes.db` there and still pass
+`/healthz`.
+The full runbook, with the commands Bob runs before and after, is the `cutover`
+document on [ST-492](https://paperclip.st44.no/ST/issues/ST-492).
 
 ## Lessons this route was built from
 

@@ -105,6 +105,6 @@ def test_parse_id_matches_javascript_parseint(raw_id: str, expected: int | None)
 
 
 def test_healthz_and_api_are_unchanged(client: Client) -> None:
-    assert client.get("/healthz").json() == {"status": "ok"}
+    assert client.get("/healthz").content == b"ok"
     assert client.get("/api/recipes/99999").status_code == 404
     assert client.get("/api/recipes/99999")["Content-Type"] == "application/json; charset=utf-8"

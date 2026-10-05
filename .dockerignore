@@ -1,11 +1,14 @@
-.git
-.github
-*.md
-.gitignore
-.dockerignore
-LICENSE
-node_modules/
-data/
-test/
-docs/
-infra/
+# The image is built from the repo root (the shared deploy route builds ./Dockerfile with `.` as
+# context) but only needs v2/. Everything else stays out of the build context.
+*
+!v2/
+v2/**/node_modules
+v2/**/.angular
+v2/**/dist
+v2/**/.venv
+v2/**/__pycache__
+v2/**/.mypy_cache
+v2/**/.ruff_cache
+v2/**/.pytest_cache
+v2/**/db.sqlite3
+v2/frontend/src/app/api/schema.d.ts

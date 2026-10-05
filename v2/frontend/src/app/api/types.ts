@@ -3,8 +3,6 @@
 // schema, re-export openapi.json, and let the compiler show what broke.
 import type { components } from './schema';
 
-export type Health = components['schemas']['Health'];
-
 export type Recipe = components['schemas']['RecipeOut'];
 export type RecipeInput = components['schemas']['RecipeIn'];
 /** 404 body: `{ detail: "Not Found" }`. */

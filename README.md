@@ -2,6 +2,11 @@
 
 The website for **https://food.st44.no**.
 
+> **The live site is the v2 app in `v2/`** (Angular + Django, [ADR 0002](docs/adr/0002-angular-django.md)),
+> built by the root `Dockerfile`. See `AGENTS.md` for how to work on it and `DEPLOY.md` for the
+> deploy and rollback. The rest of this README describes the retired v1 Express site, which is
+> kept for reference; its `Dockerfile` is in git history.
+
 A server-rendered recipe app for one household: Node.js 22 + Express, EJS
 templates, SQLite. See [ADR 0001](docs/adr/0001-stack.md) for the stack
 decision.
