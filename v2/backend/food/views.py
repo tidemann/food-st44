@@ -47,7 +47,8 @@ def healthz(request: HttpRequest) -> HttpResponse:
 
 
 def spa(request: HttpRequest) -> HttpResponse:
-    """A client route that exists whatever is in the database: `/` and `/recipes/new`."""
+    """A client route that exists whatever is in the database: `/`, `/recipes/new` and its
+    photo, link and text pages."""
     return _index()
 
 
