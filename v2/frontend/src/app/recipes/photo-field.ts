@@ -13,6 +13,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { draw } from './bitmap';
 import { formatSize, PHOTO_MAX_MB, PHOTO_TYPES, type PhotoChange, photoProblem } from './photo';
 
 /** A file the field refused before anything was sent (design row 6). */
@@ -22,9 +23,6 @@ export interface Rejected {
   size: string;
   message: string;
 }
-
-/** The preview is drawn no larger than this; a 12-megapixel original stays out of the page. */
-const PREVIEW_EDGE = 800;
 
 /**
  * The photo field on the recipe form (design rows 4–6): "Ta bilde" (phone) and "Velg bilde",
@@ -153,12 +151,4 @@ export class PhotoField {
     this.bitmap()?.close();
     this.bitmap.set(bitmap);
   }
-}
-
-/** The whole photo, at most PREVIEW_EDGE on its long side; CSS crops it to the frame. */
-function draw(bitmap: ImageBitmap, canvas: HTMLCanvasElement): void {
-  const scale = Math.min(1, PREVIEW_EDGE / Math.max(bitmap.width, bitmap.height));
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 }

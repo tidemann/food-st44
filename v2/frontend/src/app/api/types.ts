@@ -11,3 +11,7 @@ export type ApiError = components['schemas']['ErrorOut'];
 export type ValidationErrors = components['schemas']['ValidationErrors'];
 /** `GET /api/auth/me`: who is reading, and whether they may change recipes. */
 export type Me = components['schemas']['MeOut'];
+/** `GET /api/recipes/read-photo`: whether "Les oppskrift fra bilde" is offered (M4). */
+export type PhotoReading = components['schemas']['PhotoReadingOut'];
+/** `POST /api/recipes/read-photo`: the recipe read from a photo, or `readable: false`. */
+export type RecipeDraft = components['schemas']['RecipeDraftOut'];

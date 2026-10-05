@@ -1,0 +1,163 @@
+@if (saving.failed()) {
+  <app-server-error />
+} @else {
+  <div class="wrap">
+    <div class="form-head">
+      <div class="form-head-rule"></div>
+      <h1 #heading tabindex="-1">{{ headline() }}</h1>
+      @if (checking(); as check) {
+        <p>Lest fra bildet {{ check.read }}.</p>
+      } @else if (!unreadable()) {
+        <p>Ta et bilde av oppskriften. Vi fyller ut skjemaet, du leser gjennom og lagrer.</p>
+      }
+    </div>
+
+    @if (checking(); as check) {
+      <!-- Row 9: the normal form, filled in, with the photo beside it. -->
+      <div class="alert check-note">
+        <p class="alert-title">Sjekk teksten før du lagrer</p>
+        <p>
+          Alt under er lest av maskinen og kan ha feil, særlig mengder. Rett det som er galt —
+          ingenting er lagret ennå.
+        </p>
+      </div>
+      <div class="side-by-side check">
+        <figure class="source-photo">
+          <canvas [appBitmap]="bitmap()" role="img" aria-label="Bildet du tok"></canvas>
+          <figcaption>
+            <span>Bildet du tok</span>
+            <button class="link-button" type="button" (click)="again()">Bytt bilde</button>
+          </figcaption>
+        </figure>
+        <app-recipe-form
+          submitLabel="Lagre oppskrift"
+          [initial]="check.draft"
+          [cancelLink]="['/']"
+          [errors]="saving.errors()"
+          [photoOnly]="saving.created() !== null"
+          [busy]="saving.busy()"
+          (save)="saving.create($event)"
+        />
+      </div>
+    } @else if (unreadable(); as file) {
+      <!-- Row 10: could not read. -->
+      <div class="unreadable">
+        <p class="unreadable-lead">
+          Teksten på bildet var for utydelig. Ingenting er lagret, så ingen oppskrift er gått tapt.
+        </p>
+        <div class="source-box unreadable-file">
+          <canvas
+            class="unreadable-preview"
+            [appBitmap]="bitmap()"
+            role="img"
+            aria-label="Bildet du tok"
+          ></canvas>
+          <div>
+            <p class="unreadable-name">{{ file.name }}</p>
+            <p class="unreadable-meta">{{ meta() }}</p>
+          </div>
+        </div>
+        <section class="tips">
+          <h2>Prøv dette</h2>
+          <ul>
+            @for (tip of tips; track tip) {
+              <li>{{ tip }}</li>
+            }
+          </ul>
+        </section>
+        <div class="notice-actions">
+          <button class="btn btn-lg btn-primary" type="button" (click)="again()">
+            Prøv et nytt bilde
+          </button>
+          <a class="btn btn-lg" routerLink="/recipes/new">Skriv den inn selv</a>
+        </div>
+      </div>
+    } @else if (readingFile()) {
+      <!-- Row 8: working, with cancel. -->
+      <div class="reading" role="status">
+        <h2>Leser oppskriften<span class="dots">…</span></h2>
+        <p>Det tar vanligvis under et halvt minutt. Du kan bli stående her.</p>
+      </div>
+      <div class="progress" aria-hidden="true"><span></span></div>
+      <button #cancelButton class="btn btn-lg" type="button" (click)="cancel()">Avbryt</button>
+      <div class="side-by-side">
+        <figure class="source-photo">
+          <canvas [appBitmap]="bitmap()" role="img" aria-label="Bildet du tok"></canvas>
+          <figcaption>Bildet du tok</figcaption>
+        </figure>
+        <div class="skeleton" aria-hidden="true">
+          <span class="sk-label"></span>
+          <span class="sk-field"><i></i></span>
+          <span class="sk-label"></span>
+          <span class="sk-field"><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="sk-label"></span>
+          <span class="sk-field"><i></i><i></i><i></i></span>
+        </div>
+      </div>
+    } @else {
+      <!-- Row 7: take or pick a photo. -->
+      <fieldset class="field source" [class.field-invalid]="pickError()">
+        <legend>Bilde av oppskriften</legend>
+        <p class="field-hint" id="source-hint">
+          En side i en kokebok, et utklipp eller et håndskrevet kort. JPEG, PNG eller WEBP, høyst
+          {{ maxMb }} MB.
+        </p>
+        <input
+          #chooser
+          id="source"
+          type="file"
+          hidden
+          [accept]="accept"
+          (change)="picked(chooser)"
+        />
+        <input
+          #camera
+          id="source-camera"
+          type="file"
+          hidden
+          capture="environment"
+          [accept]="accept"
+          (change)="picked(camera)"
+        />
+        <div
+          class="source-box source-empty"
+          [class.source-over]="dragging()"
+          (dragover)="dragOver($event)"
+          (dragleave)="dragging.set(false)"
+          (drop)="drop($event)"
+        >
+          <span class="plate source-plate" aria-hidden="true"></span>
+          <div class="source-actions">
+            <button class="btn btn-lg source-camera" type="button" (click)="camera.click()">
+              Ta bilde av oppskriften
+            </button>
+            <button
+              class="btn btn-lg source-choose"
+              type="button"
+              [attr.aria-describedby]="pickError() ? 'source-hint source-error' : 'source-hint'"
+              (click)="chooser.click()"
+            >
+              Velg bilde
+            </button>
+            <p class="source-drop">… eller slipp bildefilen her.</p>
+          </div>
+        </div>
+        @if (pickError(); as error) {
+          <p class="field-error" id="source-error" role="alert">{{ error }}</p>
+        }
+      </fieldset>
+
+      <section class="tips">
+        <h2>Dette leses best</h2>
+        <ul>
+          @for (tip of tips; track tip) {
+            <li>{{ tip }}</li>
+          }
+        </ul>
+        <p class="tips-manual">
+          Eller <a routerLink="/recipes/new">skriv oppskriften inn selv</a>.
+        </p>
+      </section>
+    }
+  </div>
+}
