@@ -1,7 +1,7 @@
 import { HttpTestingController, type TestRequest } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { RouterTestingHarness } from '@angular/router/testing';
-import type { Recipe, RecipeDraft } from '../api/types';
+import type { Recipe, RecipeDraft, TextDraft } from '../api/types';
 import {
   answer,
   open,
@@ -25,6 +25,15 @@ const DRAFT: RecipeDraft = {
 };
 const UNREADABLE: RecipeDraft = { readable: false, title: '', ingredients: '', instructions: '' };
 const PASTED = 'Aspargessuppe\n\nIngredienser\n500 g asparges\n\nFremgangsmåte\nKok suppen.';
+const FROM_TEXT: TextDraft = {
+  readable: true,
+  title: 'Aspargessuppe',
+  ingredients: '500 g asparges',
+  instructions: 'Kok suppen.',
+  read_by: 'ai',
+  notice: '',
+};
+const RULES_OFF = 'Lesing med KI er ikke slått på, så teksten er delt opp etter enkle regler.';
 const BLOCKED =
   'Nettstedet ville ikke gi oss siden. Noen nettsteder stenger ute alt som ikke er en ' +
   'nettleser. Lim inn teksten i stedet, eller skriv inn oppskriften selv.';
@@ -258,25 +267,35 @@ describe('RecipeImport', () => {
       expect(title()).toBe('Lim inn oppskrift — food.st44.no');
       expect(text(el.querySelector('label'))).toBe('Teksten til oppskriften');
       expect(field(el, 'text').tagName).toBe('TEXTAREA');
-      expect(text(el.querySelector('button[type="submit"]'))).toBe('Del opp teksten');
+      expect(text(el.querySelector('button[type="submit"]'))).toBe('Les teksten');
     });
 
-    it('sends the text, fills the form and shows the text beside it', async () => {
+    it('sends the text, says it is reading, and "Avbryt" drops the request', async () => {
       const harness = await openHarness('/recipes/new/text');
       const request = send(page(harness), 'text', PASTED, TEXT_URL);
       expect(request.request.body).toEqual({ text: PASTED });
       let el = await settle(harness);
-      expect(text(el.querySelector('button[type="submit"]'))).toBe('Deler opp…');
-      expect(el.querySelector('button[type="submit"]')?.hasAttribute('disabled')).toBe(true);
+      expect(text(el.querySelector('.reading h2'))).toBe('Leser teksten…');
+      expect(text(el.querySelector('.reading p'))).toBe('Det kan ta opptil et halvt minutt.');
+      expect(document.activeElement && text(document.activeElement)).toBe('Avbryt');
 
-      request.flush({
-        readable: true,
-        title: 'Aspargessuppe',
-        ingredients: '500 g asparges',
-        instructions: 'Kok suppen.',
-      });
+      press(el, 'Avbryt');
       el = await settle(harness);
-      expect(text(el.querySelector('.form-head p'))).toBe('Delt opp fra teksten du limte inn.');
+      expect(request.cancelled).toBe(true);
+      expect(field(el, 'text').value).toBe(PASTED);
+    });
+
+    it('fills the form from the AI read and shows the text beside it', async () => {
+      const harness = await openHarness('/recipes/new/text');
+      send(page(harness), 'text', PASTED, TEXT_URL).flush(FROM_TEXT);
+      let el = await settle(harness);
+
+      expect(text(el.querySelector('.form-head p'))).toBe('Lest fra teksten du limte inn.');
+      expect(text(el.querySelector('.check-note p:last-child'))).toBe(
+        'Teksten er lest av KI og kan ha feil. Rett det som er galt — ingenting er lagret ennå.',
+      );
+      expect(el.querySelector('.read-notice')).toBeNull();
+      expect(field(el, 'title').value).toBe('Aspargessuppe');
       expect(field(el, 'ingredients').value).toBe('500 g asparges');
       expect(el.querySelector('.source-text')?.textContent).toBe(PASTED);
       http().expectNone({ url: '/api/recipes' });
@@ -284,6 +303,24 @@ describe('RecipeImport', () => {
       press(el, 'Rett teksten');
       el = await settle(harness);
       expect(field(el, 'text').value).toBe(PASTED);
+    });
+
+    it('says so on the form when the text was split by rules instead', async () => {
+      const harness = await openHarness('/recipes/new/text');
+      send(page(harness), 'text', PASTED, TEXT_URL).flush({
+        ...FROM_TEXT,
+        read_by: 'rules',
+        notice: RULES_OFF,
+      });
+      const el = await settle(harness);
+
+      expect(text(el.querySelector('.form-head p'))).toBe('Delt opp fra teksten du limte inn.');
+      expect(text(el.querySelector('.read-notice'))).toBe(RULES_OFF);
+      expect(text(el.querySelector('.check-note p:last-child'))).toBe(
+        'Teksten er delt opp etter enkle regler, og noe kan ha havnet i feil felt. Rett det ' +
+          'som er galt — ingenting er lagret ennå.',
+      );
+      expect(field(el, 'ingredients').value).toBe('500 g asparges');
     });
 
     it('says so when the text holds no recipe', async () => {
@@ -305,7 +342,7 @@ describe('RecipeImport', () => {
       );
       const el = await settle(harness);
       expect(text(el.querySelector('#text-error'))).toBe('Lim inn teksten til oppskriften.');
-      expect(el.querySelector('button[type="submit"]')?.hasAttribute('disabled')).toBe(false);
+      expect(field(el, 'text').getAttribute('aria-invalid')).toBe('true');
     });
 
     it('says so when the request never reached the API', async () => {

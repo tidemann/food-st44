@@ -197,13 +197,18 @@ def test_a_page_without_recipe_data_is_unreadable(html: str) -> None:
         "fc00::1",
         "::ffff:127.0.0.1",
         "::ffff:10.0.0.1",
+        "64:ff9b::7f00:1",  # NAT64 to 127.0.0.1
+        "64:ff9b::a9fe:a9fe",  # NAT64 to 169.254.169.254
     ],
 )
 def test_private_and_loopback_addresses_are_not_public(address: str) -> None:
     assert not importer.is_public(address)
 
 
-@pytest.mark.parametrize("address", ["93.184.215.14", "2606:2800:21f:cb07:6820:80da:af6b:8b2c"])
+@pytest.mark.parametrize(
+    "address",
+    ["93.184.215.14", "2606:2800:21f:cb07:6820:80da:af6b:8b2c", "64:ff9b::5db8:d70e"],
+)
 def test_public_addresses_are(address: str) -> None:
     assert importer.is_public(address)
 
@@ -581,7 +586,11 @@ def test_one_line_is_a_title() -> None:
     assert importer.split_text("  Mormors eplekake  ") == Draft(title="Mormors eplekake")
 
 
-def test_the_api_splits_text_and_saves_nothing(client: Client, editor: User) -> None:
+def test_the_api_splits_text_by_rules_when_reading_is_off_and_saves_nothing(
+    client: Client, editor: User, settings: Settings
+) -> None:
+    settings.FOOD_AI_PROVIDER = "off"  # AI reading of text: tests/test_reader.py
+
     response = post(client, TEXT, {"text": "Vafler\n\nIngredienser\n4 egg\n\nSlik gjør du\nStek."})
 
     assert response.status_code == 200
@@ -590,5 +599,7 @@ def test_the_api_splits_text_and_saves_nothing(client: Client, editor: User) -> 
         "title": "Vafler",
         "ingredients": "4 egg",
         "instructions": "Stek.",
+        "read_by": "rules",
+        "notice": importer.RULES_READER_OFF,
     }
     assert Recipe.objects.count() == 0

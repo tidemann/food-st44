@@ -15,7 +15,7 @@ import {
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import type { Subscription } from 'rxjs';
-import type { LinkImport, RecipeDraft, RecipeInput, TextImport } from '../api/types';
+import type { LinkImport, RecipeDraft, RecipeInput, TextDraft, TextImport } from '../api/types';
 import { ServerError } from '../pages/server-error';
 import { hostOf, type ImportSource, importFailure, LINK_URL, TEXT_URL } from './import';
 import { newRecipe } from './new-recipe';
@@ -28,7 +28,7 @@ import { hasErrors, RecipeForm } from './recipe-form';
 type Step =
   | { kind: 'enter'; error?: string }
   | { kind: 'fetching' }
-  | { kind: 'check'; draft: RecipeInput }
+  | { kind: 'check'; draft: RecipeInput; readBy: TextDraft['read_by'] | null; notice: string }
   | { kind: 'failed'; heading: string; lead: string };
 
 /** What each source says. */
@@ -41,8 +41,13 @@ const WORDS = {
       'Bruk lenken til selve oppskriften, ikke til forsiden eller et søk.',
       'Virker ikke lenken, kan du kopiere teksten fra siden og lime den inn i stedet.',
     ],
-    check:
-      'Alt under er hentet fra siden og kan ha feil. Rett det som er galt — ingenting er lagret ennå.',
+    fetching: 'Henter oppskriften',
+    wait: 'Det tar som regel bare noen sekunder.',
+    check: {
+      ai: '',
+      rules:
+        'Alt under er hentet fra siden og kan ha feil. Rett det som er galt — ingenting er lagret ennå.',
+    },
     none: {
       heading: 'Fant ingen oppskrift på siden',
       lead: 'Siden har ingen oppskrift vi kan lese. Ingenting er lagret. Kopier teksten fra siden og lim den inn, eller skriv inn oppskriften selv.',
@@ -51,14 +56,19 @@ const WORDS = {
   text: {
     headline: 'Lim inn oppskrift',
     intro:
-      'Lim inn en oppskrift fra en annen app, en e-post eller et dokument. Vi deler den opp, du leser gjennom og lagrer.',
+      'Lim inn en oppskrift fra en annen app, en e-post eller et dokument. Vi fyller ut skjemaet, du leser gjennom og lagrer.',
     tips: [
       'Ta med tittelen på første linje.',
       'Overskrifter som «Ingredienser» og «Fremgangsmåte» gjør det lettere å dele opp teksten.',
       'Én ingrediens per linje, med mengden først.',
     ],
-    check:
-      'Teksten er delt opp etter enkle regler, og noe kan ha havnet i feil felt. Rett det som er galt — ingenting er lagret ennå.',
+    fetching: 'Leser teksten',
+    wait: 'Det kan ta opptil et halvt minutt.',
+    check: {
+      ai: 'Teksten er lest av KI og kan ha feil. Rett det som er galt — ingenting er lagret ennå.',
+      rules:
+        'Teksten er delt opp etter enkle regler, og noe kan ha havnet i feil felt. Rett det som er galt — ingenting er lagret ennå.',
+    },
     none: {
       heading: 'Fant ingen oppskrift i teksten',
       lead: 'Vi fant verken en tittel eller ingredienser. Ingenting er lagret.',
@@ -68,8 +78,9 @@ const WORDS = {
 
 /**
  * `/recipes/new/link` and `/recipes/new/text`: "Hent fra lenke" and "Lim inn tekst" (M5). The
- * API reads the page's recipe data or splits the text, with no AI; the editor checks the
- * filled-in form and nothing is saved before "Lagre oppskrift". Only matched for editors.
+ * API reads the page's recipe data (no AI), or has the text read by the same AI provider as
+ * photos, split by simple rules when that is off or fails. The editor checks the filled-in
+ * form and nothing is saved before "Lagre oppskrift". Only matched for editors.
  */
 @Component({
   selector: 'app-recipe-import',
@@ -93,9 +104,6 @@ export class RecipeImport {
   protected readonly step = signal<Step>({ kind: 'enter' });
   /** The link or the text as typed; kept when the editor goes back to change it. */
   protected readonly value = signal('');
-  /** The text is split at once; the button says so meanwhile. */
-  protected readonly busy = signal(false);
-
   protected readonly words = computed(() => WORDS[this.source()]);
   protected readonly host = computed(() => hostOf(this.value().trim()));
   protected readonly href = computed(() => {
@@ -150,21 +158,19 @@ export class RecipeImport {
 
   protected submit(event: Event): void {
     event.preventDefault();
-    if (this.busy() || this.step().kind === 'fetching') return;
-    const source = this.source();
+    if (this.step().kind === 'fetching') return;
     const value = this.value();
-    if (source === 'link') {
+    this.step.set({ kind: 'fetching' });
+    if (this.source() === 'link') {
       const body: LinkImport = { url: value };
-      this.step.set({ kind: 'fetching' });
       this.send(LINK_URL, body, 'url');
     } else {
       const body: TextImport = { text: value };
-      this.busy.set(true);
       this.send(TEXT_URL, body, 'text');
     }
   }
 
-  /** "Avbryt" while fetching: the request is dropped and the link can be changed. */
+  /** "Avbryt" while fetching: the request is dropped and the link or text can be changed. */
   protected cancel(): void {
     this.request?.unsubscribe();
     this.request = null;
@@ -177,17 +183,20 @@ export class RecipeImport {
   }
 
   private send(url: string, body: LinkImport | TextImport, field: 'url' | 'text'): void {
-    this.request = this.http.post<RecipeDraft>(url, body).subscribe({
-      next: ({ readable, title, ingredients, instructions }) => {
-        this.done();
+    this.request = this.http.post<RecipeDraft | TextDraft>(url, body).subscribe({
+      next: (answer) => {
+        this.request = null;
+        const { readable, title, ingredients, instructions } = answer;
+        const readBy = 'read_by' in answer ? answer.read_by : null;
+        const notice = 'notice' in answer ? answer.notice : '';
         this.step.set(
           readable
-            ? { kind: 'check', draft: { title, ingredients, instructions } }
+            ? { kind: 'check', draft: { title, ingredients, instructions }, readBy, notice }
             : { kind: 'failed', ...this.words().none },
         );
       },
       error: (error: unknown) => {
-        this.done();
+        this.request = null;
         const failure = importFailure(error, field);
         if ('site' in failure) {
           this.step.set({
@@ -200,10 +209,5 @@ export class RecipeImport {
         }
       },
     });
-  }
-
-  private done(): void {
-    this.request = null;
-    this.busy.set(false);
   }
 }

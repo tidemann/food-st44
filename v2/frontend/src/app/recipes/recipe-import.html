@@ -9,6 +9,8 @@
         <p>
           @if (source() === 'link') {
             Hentet fra {{ host() }}.
+          } @else if (checking()?.readBy === 'ai') {
+            Lest fra teksten du limte inn.
           } @else {
             Delt opp fra teksten du limte inn.
           }
@@ -22,7 +24,10 @@
       <!-- Like M4 row 9: the normal form, filled in, with where it came from beside it. -->
       <div class="alert check-note">
         <p class="alert-title">Sjekk teksten før du lagrer</p>
-        <p>{{ words().check }}</p>
+        @if (check.notice) {
+          <p class="read-notice">{{ check.notice }}</p>
+        }
+        <p>{{ check.readBy === 'ai' ? words().check.ai : words().check.rules }}</p>
       </div>
       <div class="side-by-side check">
         <aside class="source-note">
@@ -77,8 +82,8 @@
     } @else if (step().kind === 'fetching') {
       <!-- Like M4 row 8: working, with cancel. -->
       <div class="reading" role="status">
-        <h2>Henter oppskriften<span class="dots">…</span></h2>
-        <p>Det tar som regel bare noen sekunder.</p>
+        <h2>{{ words().fetching }}<span class="dots">…</span></h2>
+        <p>{{ words().wait }}</p>
       </div>
       <button #cancelButton class="btn btn-lg fetching-cancel" type="button" (click)="cancel()">
         Avbryt
@@ -131,17 +136,8 @@
           </div>
         }
         <div class="form-actions">
-          <button
-            class="btn btn-primary btn-lg"
-            type="submit"
-            [disabled]="busy()"
-            [attr.aria-busy]="busy() ? 'true' : null"
-          >
-            @if (source() === 'link') {
-              Hent oppskriften
-            } @else {
-              {{ busy() ? 'Deler opp…' : 'Del opp teksten' }}
-            }
+          <button class="btn btn-primary btn-lg" type="submit">
+            {{ source() === 'link' ? 'Hent oppskriften' : 'Les teksten' }}
           </button>
           <a class="btn btn-lg" routerLink="/recipes/new">Avbryt</a>
         </div>
