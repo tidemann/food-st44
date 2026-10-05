@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from ninja import ModelSchema, Schema
 from pydantic import field_validator
@@ -107,3 +108,13 @@ class ValidationErrors(Schema):
     """422 body: one message per field, keyed by field name, ready to show next to the input."""
 
     errors: dict[str, str]
+
+
+class TextDraftOut(RecipeDraftOut):
+    """The draft from pasted text: read by the AI provider when reading is on, else split by
+    simple rules (food.importer.split_text), and the form says which."""
+
+    # "ai" when the provider read it; "rules" when reading is off or the provider failed.
+    read_by: Literal["ai", "rules"]
+    # Why the rules were used, for the form; empty when read_by is "ai".
+    notice: str

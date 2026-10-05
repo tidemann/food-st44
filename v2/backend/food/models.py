@@ -42,9 +42,13 @@ class Editor(models.Model):
 
 
 class PhotoRead(models.Model):
-    """One "read recipe from photo" sent to a provider (food.reader), so the admin can count
-    them against the cost per photo. Only who, when, which provider and how it went: the photo
-    itself is never stored."""
+    """One recipe read sent to a provider (food.reader), from a photo or from pasted text (M5),
+    so the admin can count them against the cost. Only who, when, what, which provider and how it
+    went: the photo or the text itself is never stored."""
+
+    class Kind(models.TextChoices):
+        PHOTO = "photo", "bilde"
+        TEXT = "text", "tekst"
 
     class Outcome(models.TextChoices):
         READ = "read", "lest"
@@ -53,14 +57,17 @@ class PhotoRead(models.Model):
 
     at = models.DateTimeField(default=timezone.now, verbose_name="tidspunkt")
     editor = models.EmailField(blank=True, verbose_name="redaktør")
+    kind = models.CharField(
+        max_length=10, choices=Kind.choices, default=Kind.PHOTO, verbose_name="fra"
+    )
     provider = models.CharField(max_length=40, verbose_name="leverandør")
     model = models.CharField(max_length=200, blank=True, verbose_name="modell")
     outcome = models.CharField(max_length=20, choices=Outcome.choices, verbose_name="resultat")
 
     class Meta:
         ordering = ("-at",)
-        verbose_name = "lesing fra bilde"
-        verbose_name_plural = "lesinger fra bilde"
+        verbose_name = "lesing med KI"
+        verbose_name_plural = "lesinger med KI"
 
     def __str__(self) -> str:
-        return f"{self.at:%Y-%m-%d %H:%M} {self.provider}: {self.outcome}"
+        return f"{self.at:%Y-%m-%d %H:%M} {self.kind} {self.provider}: {self.outcome}"

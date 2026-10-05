@@ -16,6 +16,7 @@ from food.schemas import (
     RecipeDraftOut,
     RecipeIn,
     RecipeOut,
+    TextDraftOut,
     TextImportIn,
     ValidationErrors,
 )
@@ -91,7 +92,7 @@ def read_recipe_photo(
     return {"readable": draft.readable, **asdict(draft)}
 
 
-# --- importing a recipe from a link or from text, no AI (food.importer) ---
+# --- importing a recipe from a link (no AI) or from text (AI, rules as fallback) ---
 
 
 @router.post(
@@ -126,14 +127,29 @@ def import_recipe_link(
 
 @router.post(
     "/import-text",
-    response={200: RecipeDraftOut, 403: ErrorOut, 422: ValidationErrors},
+    response={200: TextDraftOut, 403: ErrorOut, 422: ValidationErrors},
     auth=editor_auth,
     operation_id="import_recipe_text",
-    summary="Split a recipe pasted as plain text into a draft by simple rules; saves nothing",
+    summary="Read a recipe pasted as plain text into a draft; saves nothing",
+    description=(
+        "Read by the same provider as photos when reading is on (`read_by: ai`, counted like a "
+        "photo read). When reading is off or the provider fails, the text is split by simple "
+        "rules instead (`read_by: rules`) and `notice` says why. 200 with `readable: false` "
+        "when no recipe was found."
+    ),
 )
 def import_recipe_text(request: HttpRequest, payload: TextImportIn) -> dict[str, object]:
+    user = request.user
+    try:
+        draft = reader.read_text(payload.text, editor=user.email if isinstance(user, User) else "")
+    except reader.ReaderOff:
+        notice = importer.RULES_READER_OFF
+    except reader.ProviderError as exc:
+        notice = importer.RULES_TIMED_OUT if exc.timed_out else importer.RULES_FAILED
+    else:
+        return {"readable": draft.readable, **asdict(draft), "read_by": "ai", "notice": ""}
     draft = importer.split_text(payload.text)
-    return {"readable": draft.readable, **asdict(draft)}
+    return {"readable": draft.readable, **asdict(draft), "read_by": "rules", "notice": notice}
 
 
 @router.get(

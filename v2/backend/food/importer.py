@@ -43,7 +43,19 @@ TEXT_TOO_LONG = "Teksten er for lang. Lim inn bare én oppskrift."
 # ports on other machines. A test may widen it.
 ALLOWED_PORTS = frozenset({80, 443})
 MAX_REDIRECTS = 5
+# NAT64's well-known prefix: the last 32 bits are an IPv4 address, which is what gets reached.
+NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
 TEXT_MAX_CHARS = 20_000
+
+# Why pasted text was split by rules, not read by the AI provider (food.reader.read_text).
+RULES_READER_OFF = "Lesing med KI er ikke slått på, så teksten er delt opp etter enkle regler."
+RULES_FAILED = (
+    "Tjenesten som leser teksten svarte ikke som den skulle, så teksten er delt opp etter "
+    "enkle regler."
+)
+RULES_TIMED_OUT = (
+    "Det tok for lang tid å lese teksten med KI, så den er delt opp etter enkle regler."
+)
 USER_AGENT = "Mozilla/5.0 (compatible; food.st44.no recipe import; +https://food.st44.no)"
 
 
@@ -90,6 +102,8 @@ def is_public(address: str) -> bool:
     ip = ipaddress.ip_address(address.split("%", 1)[0])  # an IPv6 zone id is never public
     if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
         ip = ip.ipv4_mapped
+    elif isinstance(ip, ipaddress.IPv6Address) and ip in NAT64:
+        ip = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
     return ip.is_global and not ip.is_multicast
 
 

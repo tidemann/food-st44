@@ -17,5 +17,10 @@ export type PhotoReading = components['schemas']['PhotoReadingOut'];
 export type RecipeDraft = components['schemas']['RecipeDraftOut'];
 /** `POST /api/recipes/import-link` (M5): the page whose recipe data to read. */
 export type LinkImport = components['schemas']['LinkImportIn'];
-/** `POST /api/recipes/import-text` (M5): a recipe pasted as plain text. Both answer a RecipeDraft. */
+/** `POST /api/recipes/import-text` (M5): a recipe pasted as plain text. */
 export type TextImport = components['schemas']['TextImportIn'];
+/**
+ * The import-text answer: a RecipeDraft read by the AI provider (`read_by: 'ai'`), or split by
+ * simple rules when reading is off or failed (`read_by: 'rules'`, `notice` says why).
+ */
+export type TextDraft = components['schemas']['TextDraftOut'];

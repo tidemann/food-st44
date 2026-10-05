@@ -21,7 +21,7 @@ from django.test.utils import override_settings
 from PIL import Image, ImageDraw
 from pytest_django import Settings
 
-from food import photos, reader
+from food import importer, photos, reader
 from food.models import Editor, PhotoRead, Recipe
 
 if TYPE_CHECKING:
@@ -549,6 +549,154 @@ def test_an_anthropic_answer_cut_short_is_a_provider_error(
 # --- switching provider is a setting, not code ---
 
 
+# --- reading pasted text (M5, "Lim inn tekst"): the same provider, rules as the fallback ---
+
+TEXT_URL = "/api/recipes/import-text"
+PASTED = "Vafler\n\nIngredienser\n4 egg\n5 dl melk\n\nSlik gjør du\nStek dem gylne."
+# What food.importer.split_text makes of PASTED: the fallback.
+SPLIT = {"title": "Vafler", "ingredients": "4 egg\n5 dl melk", "instructions": "Stek dem gylne."}
+
+
+def read_text(client: Client, text: str = PASTED) -> "Response":
+    return client.post(TEXT_URL, json.dumps({"text": text}), content_type="application/json")
+
+
+def test_text_through_the_fake_provider_is_read_by_ai_and_counted(
+    client: Client, editor: User, settings: Settings
+) -> None:
+    settings.FOOD_AI_PROVIDER = "fake"
+
+    response = read_text(client)
+
+    assert response.status_code == 200
+    draft = reader.FakeReader.DRAFT
+    assert response.json() == {
+        "readable": True,
+        "title": draft.title,
+        "ingredients": draft.ingredients,
+        "instructions": draft.instructions,
+        "read_by": "ai",
+        "notice": "",
+    }
+    read_row = PhotoRead.objects.get()
+    assert (read_row.kind, read_row.editor, read_row.provider, read_row.outcome) == (
+        PhotoRead.Kind.TEXT,
+        "editor@example.com",
+        "fake",
+        PhotoRead.Outcome.READ,
+    )
+    assert Recipe.objects.count() == 0
+
+
+def test_text_with_no_recipe_in_it_could_not_be_read(
+    client: Client, editor: User, settings: Settings
+) -> None:
+    settings.FOOD_AI_PROVIDER = "fake"
+
+    response = read_text(client, "Bare én linje")
+
+    assert response.status_code == 200
+    assert response.json()["readable"] is False
+    assert response.json()["read_by"] == "ai"
+    assert PhotoRead.objects.get().outcome == PhotoRead.Outcome.UNREADABLE
+
+
+def test_text_is_split_by_rules_when_reading_is_off_and_not_counted(
+    client: Client, editor: User
+) -> None:
+    response = read_text(client)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "readable": True,
+        **SPLIT,
+        "read_by": "rules",
+        "notice": importer.RULES_READER_OFF,
+    }
+    assert not PhotoRead.objects.exists()
+    assert Recipe.objects.count() == 0
+
+
+def test_text_is_split_by_rules_when_the_provider_is_not_configured(
+    client: Client, editor: User, settings: Settings
+) -> None:
+    settings.FOOD_AI_PROVIDER = "anthropic"  # and no key
+
+    assert read_text(client).json()["notice"] == importer.RULES_READER_OFF
+
+
+@pytest.mark.parametrize(
+    ("error", "notice"),
+    [
+        (anthropic.APITimeoutError(ANTHROPIC_REQUEST), importer.RULES_TIMED_OUT),
+        (anthropic.APIConnectionError(request=ANTHROPIC_REQUEST), importer.RULES_FAILED),
+        (anthropic_status(anthropic.RateLimitError, 429), importer.RULES_FAILED),
+    ],
+)
+def test_text_falls_back_to_rules_when_the_provider_fails(
+    client: Client, editor: User, claude: FakeAnthropic, error: Exception, notice: str
+) -> None:
+    claude.error = error
+
+    response = read_text(client)
+
+    assert response.status_code == 200
+    assert response.json() == {"readable": True, **SPLIT, "read_by": "rules", "notice": notice}
+    # The failed read was sent, so it counts.
+    read_row = PhotoRead.objects.get()
+    assert (read_row.kind, read_row.outcome) == (PhotoRead.Kind.TEXT, PhotoRead.Outcome.FAILED)
+    assert Recipe.objects.count() == 0
+
+
+def test_text_falls_back_to_rules_when_the_answer_is_not_json(
+    client: Client, editor: User, claude: FakeAnthropic
+) -> None:
+    claude.text = "Here is your recipe!"
+
+    response = read_text(client)
+
+    assert response.json()["read_by"] == "rules"
+    assert response.json()["notice"] == importer.RULES_FAILED
+
+
+def test_anthropic_gets_the_text_as_a_text_block_with_the_text_prompt(
+    client: Client, editor: User, claude: FakeAnthropic
+) -> None:
+    response = read_text(client)
+
+    assert response.json()["read_by"] == "ai"
+    assert response.json()["title"] == "Fiskeboller i hvit saus"
+    assert claude.options == {"api_key": "sk-ant-test", "timeout": 25.0, "max_retries": 0}
+    assert claude.sent["model"] == "claude-haiku-4-5"
+    assert claude.sent["system"] == reader.TEXT_PROMPT
+    assert claude.sent["messages"] == [
+        {"role": "user", "content": [{"type": "text", "text": PASTED}]}
+    ]
+
+
+def test_openai_compatible_gets_the_text_as_the_user_message(
+    client: Client, editor: User, provider: FakeProvider
+) -> None:
+    response = read_text(client)
+
+    assert response.json()["read_by"] == "ai"
+    assert response.json()["title"] == "Mormors kjøttkaker"
+    sent = provider.sent()
+    assert sent["messages"] == [
+        {"role": "system", "content": reader.TEXT_PROMPT},
+        {"role": "user", "content": PASTED},
+    ]
+
+
+def test_text_reading_is_for_editors_only(client: Client, settings: Settings) -> None:
+    settings.FOOD_AI_PROVIDER = "fake"
+
+    assert read_text(client).status_code == 403
+    sign_in_as(client, "guest@example.com", editor=False)
+    assert read_text(client).status_code == 403
+    assert not PhotoRead.objects.exists()
+
+
 def test_switching_provider_by_settings_only(
     client: Client,
     editor: User,
@@ -589,8 +737,8 @@ def test_the_admin_shows_the_cost_per_photo_and_the_count(
 ) -> None:
     settings.FOOD_AI_PROVIDER = "fake"
     settings.FOOD_AI_COST_PER_PHOTO = "ca. 0,02 kr"
-    for _ in range(3):
-        PhotoRead.objects.create(provider="fake", outcome=PhotoRead.Outcome.READ)
+    for kind in (PhotoRead.Kind.PHOTO, PhotoRead.Kind.PHOTO, PhotoRead.Kind.TEXT):
+        PhotoRead.objects.create(kind=kind, provider="fake", outcome=PhotoRead.Outcome.READ)
     user = sign_in_as(client, "stig@example.com", editor=False)
     user.is_staff = user.is_superuser = True
     user.save()
@@ -601,6 +749,7 @@ def test_the_admin_shows_the_cost_per_photo_and_the_count(
     page = response.content.decode()
     assert "Kostnad per bilde: <strong>ca. 0,02 kr</strong>" in page
     assert "Lesinger i alt: <strong>3</strong>" in page
+    assert "av dem fra tekst: <strong>1</strong>" in page
     assert "Leverandør: <strong>fake</strong>" in page
     # Read-only: nothing to add, and a read cannot be changed or deleted.
     assert client.get("/api/admin/food/photoread/add/").status_code == 403

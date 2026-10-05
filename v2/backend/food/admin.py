@@ -56,11 +56,12 @@ class EditorAdmin(_EditorAdminBase):
 
 @admin.register(PhotoRead, site=site)
 class PhotoReadAdmin(_PhotoReadAdminBase):
-    """Every "read recipe from photo", read-only: the count to set against the cost per photo
-    (FOOD_AI_COST_PER_PHOTO), shown in a line above the list."""
+    """Every recipe read by the provider, from a photo or from text, read-only: the count to set
+    against the cost per photo (FOOD_AI_COST_PER_PHOTO), shown in a line above the list. A text
+    read costs less than a photo; the count is the upper bound."""
 
-    list_display = ("at", "editor", "provider", "model", "outcome")
-    list_filter = ("provider", "outcome")
+    list_display = ("at", "editor", "kind", "provider", "model", "outcome")
+    list_filter = ("kind", "provider", "outcome")
     date_hierarchy = "at"
 
     def has_add_permission(self, request: HttpRequest) -> bool:
@@ -82,6 +83,7 @@ class PhotoReadAdmin(_PhotoReadAdminBase):
             or (reading.cost if reading else "")
             or "ikke oppgitt",
             "photo_read_count": PhotoRead.objects.count(),
+            "text_read_count": PhotoRead.objects.filter(kind=PhotoRead.Kind.TEXT).count(),
             **(extra_context or {}),
         }
         return super().changelist_view(request, context)

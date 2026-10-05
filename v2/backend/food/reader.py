@@ -1,16 +1,18 @@
-"""Read a recipe from a photo of a paper recipe: a draft for the "Ny oppskrift" form.
+"""Read a recipe from a photo of a paper recipe, or from pasted text (M5): a draft for the
+"Ny oppskrift" form.
 
 One interface, `RecipeReader`, and a provider chosen by settings only (FOOD_AI_PROVIDER, see
 config.settings): `off`, `fake`, `anthropic` for Claude through Anthropic's own Messages API,
 or `openai_compatible` for any chat API that takes images the way OpenAI's does. Nothing is
-saved but a PhotoRead row (who, when, which provider, how it went) for the admin's count: not
-the draft, and never the photo, which only goes to the provider.
+saved but a PhotoRead row (who, when, photo or text, which provider, how it went) for the
+admin's count: not the draft, and never the photo or the text, which only go to the provider.
 """
 
 import base64
 import json
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from io import BytesIO
 from typing import IO, Any, Protocol
@@ -41,6 +43,17 @@ Answer with one JSON object and nothing else:
 {"readable": true, "title": "...", "ingredients": ["one line per ingredient, amount first"],
  "instructions": ["one string per step or paragraph"]}
 If the image holds no recipe, or too little of it can be read, answer {"readable": false}.
+"""
+
+TEXT_PROMPT = """\
+The user's message is a recipe pasted as plain text from another app, an e-mail or a document.
+Split it into the recipe's title, ingredients and instructions. Keep the recipe's own words and
+language: do not translate, do not rewrite, and do not add anything that is not in the text.
+Leave out what is not part of the recipe (ads, comments, links, nutrition tables).
+Answer with one JSON object and nothing else:
+{"readable": true, "title": "...", "ingredients": ["one line per ingredient, amount first"],
+ "instructions": ["one string per step or paragraph"]}
+If the text holds no recipe, answer {"readable": false}.
 """
 
 
@@ -83,10 +96,15 @@ class RecipeReader(Protocol):
         """The recipe in the photo, or UNREADABLE. ProviderError if the provider failed."""
         ...
 
+    def read_text(self, text: str) -> Draft:
+        """The recipe in pasted text, or UNREADABLE. ProviderError if the provider failed."""
+        ...
+
 
 class FakeReader:
     """No network, no cost: always the same recipe, so tests and a local demo can run the whole
-    flow. A photo of one plain colour (nothing on it) gives UNREADABLE, to show that screen."""
+    flow. A photo of one plain colour (nothing on it), or text of a single line, gives
+    UNREADABLE, to show that screen."""
 
     name = "fake"
     model = ""
@@ -109,6 +127,10 @@ class FakeReader:
         shades = [shade for shade, count in enumerate(histogram) if count]
         return UNREADABLE if shades[-1] - shades[0] < 8 else self.DRAFT
 
+    def read_text(self, text: str) -> Draft:
+        lines = [line for line in text.splitlines() if line.strip()]
+        return UNREADABLE if len(lines) < 2 else self.DRAFT
+
 
 class OpenAICompatibleReader:
     """POST {base_url}/chat/completions with the photo as a data: URL. Works with OpenAI and
@@ -126,17 +148,23 @@ class OpenAICompatibleReader:
 
     def read(self, jpeg: bytes) -> Draft:
         image_url = "data:image/jpeg;base64," + base64.b64encode(jpeg).decode()
+        return self._ask(
+            PROMPT,
+            [
+                {"type": "text", "text": "Read the recipe in this photo as JSON."},
+                {"type": "image_url", "image_url": {"url": image_url}},
+            ],
+        )
+
+    def read_text(self, text: str) -> Draft:
+        return self._ask(TEXT_PROMPT, text)
+
+    def _ask(self, system: str, content: object) -> Draft:
         body = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": PROMPT},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Read the recipe in this photo as JSON."},
-                        {"type": "image_url", "image_url": {"url": image_url}},
-                    ],
-                },
+                {"role": "system", "content": system},
+                {"role": "user", "content": content},
             ],
             "response_format": {"type": "json_object"},
         }
@@ -186,29 +214,33 @@ class AnthropicReader:
         self.timeout = timeout
 
     def read(self, jpeg: bytes) -> Draft:
+        return self._ask(
+            PROMPT,
+            [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": base64.standard_b64encode(jpeg).decode(),
+                    },
+                },
+                {"type": "text", "text": "Read the recipe in this photo as JSON."},
+            ],
+        )
+
+    def read_text(self, text: str) -> Draft:
+        return self._ask(TEXT_PROMPT, [{"type": "text", "text": text}])
+
+    def _ask(self, system: str, content: list[anthropic.types.ContentBlockParam]) -> Draft:
         # Made here, not in __init__: get_reader runs on every "is the button on?" request.
         client = anthropic.Anthropic(api_key=self.api_key, timeout=self.timeout, max_retries=0)
         try:
             message = client.messages.create(
                 model=self.model,
                 max_tokens=self.MAX_TOKENS,
-                system=PROMPT,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": "image/jpeg",
-                                    "data": base64.standard_b64encode(jpeg).decode(),
-                                },
-                            },
-                            {"type": "text", "text": "Read the recipe in this photo as JSON."},
-                        ],
-                    }
-                ],
+                system=system,
+                messages=[{"role": "user", "content": content}],
             )
         except anthropic.APITimeoutError as exc:  # before APIConnectionError: a subclass of it
             raise ProviderError("timed out", timed_out=True) from exc
@@ -287,15 +319,31 @@ def read_photo(source: IO[bytes], editor: str) -> Draft:
     if reader is None:
         raise ReaderOff(OFF)
     jpeg = photos.for_reading(source)
+    return _counted(reader, PhotoRead.Kind.PHOTO, editor, lambda: reader.read(jpeg))
+
+
+def read_text(text: str, editor: str) -> Draft:
+    """Read the recipe in pasted text (M5, "Lim inn tekst"). ReaderOff when reading is off,
+    ProviderError when the provider failed: the caller then splits the text by rules."""
+    reader = get_reader()
+    if reader is None:
+        raise ReaderOff(OFF)
+    return _counted(reader, PhotoRead.Kind.TEXT, editor, lambda: reader.read_text(text))
+
+
+def _counted(
+    reader: RecipeReader, kind: PhotoRead.Kind, editor: str, read: Callable[[], Draft]
+) -> Draft:
+    """One read sent to the provider, counted for the admin however it went."""
     outcome = PhotoRead.Outcome.FAILED
     try:
-        draft = reader.read(jpeg)
+        draft = read()
         outcome = PhotoRead.Outcome.READ if draft.readable else PhotoRead.Outcome.UNREADABLE
         return draft
     except ProviderError as exc:
-        log.warning("reading a recipe photo with %s failed: %s", reader.name, exc)
+        log.warning("reading a recipe %s with %s failed: %s", kind, reader.name, exc)
         raise
     finally:
         PhotoRead.objects.create(
-            editor=editor, provider=reader.name, model=reader.model, outcome=outcome
+            editor=editor, kind=kind, provider=reader.name, model=reader.model, outcome=outcome
         )
