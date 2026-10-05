@@ -56,6 +56,15 @@ Image (from the repo root): `docker build -t food-v2 . && docker run --rm -p 808
 then `curl localhost:8080/healthz`. `infra/smoke-deploy.sh food-v2` runs it through the deploy
 compose file with a v1 volume (CI only, never on the server).
 
+## Deploy
+
+Every push to `main` that touches `v2/**`, `Dockerfile` or `infra/**` deploys live
+(`.github/workflows/deploy.yml`). The old `v2/**` paths-ignore is gone, so a v2 merge is no
+longer safe. Only Markdown, `docs/**` and the retired v1 paths skip the deploy. Do not merge
+without Maria's go. The host `deploy.sh` gate runs
+`docker exec food-st44 wget -qO- http://food-st44:80/healthz` and expects `ok`, so the
+runtime image must ship `wget` (`infra/smoke-deploy.sh` runs the same probe in CI).
+
 ## Rules CI enforces
 
 Everything in `.github/workflows/v2.yml` must be green. Do not weaken a rule, add an ignore,
