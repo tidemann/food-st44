@@ -15,6 +15,8 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("", spa),
     path("", api.urls),
     re_path(r"^recipes/new/?$", spa),
+    # From a photo (M4), a link or pasted text (M5).
+    re_path(r"^recipes/new/(?:photo|link|text)/?$", spa),
     re_path(r"^recipes/(?P<raw_id>[^/]+)/?$", recipe_detail),
     re_path(r"^recipes/(?P<raw_id>[^/]+)/(?:edit|delete)/?$", recipe_action),
     # Recipe photos (food.photos), stored next to the database rather than built into the image.

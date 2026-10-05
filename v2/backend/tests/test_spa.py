@@ -34,7 +34,20 @@ def recipe() -> Recipe:
     return Recipe.objects.create(title="Kjøttkaker i brun saus & <potet>", ingredients="x")
 
 
-@pytest.mark.parametrize("path", ["/", "/?q=", "/?q=k%C3%A5l", "/recipes/new", "/recipes/new/"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/",
+        "/?q=",
+        "/?q=k%C3%A5l",
+        "/recipes/new",
+        "/recipes/new/",
+        # M4 and M5: "new" is not a recipe id here either.
+        "/recipes/new/photo",
+        "/recipes/new/link",
+        "/recipes/new/text/",
+    ],
+)
 def test_fixed_client_routes_are_200_with_the_default_title(client: Client, path: str) -> None:
     response = client.get(path)
 
