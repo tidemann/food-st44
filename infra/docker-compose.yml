@@ -69,6 +69,8 @@ services:
     restart: unless-stopped
     # Not the app's entrypoint: no migrate, no import, no secret key.
     entrypoint: ["python", "manage.py", "backup", "/backups", "--nightly"]
+    # Python as PID 1 ignores SIGTERM; SIGINT stops it at once instead of after the 10 s kill.
+    stop_signal: SIGINT
     environment:
       DJANGO_DB_PATH: /data/food.sqlite3
     volumes:

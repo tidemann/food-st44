@@ -118,7 +118,7 @@ for i in $(seq 1 30); do
   [ "$i" != 30 ] || { echo '::error::the backup container wrote no archive'; exit 1; }
   sleep 1
 done
-tar -tzf "$archive" | grep -qx food.sqlite3
+tar -tzf "$archive" | grep -x food.sqlite3 >/dev/null
 
 # The import runs once: a recipe deleted on v2 stays deleted across a restart.
 django 'from food.models import Recipe; Recipe.objects.filter(pk=1).delete()'
