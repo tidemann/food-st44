@@ -15,3 +15,7 @@ export type Me = components['schemas']['MeOut'];
 export type PhotoReading = components['schemas']['PhotoReadingOut'];
 /** `POST /api/recipes/read-photo`: the recipe read from a photo, or `readable: false`. */
 export type RecipeDraft = components['schemas']['RecipeDraftOut'];
+/** `POST /api/recipes/import-link` (M5): the page whose recipe data to read. */
+export type LinkImport = components['schemas']['LinkImportIn'];
+/** `POST /api/recipes/import-text` (M5): a recipe pasted as plain text. Both answer a RecipeDraft. */
+export type TextImport = components['schemas']['TextImportIn'];

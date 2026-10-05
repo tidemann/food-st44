@@ -7,6 +7,7 @@ import { RecipeDelete } from './recipes/recipe-delete';
 import { RecipeDetail } from './recipes/recipe-detail';
 import { RecipeEdit } from './recipes/recipe-edit';
 import { RecipeFromPhoto } from './recipes/recipe-from-photo';
+import { RecipeImport } from './recipes/recipe-import';
 import { RecipeList } from './recipes/recipe-list';
 import { RecipeNew } from './recipes/recipe-new';
 
@@ -24,6 +25,21 @@ export const routes: Routes = [
     canMatch: [editorOnly, readingAvailable],
   },
   { path: 'recipes/new/photo', redirectTo: 'recipes/new' },
+  // M5: from a link or pasted text. No AI and no switch: there for every editor.
+  {
+    path: 'recipes/new/link',
+    component: RecipeImport,
+    canMatch: [editorOnly],
+    data: { source: 'link' },
+  },
+  { path: 'recipes/new/link', redirectTo: 'recipes/new' },
+  {
+    path: 'recipes/new/text',
+    component: RecipeImport,
+    canMatch: [editorOnly],
+    data: { source: 'text' },
+  },
+  { path: 'recipes/new/text', redirectTo: 'recipes/new' },
   { path: 'recipes/:id', component: RecipeDetail },
   { path: 'recipes/:id/edit', component: RecipeEdit, canMatch: [editorOnly] },
   { path: 'recipes/:id/edit', component: NoAccess },
