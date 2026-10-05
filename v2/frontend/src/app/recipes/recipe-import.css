@@ -1,0 +1,82 @@
+/* "Hent fra lenke" and "Lim inn tekst" (M5). The rest comes from recipe-from-photo.css (M4). */
+
+.import-entry {
+  max-width: 46rem;
+  padding-top: 30px;
+}
+
+.import-entry .form-actions {
+  margin-top: 24px;
+}
+
+.import-entry + .tips {
+  margin-top: 46px;
+}
+
+.fetching-cancel {
+  margin: 26px 0 80px;
+}
+
+/* ---------- check: where the recipe came from, beside the form ---------- */
+.check .source-note {
+  grid-column: 2;
+  grid-row: 1;
+  margin-top: 30px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+
+.source-label {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.source-link {
+  margin: 0 0 14px;
+  font-family: var(--disp);
+  font-size: 20px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.source-link a {
+  color: var(--ink);
+}
+
+.source-text {
+  max-height: 32rem;
+  overflow: auto;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  background: var(--tint);
+  border: 1px solid var(--rule);
+  font-family: var(--ui);
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--soft);
+}
+
+.source-note .link-button {
+  font-size: 13.5px;
+}
+
+.unreadable-meta {
+  overflow-wrap: anywhere;
+}
+
+@media (width <= 760px) {
+  .check .source-note {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 10px;
+  }
+
+  .source-text {
+    max-height: 14rem;
+  }
+}

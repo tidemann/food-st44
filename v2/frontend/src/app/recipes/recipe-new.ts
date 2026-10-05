@@ -9,8 +9,9 @@ import { READING_URL } from './read-photo';
 import { hasErrors, RecipeForm } from './recipe-form';
 
 /**
- * `/recipes/new`: S-NEW and S-NEW-ERR (§2.7, §2.8), with the photo field (M3) and, when reading
- * is on, "Les oppskrift fra bilde" at the top (M4, design row 7).
+ * `/recipes/new`: S-NEW and S-NEW-ERR (§2.7, §2.8), with the photo field (M3) and, at the top,
+ * "Hent fra lenke" and "Lim inn tekst" (M5), and "Les oppskrift fra bilde" when reading is on
+ * (M4, design row 7).
  */
 @Component({
   selector: 'app-recipe-new',
@@ -25,12 +26,22 @@ import { hasErrors, RecipeForm } from './recipe-form';
           <h1>Ny oppskrift</h1>
           <p>Tittel og ingredienser må fylles ut. Resten kan du legge til siden.</p>
         </div>
-        @if (canRead()) {
-          <p class="read-photo">
-            <a class="btn" routerLink="/recipes/new/photo">Les oppskrift fra bilde</a>
-            <span>Har du oppskriften på papir? Ta et bilde, så fyller vi ut skjemaet.</span>
+        <div class="import-from">
+          <p>
+            @if (canRead()) {
+              Har du oppskriften på papir, på nettet eller i en annen app? Så fyller vi ut skjemaet.
+            } @else {
+              Har du oppskriften på nettet eller i en annen app? Så fyller vi ut skjemaet.
+            }
           </p>
-        }
+          <div class="import-actions">
+            @if (canRead()) {
+              <a class="btn" routerLink="/recipes/new/photo">Les oppskrift fra bilde</a>
+            }
+            <a class="btn" routerLink="/recipes/new/link">Hent fra lenke</a>
+            <a class="btn" routerLink="/recipes/new/text">Lim inn tekst</a>
+          </div>
+        </div>
         <app-recipe-form
           submitLabel="Lagre oppskrift"
           [cancelLink]="['/']"

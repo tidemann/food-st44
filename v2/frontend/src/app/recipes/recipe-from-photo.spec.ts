@@ -91,7 +91,7 @@ describe('RecipeFromPhoto', () => {
   describe('the button on "Ny oppskrift"', () => {
     it('is at the top of the form when reading is on', async () => {
       const el = await open('/recipes/new', { reading: { available: true } });
-      const link = el.querySelector('.read-photo a');
+      const link = el.querySelector('.import-from a');
       expect([text(link), link?.getAttribute('href')]).toEqual([
         'Les oppskrift fra bilde',
         '/recipes/new/photo',
@@ -99,6 +99,9 @@ describe('RecipeFromPhoto', () => {
       // Above the form, not in the top bar.
       expect(link?.compareDocumentPosition(field(el, 'title'))).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(text(el.querySelector('.import-from p'))).toBe(
+        'Har du oppskriften på papir, på nettet eller i en annen app? Så fyller vi ut skjemaet.',
       );
     });
 
@@ -108,7 +111,7 @@ describe('RecipeFromPhoto', () => {
     ])('is not there when %s', async (_case, reading) => {
       const el = await open('/recipes/new', { reading });
       expect(el.querySelector('form')).not.toBeNull();
-      expect(el.querySelector('.read-photo')).toBeNull();
+      expect(el.querySelector('a[href="/recipes/new/photo"]')).toBeNull();
     });
   });
 

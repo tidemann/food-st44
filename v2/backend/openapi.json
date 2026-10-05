@@ -346,6 +346,141 @@
         ]
       }
     },
+    "/api/recipes/import-link": {
+      "post": {
+        "operationId": "import_recipe_link",
+        "summary": "Read the schema.org recipe on a web page into a draft; saves nothing",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDraftOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "200 with `readable: false` when the page has no recipe data. 422 for a link we do not fetch (not http/https, another port, a private address). 502 when the site could not be fetched or refused; 504 when it was too slow.",
+        "tags": [
+          "recipes"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkImportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
+    },
+    "/api/recipes/import-text": {
+      "post": {
+        "operationId": "import_recipe_text",
+        "summary": "Split a recipe pasted as plain text into a draft by simple rules; saves nothing",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDraftOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "recipes"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextImportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
+    },
     "/api/recipes/{recipe_id}": {
       "get": {
         "operationId": "get_recipe",
@@ -814,7 +949,7 @@
         "type": "object"
       },
       "RecipeDraftOut": {
-        "description": "A recipe read from a photo, for the \"Ny oppskrift\" form to fill in. Nothing is saved:\nthe editor checks it and saves it with POST /api/recipes like any other.",
+        "description": "A recipe read from a photo, a link or pasted text, for the \"Ny oppskrift\" form to fill\nin. Nothing is saved: the editor checks it and saves it with POST /api/recipes like any\nother.",
         "properties": {
           "readable": {
             "title": "Readable",
@@ -840,6 +975,32 @@
           "instructions"
         ],
         "title": "RecipeDraftOut",
+        "type": "object"
+      },
+      "LinkImportIn": {
+        "properties": {
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "LinkImportIn",
+        "type": "object"
+      },
+      "TextImportIn": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TextImportIn",
         "type": "object"
       }
     },

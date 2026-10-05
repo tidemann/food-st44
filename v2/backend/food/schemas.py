@@ -4,7 +4,7 @@ from ninja import ModelSchema, Schema
 from pydantic import field_validator
 from pydantic_core import PydanticCustomError
 
-from food import photos
+from food import importer, photos
 from food.models import Recipe
 
 
@@ -63,11 +63,36 @@ class PhotoReadingOut(Schema):
     available: bool
 
 
-class RecipeDraftOut(Schema):
-    """A recipe read from a photo, for the "Ny oppskrift" form to fill in. Nothing is saved:
-    the editor checks it and saves it with POST /api/recipes like any other."""
+class LinkImportIn(Schema):
+    # The page with the recipe. "matprat.no/…" without a scheme is taken as https://.
+    url: str
 
-    # False when no recipe could be read from the photo; the text fields are then empty.
+    @field_validator("url")
+    @classmethod
+    def _url(cls, value: str) -> str:
+        value = _required(value, importer.BAD_URL)
+        return value if "://" in value else "https://" + value
+
+
+class TextImportIn(Schema):
+    # A recipe as plain text, pasted from another app.
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def _text(cls, value: str) -> str:
+        value = _required(value, importer.NO_TEXT)
+        if len(value) > importer.TEXT_MAX_CHARS:
+            raise PydanticCustomError("too_long", importer.TEXT_TOO_LONG)
+        return value
+
+
+class RecipeDraftOut(Schema):
+    """A recipe read from a photo, a link or pasted text, for the "Ny oppskrift" form to fill
+    in. Nothing is saved: the editor checks it and saves it with POST /api/recipes like any
+    other."""
+
+    # False when no recipe could be read; the text fields are then empty.
     readable: bool
     title: str
     ingredients: str  # newline-separated, like RecipeIn

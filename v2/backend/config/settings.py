@@ -93,6 +93,14 @@ FOOD_AI_TIMEOUT = float(os.environ.get("FOOD_AI_TIMEOUT", "25"))
 # Unset with anthropic and its default model, the admin shows "ca. $0.007 per bilde".
 FOOD_AI_COST_PER_PHOTO = os.environ.get("FOOD_AI_COST_PER_PHOTO", "")
 
+# --- Importing a recipe from a link (food.importer) ---
+
+# Seconds for the whole fetch, redirects included: well below gunicorn's 30 s worker timeout.
+FOOD_IMPORT_TIMEOUT = float(os.environ.get("FOOD_IMPORT_TIMEOUT", "10"))
+# The most of a page we read (after decompression). A recipe page with all its scripts is
+# rarely over 1 MB.
+FOOD_IMPORT_MAX_BYTES = 5 * 1024 * 1024
+
 LANGUAGE_CODE = "nb"
 TIME_ZONE = "Europe/Oslo"
 USE_I18N = True

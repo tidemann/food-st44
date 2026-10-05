@@ -26,12 +26,9 @@
   margin-bottom: 20px;
 }
 
-/* "Les oppskrift fra bilde" at the top of S-NEW (M4, design row 7). */
-.read-photo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 16px;
+/* "Les oppskrift fra bilde" (M4, design row 7), "Hent fra lenke" and "Lim inn tekst" (M5) at
+   the top of S-NEW. */
+.import-from {
   max-width: 46rem;
   margin: 26px 0 0;
   padding: 16px 20px;
@@ -41,7 +38,17 @@
   color: var(--soft);
 }
 
-.read-photo .btn {
+.import-from p {
+  margin: 0 0 12px;
+}
+
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.import-actions .btn {
   background: var(--paper);
 }
 

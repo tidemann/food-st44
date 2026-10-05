@@ -1,0 +1,163 @@
+@if (saving.failed()) {
+  <app-server-error />
+} @else {
+  <div class="wrap">
+    <div class="form-head">
+      <div class="form-head-rule"></div>
+      <h1 #heading tabindex="-1">{{ headline() }}</h1>
+      @if (checking()) {
+        <p>
+          @if (source() === 'link') {
+            Hentet fra {{ host() }}.
+          } @else {
+            Delt opp fra teksten du limte inn.
+          }
+        </p>
+      } @else if (!failed()) {
+        <p>{{ words().intro }}</p>
+      }
+    </div>
+
+    @if (checking(); as check) {
+      <!-- Like M4 row 9: the normal form, filled in, with where it came from beside it. -->
+      <div class="alert check-note">
+        <p class="alert-title">Sjekk teksten før du lagrer</p>
+        <p>{{ words().check }}</p>
+      </div>
+      <div class="side-by-side check">
+        <aside class="source-note">
+          @if (source() === 'link') {
+            <p class="source-label">Hentet fra</p>
+            <p class="source-link">
+              <a [href]="href()" target="_blank" rel="noopener noreferrer">{{ host() }}</a>
+            </p>
+            <button class="link-button" type="button" (click)="again()">Bytt lenke</button>
+          } @else {
+            <p class="source-label">Teksten du limte inn</p>
+            <pre class="source-text">{{ value() }}</pre>
+            <button class="link-button" type="button" (click)="again()">Rett teksten</button>
+          }
+        </aside>
+        <app-recipe-form
+          submitLabel="Lagre oppskrift"
+          [initial]="check.draft"
+          [cancelLink]="['/']"
+          [errors]="saving.errors()"
+          [photoOnly]="saving.created() !== null"
+          [busy]="saving.busy()"
+          (save)="saving.create($event)"
+        />
+      </div>
+    } @else if (failed(); as failure) {
+      <!-- Like M4 row 10: what went wrong, and the ways on. -->
+      <div class="unreadable">
+        <p class="unreadable-lead">{{ failure.lead }}</p>
+        @if (source() === 'link') {
+          <div class="source-box unreadable-file">
+            <div>
+              <p class="unreadable-name">{{ host() }}</p>
+              <p class="unreadable-meta">{{ value().trim() }}</p>
+            </div>
+          </div>
+        }
+        <div class="notice-actions">
+          @if (source() === 'link') {
+            <button class="btn btn-lg btn-primary" type="button" (click)="again()">
+              Prøv en annen lenke
+            </button>
+            <a class="btn btn-lg" routerLink="/recipes/new/text">Lim inn tekst</a>
+          } @else {
+            <button class="btn btn-lg btn-primary" type="button" (click)="again()">
+              Rett teksten
+            </button>
+          }
+          <a class="btn btn-lg" routerLink="/recipes/new">Skriv den inn selv</a>
+        </div>
+      </div>
+    } @else if (step().kind === 'fetching') {
+      <!-- Like M4 row 8: working, with cancel. -->
+      <div class="reading" role="status">
+        <h2>Henter oppskriften<span class="dots">…</span></h2>
+        <p>Det tar som regel bare noen sekunder.</p>
+      </div>
+      <button #cancelButton class="btn btn-lg fetching-cancel" type="button" (click)="cancel()">
+        Avbryt
+      </button>
+    } @else {
+      <!-- Like M4 row 7: the link or the text. -->
+      <form class="import-entry" novalidate (submit)="submit($event)">
+        @if (source() === 'link') {
+          <div class="field" [class.field-invalid]="enterError()">
+            <label for="url">Lenke til oppskriften</label>
+            <p class="field-hint" id="url-hint">
+              For eksempel https://www.matprat.no/oppskrifter/…
+            </p>
+            <input
+              #urlField
+              id="url"
+              name="url"
+              type="url"
+              inputmode="url"
+              autocomplete="off"
+              spellcheck="false"
+              [value]="value()"
+              (input)="value.set(urlField.value)"
+              [attr.aria-invalid]="enterError() ? 'true' : null"
+              [attr.aria-describedby]="enterError() ? 'url-hint url-error' : 'url-hint'"
+            />
+            @if (enterError(); as error) {
+              <p class="field-error" id="url-error" role="alert">{{ error }}</p>
+            }
+          </div>
+        } @else {
+          <div class="field" [class.field-invalid]="enterError()">
+            <label for="text">Teksten til oppskriften</label>
+            <p class="field-hint" id="text-hint">
+              Tittelen øverst, så ingrediensene og fremgangsmåten.
+            </p>
+            <textarea
+              #textField
+              id="text"
+              name="text"
+              rows="16"
+              [value]="value()"
+              (input)="value.set(textField.value)"
+              [attr.aria-invalid]="enterError() ? 'true' : null"
+              [attr.aria-describedby]="enterError() ? 'text-hint text-error' : 'text-hint'"
+            ></textarea>
+            @if (enterError(); as error) {
+              <p class="field-error" id="text-error" role="alert">{{ error }}</p>
+            }
+          </div>
+        }
+        <div class="form-actions">
+          <button
+            class="btn btn-primary btn-lg"
+            type="submit"
+            [disabled]="busy()"
+            [attr.aria-busy]="busy() ? 'true' : null"
+          >
+            @if (source() === 'link') {
+              Hent oppskriften
+            } @else {
+              {{ busy() ? 'Deler opp…' : 'Del opp teksten' }}
+            }
+          </button>
+          <a class="btn btn-lg" routerLink="/recipes/new">Avbryt</a>
+        </div>
+      </form>
+
+      <section class="tips">
+        <h2>Dette fungerer best</h2>
+        <ul>
+          @for (tip of words().tips; track tip) {
+            <li>{{ tip }}</li>
+          }
+        </ul>
+        <p class="tips-manual">
+          Eller <a routerLink="/recipes/new">skriv oppskriften inn selv</a>.
+        </p>
+      </section>
+    }
+  </div>
+}

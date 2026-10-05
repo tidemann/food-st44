@@ -6,15 +6,17 @@ from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import File, Router, Status, UploadedFile
 
-from food import photos, reader, services
+from food import importer, photos, reader, services
 from food.auth import editor_auth, is_editor
 from food.models import Recipe
 from food.schemas import (
     ErrorOut,
+    LinkImportIn,
     PhotoReadingOut,
     RecipeDraftOut,
     RecipeIn,
     RecipeOut,
+    TextImportIn,
     ValidationErrors,
 )
 
@@ -86,6 +88,51 @@ def read_recipe_photo(
         if exc.timed_out:
             return Status(504, {"detail": reader.TIMED_OUT})
         return Status(502, {"detail": reader.FAILED})
+    return {"readable": draft.readable, **asdict(draft)}
+
+
+# --- importing a recipe from a link or from text, no AI (food.importer) ---
+
+
+@router.post(
+    "/import-link",
+    response={
+        200: RecipeDraftOut,
+        403: ErrorOut,
+        422: ValidationErrors,
+        502: ErrorOut,
+        504: ErrorOut,
+    },
+    auth=editor_auth,
+    operation_id="import_recipe_link",
+    summary="Read the schema.org recipe on a web page into a draft; saves nothing",
+    description=(
+        "200 with `readable: false` when the page has no recipe data. 422 for a link we do not "
+        "fetch (not http/https, another port, a private address). 502 when the site could not "
+        "be fetched or refused; 504 when it was too slow."
+    ),
+)
+def import_recipe_link(
+    request: HttpRequest, payload: LinkImportIn
+) -> dict[str, object] | Status[dict[str, object]]:
+    try:
+        draft = importer.import_link(payload.url)
+    except importer.NotAllowed as exc:
+        return Status(422, {"errors": {"url": str(exc)}})
+    except importer.FetchError as exc:
+        return Status(504 if exc.timed_out else 502, {"detail": str(exc)})
+    return {"readable": draft.readable, **asdict(draft)}
+
+
+@router.post(
+    "/import-text",
+    response={200: RecipeDraftOut, 403: ErrorOut, 422: ValidationErrors},
+    auth=editor_auth,
+    operation_id="import_recipe_text",
+    summary="Split a recipe pasted as plain text into a draft by simple rules; saves nothing",
+)
+def import_recipe_text(request: HttpRequest, payload: TextImportIn) -> dict[str, object]:
+    draft = importer.split_text(payload.text)
     return {"readable": draft.readable, **asdict(draft)}
 
 
