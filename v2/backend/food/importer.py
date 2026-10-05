@@ -4,8 +4,9 @@ POST /api/recipes.
 
 A link: `fetch` gets the page, guarded against SSRF (http/https on the usual ports, public
 addresses only, every redirect checked again, a deadline and a size limit), and `from_html`
-reads its schema.org Recipe data (JSON-LD). Text: `split_text` splits it into title,
-ingredients and instructions by simple rules.
+reads its schema.org Recipe data (JSON-LD), or the page's visible text when that data has no
+ingredients or steps. Text: `split_text` splits it into title, ingredients and instructions by
+simple rules.
 """
 
 import html
@@ -326,11 +327,26 @@ def _steps(value: object) -> list[str]:
     return []
 
 
+# Lines some sites add to their own steps to sell something: "Bli abonnent på aperitif +",
+# "Lag din egen personlige kokebok …", "Få dagens rett som nyhetsbrev". No real step says these.
+_PROMOTION = re.compile(
+    r"\b(?:abonnent|abonner|nyhetsbrev|personlige? kokebok|newsletter|subscribe|subscription)",
+    re.IGNORECASE,
+)
+
+
+def _without_promotion(steps: list[str]) -> list[str]:
+    return [step for step in steps if not _PROMOTION.search(step)]
+
+
 def from_html(page: str) -> Draft:
-    """The first readable schema.org Recipe in the page's JSON-LD, or UNREADABLE."""
+    """The first schema.org Recipe in the page's JSON-LD that has ingredients or steps. When
+    there is none, the recipe is read from the page's visible text (`from_page_text`), titled
+    with the JSON-LD name if there was one. UNREADABLE when neither has ingredients or steps."""
     parser = _JsonLdScripts()
     parser.feed(page)
     parser.close()
+    title = ""
     for block in parser.blocks:
         try:
             # strict=False: raw newlines inside strings are common and harmless.
@@ -342,11 +358,102 @@ def from_html(page: str) -> Draft:
             draft = Draft(
                 title=_one_line(recipe.get("name")),
                 ingredients="\n".join(_ingredients(ingredients)),
-                instructions="\n".join(_steps(recipe.get("recipeInstructions"))),
+                instructions="\n".join(
+                    _without_promotion(_steps(recipe.get("recipeInstructions")))
+                ),
             )
-            if draft.readable:
+            if draft.ingredients or draft.instructions:
                 return draft
-    return UNREADABLE
+            title = title or draft.title
+    return from_page_text(page, title)
+
+
+# --- the page's visible text, when its JSON-LD has no recipe in it ---
+
+# Left out with everything in them: not the recipe.
+_HIDDEN = frozenset(
+    {"head", "script", "style", "noscript", "template", "svg", "nav", "footer", "aside", "form"}
+    | {"button", "select", "iframe"}
+)
+_BLOCK = frozenset(
+    {"p", "div", "li", "ul", "ol", "dl", "dt", "dd", "br", "tr", "td", "th", "table", "pre"}
+    | {"section", "article", "main", "header", "blockquote", "figure", "figcaption"}
+    | {"h1", "h2", "h3", "h4", "h5", "h6"}
+)
+
+
+class _PageText(HTMLParser):
+    """The visible text of a page, one line per block (paragraph, list item, heading), each
+    with its heading level (0 when it is not a heading) and whether it is inside <main>."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.lines: list[tuple[str, int, bool]] = []
+        self._parts: list[str] = []
+        self._hidden = 0
+        self._main = 0
+        self._level = 0
+
+    def _flush(self) -> None:
+        text = " ".join("".join(self._parts).split())
+        if text:
+            self.lines.append((text, self._level, self._main > 0))
+        self._parts = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _HIDDEN:
+            self._hidden += 1
+        elif tag in _BLOCK:
+            self._flush()
+            self._main += tag == "main"
+            if tag[0] == "h" and tag[1:].isdigit():
+                self._level = int(tag[1:])
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in _HIDDEN:
+            self._hidden = max(self._hidden - 1, 0)
+        elif tag in _BLOCK:
+            self._flush()
+            self._main = max(self._main - (tag == "main"), 0)
+            if tag[0] == "h" and tag[1:].isdigit():
+                self._level = 0
+
+    def handle_data(self, data: str) -> None:
+        if not self._hidden:
+            self._parts.append(data)
+
+
+def from_page_text(page: str, title: str = "") -> Draft:
+    """The recipe in the page's visible text (inside <main> when the page has one), split by
+    `split_text`. Only a page with an "Ingredients" or "Directions" style heading is read, and
+    the text stops at the next heading at the level of the directions heading or above, so the
+    comments and "other recipes" below it are left out. No AI. UNREADABLE when there are no
+    ingredients and no steps."""
+    parser = _PageText()
+    parser.feed(page)
+    parser.close()
+    lines = [(text, level) for text, level, main in parser.lines if main] or [
+        (text, level) for text, level, _ in parser.lines
+    ]
+    texts = [text for text, _ in lines]
+    steps_at = _first(texts, lambda text: _heading(text, _INSTRUCTION_HEADS))
+    if steps_at is None and _first(texts, lambda text: _heading(text, _INGREDIENT_HEADS)) is None:
+        return UNREADABLE
+    if steps_at is not None:
+        # A directions heading that is not a heading tag (bold text) ends at any heading tag.
+        limit = lines[steps_at][1] or 6
+        end = next(
+            (i for i in range(steps_at + 1, len(lines)) if 0 < lines[i][1] <= limit), len(lines)
+        )
+        lines = lines[:end]
+    if not title:
+        title = next((text for text, level in lines if level == 1), "")
+    body = [text for text, _ in lines if text != title]
+    draft = split_text("\n".join([title, *body]))
+    if not (draft.ingredients or draft.instructions):
+        return UNREADABLE
+    steps = _without_promotion(draft.instructions.splitlines())
+    return Draft(draft.title, draft.ingredients, "\n".join(steps))
 
 
 # --- pasted text ---

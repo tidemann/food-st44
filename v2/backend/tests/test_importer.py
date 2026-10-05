@@ -15,7 +15,7 @@ from django.test import Client
 from pytest_django import Settings
 
 from food import importer
-from food.models import Editor, Recipe
+from food.models import Editor, PhotoRead, Recipe
 from food.reader import UNREADABLE, Draft
 
 if TYPE_CHECKING:
@@ -28,6 +28,16 @@ TEXT = "/api/recipes/import-text"
 # A matprat.no recipe page as served on 2026-10-05, saved whole: a top-level JSON-LD list with
 # HowToStep instructions. CI never fetches the live site.
 MATPRAT = (Path(__file__).parent / "fixtures/matprat-aspargessuppe.html").read_text()
+
+
+def fixture(name: str) -> str:
+    return (Path(__file__).parent / "fixtures" / name).read_text()
+
+
+# Stig's five test links (ST-674), saved whole on 2026-10-05. Weissman's JSON-LD Recipe has only
+# a name: the recipe is in the page's HTML. aperitif's steps end with its own promotion.
+WEISSMAN = fixture("weissman-cubanos.html")
+APERITIF = fixture("aperitif-kung-fu-coleslaw.html")
 
 
 @pytest.fixture
@@ -68,6 +78,123 @@ def test_a_saved_matprat_page() -> None:
     assert len(steps) == 5
     assert steps[0] == "Brekk av eller skjær vekk nederste del av aspargesen. Skrell hvit asparges."
     assert steps[-1].startswith("Kok aspargestoppene møre")
+
+
+@pytest.mark.parametrize(
+    ("name", "title", "first_ingredient", "ingredients", "steps"),
+    [
+        (
+            "foodcom-beef-wet-burritos.html",
+            "Beef Wet Burritos Hacienda-Style!",
+            "1 (3 lb) chuck roast, trim outer fat",
+            22,
+            32,
+        ),
+        (
+            "therecipecritic-beef-bourguignon.html",
+            "Slow Cooker Beef Bourguignon",
+            "5 slices diced bacon",
+            13,
+            5,
+        ),
+        (
+            "cookieandkate-enchilada-sauce.html",
+            "Homemade Enchilada Sauce",
+            "3 tablespoons olive oil",
+            12,
+            5,
+        ),
+    ],
+)
+def test_the_links_that_passed_qa_still_do(
+    name: str, title: str, first_ingredient: str, ingredients: int, steps: int
+) -> None:
+    draft = importer.from_html(fixture(name))
+
+    assert draft.title == title
+    assert draft.ingredients.splitlines()[0] == first_ingredient
+    assert len(draft.ingredients.splitlines()) == ingredients
+    assert len(draft.instructions.splitlines()) == steps
+
+
+def test_a_page_whose_json_ld_has_only_a_name_is_read_from_its_text() -> None:
+    draft = importer.from_html(WEISSMAN)
+
+    assert draft.title == "How To Make Cubanos with Homemade Cuban Bread"
+    ingredients = draft.ingredients.splitlines()
+    assert "1 Tbsp (10g) active dry yeast" in ingredients
+    assert "Mojo Braised Pork:" in ingredients
+    assert ingredients[-1] == "Sliced Swiss cheese"
+    steps = draft.instructions.splitlines()
+    assert steps[0] == "Sandwich Bread:"
+    assert steps[1] == "Lightly grease a large bowl with cooking spray and set aside."
+    assert "Tip: Make this a day or two ahead of time if you will be toasting it." in steps
+    # It stops at the next heading: no comments, sign-in or "Other recipes".
+    assert steps[-1] == "Remove from the pan. Cut into two diagonal slices and enjoy."
+    assert len(steps) == 39
+
+
+def test_site_promotion_is_dropped_from_the_steps() -> None:
+    draft = importer.from_html(APERITIF)
+
+    assert draft.title == "Kung Fu Coleslaw"
+    assert len(draft.ingredients.splitlines()) == 11
+    assert draft.instructions.splitlines() == [
+        "Bland grønnsakene. Bland dressingen og hell over grønnsakene rett før servering.",
+        "Kålsalaten passer perfekt til denne ribbeoppskriften",
+    ]
+
+
+@pytest.mark.parametrize(
+    "promotion",
+    [
+        "Bli abonnent på aperitif + og oppnå store fordeler samtidig",
+        "Lag din egen personlige kokebok her.",
+        "Få dagens rett som nyhetsbrev",
+        "Abonner på bladet!",
+        "Subscribe to our newsletter for more recipes.",
+    ],
+)
+def test_a_promotion_line_is_not_a_step(promotion: str) -> None:
+    steps = ["Rør inn smøret.", promotion, "Server med brød."]
+    recipe = {"@type": "Recipe", "name": "Grøt", "recipeInstructions": steps}
+
+    assert importer.from_html(page(recipe)).instructions == "Rør inn smøret.\nServer med brød."
+
+
+def test_the_page_text_is_read_inside_main_and_stops_at_the_next_heading() -> None:
+    html = """<html><head><title>Bloggen</title></head><body>
+    <nav><h2>Ingredienser</h2><a href="/">Hjem</a></nav>
+    <main>
+      <h1>Pannekaker</h1><p>Som mormor lagde dem.</p>
+      <h2>Ingredienser</h2><ul><li>3 egg</li><li>5 dl <b>melk</b></li><li>Salt</li></ul>
+      <h2>Fremgangsmåte</h2>
+      <ol><li>Visp alt sammen.</li><li>Stek tynne kaker.</li></ol>
+      <p>Få dagens rett som nyhetsbrev</p>
+      <h2>Kommentarer</h2><p>Så gode!</p>
+      <form><label>Navn</label></form>
+    </main>
+    <footer>Om oss</footer><script>var x = "<h2>Ingredienser</h2>";</script>
+    </body></html>"""
+
+    assert importer.from_html(html) == Draft(
+        title="Pannekaker",
+        ingredients="3 egg\n5 dl melk\nSalt",
+        instructions="Visp alt sammen.\nStek tynne kaker.",
+    )
+
+
+def test_the_json_ld_name_titles_a_recipe_read_from_the_text() -> None:
+    html = page({"@type": "Recipe", "name": "Vafler"}).replace(
+        "<h1>Hei</h1>",
+        "<h1>Hei</h1><p><strong>Ingredienser</strong></p><p>4 egg</p>"
+        "<p><strong>Slik gjør du</strong></p><p>Stek dem.</p>"
+        "<h3>Flere oppskrifter</h3><p>Boller</p>",
+    )
+
+    assert importer.from_html(html) == Draft(
+        title="Vafler", ingredients="4 egg", instructions="Stek dem."
+    )
 
 
 def test_a_plain_recipe_with_instructions_as_one_string() -> None:
@@ -171,6 +298,9 @@ def test_a_broken_block_and_other_types_are_skipped() -> None:
         "<html><body><h1>Boller</h1><p>1 kg mel</p></body></html>",
         page({"@type": "Article", "name": "Ti tips til middag"}),
         page({"@type": "Recipe"}),
+        # A name alone, and nothing in the page text either: "Fant ingen oppskrift".
+        page({"@type": "Recipe", "name": "Boller"}),
+        "<html><body><h2>Ingredienser</h2><h2>Fremgangsmåte</h2></body></html>",
         "",
     ],
 )
@@ -328,6 +458,8 @@ class Site(BaseHTTPRequestHandler):
         elif self.path == "/latin1":
             body = page({"@type": "Recipe", "name": "Kjøttkaker", "recipeIngredient": ["kjøtt"]})
             self.send(200, body.encode("latin-1"), {"Content-Type": "text/html; charset=latin-1"})
+        elif self.path == "/weissman":
+            self.send(200, WEISSMAN.encode())
         elif self.path == "/artikkel":
             self.send(200, b"<html><body><h1>Ti tips til middag</h1></body></html>")
         elif self.path == "/stengt":
@@ -393,6 +525,20 @@ def test_a_page_is_fetched_and_read(client: Client, editor: User, site: StandIn)
     assert body["title"] == "Aspargessuppe"
     assert body["ingredients"].startswith("500 g frisk grønn asparges")
     assert Recipe.objects.count() == 0  # nothing is saved before "Lagre oppskrift"
+
+
+def test_a_page_read_from_its_text_is_not_an_ai_read(
+    client: Client, editor: User, site: StandIn
+) -> None:
+    response = post(client, LINK, {"url": site.url + "/weissman"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["readable"] is True
+    assert body["title"] == "How To Make Cubanos with Homemade Cuban Bread"
+    assert body["ingredients"]
+    assert body["instructions"]
+    assert PhotoRead.objects.count() == 0
 
 
 def test_redirects_gzip_and_charsets(site: StandIn) -> None:
