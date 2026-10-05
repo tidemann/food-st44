@@ -57,6 +57,29 @@ services:
     networks:
       - st44_default
 
+  # Nightly backup of the data volume: database (SQLite online backup, not a file copy), photos
+  # and import markers, as food-YYYY-MM-DD.tar.gz, newest 14 kept. Same image, its own process;
+  # it checks every hour and makes the day's archive in the first hour after 00:00 UTC. It
+  # writes only to a directory holding `.food-backup-target`; on spzmf backups/ leads to the
+  # NAS, so with the NAS away it writes nothing and says so in its log. Restore: DEPLOY.md.
+  # No networks: it talks to nobody (compose gives it the project's default network).
+  food-st44-backup:
+    image: ${IMAGE:?IMAGE must be set — the deploy workflow renders it}
+    container_name: food-st44-backup
+    restart: unless-stopped
+    # Not the app's entrypoint: no migrate, no import, no secret key.
+    entrypoint: ["python", "manage.py", "backup", "/backups", "--nightly"]
+    # Python as PID 1 ignores SIGTERM; SIGINT stops it at once instead of after the 10 s kill.
+    stop_signal: SIGINT
+    environment:
+      DJANGO_DB_PATH: /data/food.sqlite3
+    volumes:
+      # Read-only: the backup can never change the live data.
+      - food-st44-v2-data:/data:ro
+      # deploy.sh only allows bind mounts under /srv/apps/food-st44. The variable is for the
+      # CI smoke test; on the server it is unset.
+      - ${FOOD_BACKUP_DIR:-/srv/apps/food-st44/backups}:/backups
+
 # Both keyed to this project, so they survive `--force-recreate` redeploys.
 volumes:
   # v2's database. New with the switch to v2.

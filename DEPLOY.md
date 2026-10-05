@@ -128,9 +128,82 @@ immediately if it is exposed.
 | Hostname | `food.st44.no` |
 | nginx upstream | `http://food-st44:80` |
 | Health check | `GET /healthz` → 200, body `ok`. The host gate runs `docker exec food-st44 wget -qO- http://food-st44:80/healthz`, so the image must ship `wget` |
+| Backup | Container `food-st44-backup` (same image): the data volume read-only at `/data`, `/srv/apps/food-st44/backups` at `/backups`. See [Backup and restore](#backup-and-restore) |
 
 Do not hand-edit the compose file on the server. Every deploy overwrites it with
 the copy from this repository; edit `infra/docker-compose.yml` and merge.
+
+## Backup and restore
+
+The data volume `food-st44_food-st44-v2-data` is backed up once a day by the
+`food-st44-backup` container, deployed with the site by the normal deploy.
+
+- **What:** `food.sqlite3`, copied with SQLite's online backup API (consistent
+  while the site is writing; integrity-checked), the `photos/` folder and the
+  one-time import markers (`v1-imported`, `v1-photos-imported`). Not the secret
+  key: the archives sit on a shared disk, and restoring without it only means
+  everyone signs in again.
+- **Where:** `/srv/apps/food-st44/backups/food-YYYY-MM-DD.tar.gz` (UTC date).
+  On spzmf that path is a link to `/mnt/nas_media/backups/food-st44` on the
+  NAS, so the copies are off the app disk. The container writes only into a
+  directory that holds the file `.food-backup-target`; if the NAS is not
+  mounted, it writes nothing and logs `backup failed: … is the NAS mounted?`.
+- **When:** the container checks every hour and makes the day's archive when it
+  is missing: in the first hour after 00:00 UTC, right after a deploy if
+  today's is not there yet, and an hour after a failed try.
+- **How many:** the newest 14 archives are kept; older ones are deleted.
+
+Check (deploy user): `docker exec food-st44-backup ls -l /backups` and
+`docker logs --tail 20 food-st44-backup`.
+
+### One-time host setup (owner, sudo)
+
+`deploy.sh` only allows bind mounts under `/srv/apps/food-st44`, so the link to
+the NAS is made once on the host. Until it is, the container logs a failure each
+hour and writes nothing.
+
+```bash
+APP_UID="$(sudo docker exec food-st44 id -u)"
+sudo mkdir -p /mnt/nas_media/backups/food-st44
+sudo chown "$APP_UID" /mnt/nas_media/backups/food-st44
+sudo chmod 700 /mnt/nas_media/backups/food-st44
+sudo -u "#$APP_UID" touch /mnt/nas_media/backups/food-st44/.food-backup-target
+# The first deploy made backups/ as an empty directory; replace it with the link.
+sudo rmdir /srv/apps/food-st44/backups 2>/dev/null || true
+sudo ln -sn /mnt/nas_media/backups/food-st44 /srv/apps/food-st44/backups
+sudo docker compose -p food-st44 -f /srv/apps/food-st44/infra/docker-compose.yml \
+  up -d --force-recreate food-st44-backup
+```
+
+Check, within a minute: `sudo docker exec food-st44-backup ls -l /backups`
+lists today's `food-YYYY-MM-DD.tar.gz`. Undo:
+`sudo rm /srv/apps/food-st44/backups` (removes only the link) and
+`sudo rm -r /mnt/nas_media/backups/food-st44`.
+
+### Restore
+
+Run as the deploy user on spzmf. The site is down for the few seconds between
+stop and start.
+
+```bash
+docker exec food-st44-backup ls /backups          # pick the archive
+ARCHIVE=food-YYYY-MM-DD.tar.gz
+IMAGE="$(docker inspect -f '{{.Config.Image}}' food-st44)"
+cd /srv/apps/food-st44/infra
+docker compose -p food-st44 stop food-st44
+docker run --rm --entrypoint python -e DJANGO_DB_PATH=/data/food.sqlite3 \
+  -v food-st44_food-st44-v2-data:/data -v /srv/apps/food-st44/backups:/backups:ro \
+  "$IMAGE" manage.py restore_backup "/backups/$ARCHIVE"
+docker compose -p food-st44 start food-st44
+curl -fsS https://food.st44.no/healthz
+```
+
+`restore_backup` checks the archive (only the expected files, database
+integrity) before it touches anything, then saves what was on the volume as
+`/data/pre-restore-<time>.tar.gz` and prints an `undo:` line. To undo, run the
+same `docker run` with `manage.py restore_backup /data/pre-restore-<time>.tar.gz`
+(stop and start around it as above). A restore onto an empty volume (the volume
+was lost) works the same way; the site makes a new secret key on start.
 
 ## Changing what is deployed
 

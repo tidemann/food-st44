@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs infra/docker-compose.yml the way the host does, against a v1 volume as the live v1 site
-# leaves it, and checks the switch-over: the v1 recipes arrive once with the same ids, /healthz
-# answers `ok`, and the v1 file is byte-for-byte unchanged afterwards.
+# leaves it, and checks the switch-over (the v1 recipes arrive once with the same ids, /healthz
+# answers `ok`, the v1 file is byte-for-byte unchanged afterwards) and the nightly backup: an
+# archive is written, and restoring it brings a deleted recipe back.
 #
 #   infra/smoke-deploy.sh <image>
 #
@@ -17,6 +18,11 @@ V1_VOLUME="${PROJECT}_food-st44-data"
 compose() { docker compose -p "$PROJECT" -f "$(dirname "$0")/docker-compose.yml" "$@"; }
 work="$(mktemp -d)"
 made_network=no
+# The backup disk, as on the server: it holds the marker, and the image's app user can write it.
+backups="$work/backups"
+mkdir "$backups" && touch "$backups/.food-backup-target"
+chmod 711 "$work" && chmod 777 "$backups"
+export FOOD_BACKUP_DIR="$backups"
 
 cleanup() {
   rc=$?
@@ -101,6 +107,19 @@ new_id="$(django 'from food import services
 print(services.create_recipe(title="Ny", ingredients="x", instructions="").id)')"
 test "$new_id" = 5
 
+# The backup sidecar writes today's archive to the backup disk. On this fresh volume its first
+# try raced the app's start (no database yet, or one without the recipes), so clear what it
+# made and restart it rather than wait an hour.
+rm -f "$backups"/food-*.tar.gz
+compose restart food-st44-backup
+for i in $(seq 1 30); do
+  archive="$(ls "$backups"/food-*.tar.gz 2>/dev/null || true)"
+  [ -z "$archive" ] || break
+  [ "$i" != 30 ] || { echo '::error::the backup container wrote no archive'; exit 1; }
+  sleep 1
+done
+tar -tzf "$archive" | grep -x food.sqlite3 >/dev/null
+
 # The import runs once: a recipe deleted on v2 stays deleted across a restart.
 django 'from food.models import Recipe; Recipe.objects.filter(pk=1).delete()'
 compose restart
@@ -109,8 +128,19 @@ wait_healthy
 get "http://$ip/api/recipes" | jq -e 'map(.id) | sort == [3, 5]' >/dev/null
 compose logs food-st44 | grep -q 'v1 import: already done'
 
+# The restore procedure in DEPLOY.md, with this project's names: app stopped, restore_backup in
+# a one-off container on the data volume, app started. Recipe 1, deleted above, is back.
+compose stop food-st44
+docker run --rm --entrypoint python -e DJANGO_DB_PATH=/data/food.sqlite3 \
+  -v "${PROJECT}_food-st44-v2-data:/data" -v "$backups:/backups:ro" \
+  "$IMAGE" manage.py restore_backup "/backups/$(basename "$archive")"
+compose start food-st44
+ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' food-st44)"
+wait_healthy
+get "http://$ip/api/recipes" | jq -e 'map(.id) | sort == [1, 3, 5]' >/dev/null
+
 # The v1 file is untouched, so rolling back to v1 finds its data as it was.
 compose stop
 test "$(v1_sum)" = "$before"
 
-echo "deploy smoke test passed: v1 recipes imported once with their ids, v1 file unchanged"
+echo "deploy smoke test passed: v1 recipes imported once with their ids, backup restored, v1 file unchanged"
