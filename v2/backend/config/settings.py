@@ -62,6 +62,16 @@ DATABASES = {
     }
 }
 
+# --- Recipe photos (food.photos) ---
+
+# Next to the database by default (/data/photos in the image), so the data volume and its backup
+# hold both. The app serves them itself at /photos/<name>.
+PHOTOS_DIR = Path(
+    os.environ.get("FOOD_PHOTOS_DIR", str(Path(DATABASES["default"]["NAME"]).parent / "photos"))
+)
+# A phone photo is often 5 to 15 MB; anything up to this is accepted and resized on save.
+PHOTO_MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
 LANGUAGE_CODE = "nb"
 TIME_ZONE = "Europe/Oslo"
 USE_I18N = True

@@ -4,6 +4,7 @@ from ninja import ModelSchema, Schema
 from pydantic import field_validator
 from pydantic_core import PydanticCustomError
 
+from food import photos
 from food.models import Recipe
 
 
@@ -44,10 +45,16 @@ class RecipeOut(ModelSchema):
     id: int
     instructions: str
     created_at: datetime
+    # Where the photo is served (/photos/<name>), or null when the recipe has none.
+    photo_url: str | None
 
     class Meta:
         model = Recipe
         fields = ("id", "title", "ingredients", "instructions", "created_at")
+
+    @staticmethod
+    def resolve_photo_url(obj: Recipe) -> str | None:
+        return photos.url(obj)
 
 
 class ErrorOut(Schema):

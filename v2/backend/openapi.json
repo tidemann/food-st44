@@ -381,6 +381,159 @@
           }
         ]
       }
+    },
+    "/api/recipes/{recipe_id}/photo": {
+      "post": {
+        "operationId": "set_recipe_photo",
+        "summary": "Add or replace the recipe's photo: multipart/form-data, the file in `photo`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "schema": {
+              "title": "Recipe Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "recipes"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "photo": {
+                    "format": "binary",
+                    "title": "Photo",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "photo"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_recipe_photo",
+        "summary": "Remove the recipe's photo (no error if it has none)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "schema": {
+              "title": "Recipe Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "recipes"
+        ],
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -446,6 +599,17 @@
             "title": "Created At",
             "type": "string"
           },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -459,6 +623,7 @@
           "id",
           "instructions",
           "created_at",
+          "photo_url",
           "title",
           "ingredients"
         ],

@@ -30,4 +30,18 @@ if [ -n "${V1_DB_PATH:-}" ]; then
   fi
 fi
 
+# V1_PHOTOS_DIR (set by infra/docker-compose.yml): v1's recipe photos, built into the image at
+# /app/v1-photos. Each goes onto the recipe whose title it is named after, into FOOD_PHOTOS_DIR
+# on the data volume. Once, like the recipes: a photo an editor removed must not come back on the
+# next restart. Runs after the recipe import, so the recipes it matches are there.
+if [ -n "${V1_PHOTOS_DIR:-}" ]; then
+  marker="$(dirname "$DJANGO_DB_PATH")/v1-photos-imported"
+  if [ -e "$marker" ]; then
+    echo "v1 photos: already done ($(cat "$marker")), skipping"
+  else
+    python manage.py import_v1_photos "$V1_PHOTOS_DIR"
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) from $V1_PHOTOS_DIR" > "$marker"
+  fi
+fi
+
 exec "$@"

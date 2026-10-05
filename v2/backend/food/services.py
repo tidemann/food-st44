@@ -1,3 +1,4 @@
+from food import photos
 from food.models import Recipe
 
 
@@ -25,3 +26,9 @@ def update_recipe(recipe: Recipe, *, title: str, ingredients: str, instructions:
     recipe.instructions = instructions
     recipe.save(update_fields=["title", "ingredients", "instructions"])
     return recipe
+
+
+def delete_recipe(recipe: Recipe) -> None:
+    """The recipe, and its photo file with it."""
+    recipe.delete()
+    photos.forget(recipe)

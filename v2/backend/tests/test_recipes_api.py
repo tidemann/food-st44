@@ -55,6 +55,7 @@ def test_list_is_newest_first_with_every_field(client: Client) -> None:
         "ingredients": "mel\nmelk",
         "instructions": "Stek.",
         "created_at": "2026-10-04T12:00:00Z",
+        "photo_url": None,
     }
     assert titles(client) == ["Sveler", "Lapskaus"]
 

@@ -34,6 +34,9 @@ services:
       # The v1 recipes, copied into the v2 database once, same ids. The
       # entrypoint writes /data/v1-imported and never imports again.
       V1_DB_PATH: /v1/recipes.db
+      # v1's recipe photos (in the image), put on their recipes once, into
+      # /data/photos next to the database. Marker: /data/v1-photos-imported.
+      V1_PHOTOS_DIR: /app/v1-photos
     # Google sign-in (M2): GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and
     # FOOD_ADMIN_EMAILS, one KEY=value per line, in a file the owner puts on the
     # server by hand (mode 600, owned by the deploy user). It is not in git and

@@ -20,6 +20,7 @@ export const SEED: Recipe[] = [
     ingredients: '600 g kjøttdeig av storfe\n1 liten løk, finrevet\n1 egg\nsalt og pepper',
     instructions: 'Bland kjøttdeig og salt.\n\nForm kaker og brun dem i smør.\n\nLa dem trekke.',
     created_at: at('10-02'),
+    photo_url: null,
   },
   {
     id: 8,
@@ -27,6 +28,7 @@ export const SEED: Recipe[] = [
     ingredients: '1,5 kg fårikålkjøtt',
     instructions: 'Kok.',
     created_at: at('09-29'),
+    photo_url: null,
   },
   {
     id: 7,
@@ -34,6 +36,7 @@ export const SEED: Recipe[] = [
     ingredients: '3 egg\nen klype salt',
     instructions: '',
     created_at: at('09-25'),
+    photo_url: null,
   },
   {
     id: 6,
@@ -41,6 +44,7 @@ export const SEED: Recipe[] = [
     ingredients: '400 g torsk',
     instructions: 'Stek.',
     created_at: at('09-21'),
+    photo_url: null,
   },
   {
     id: 5,
@@ -48,6 +52,7 @@ export const SEED: Recipe[] = [
     ingredients: '2 kg pinnekjøtt',
     instructions: 'Damp.',
     created_at: at('09-17'),
+    photo_url: null,
   },
   {
     id: 4,
@@ -55,6 +60,7 @@ export const SEED: Recipe[] = [
     ingredients: '500 g storfekjøtt',
     instructions: 'Kok.',
     created_at: at('09-13'),
+    photo_url: null,
   },
 ];
 

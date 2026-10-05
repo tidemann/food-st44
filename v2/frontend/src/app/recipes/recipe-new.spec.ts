@@ -148,6 +148,7 @@ describe('RecipeNew', () => {
         ingredients: '500 g storfekjøtt',
         instructions: '',
         created_at: '2026-10-04T10:00:00Z',
+        photo_url: null,
       };
       const navigated = navigation();
       submit(el, 'POST', '/api/recipes').flush(created, { status: 201, statusText: 'Created' });
