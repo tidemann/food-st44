@@ -43,8 +43,14 @@ services:
     # not in CI, and every deploy leaves it alone: deploy.sh only replaces the
     # compose file. Optional, so a deploy before it exists still starts — the
     # site is then read-only, with no "Logg inn" (needs Compose 2.24+).
+    #
+    # Reading a recipe from a photo (M4): FOOD_AI_PROVIDER and FOOD_AI_API_KEY (and optionally
+    # FOOD_AI_MODEL, FOOD_AI_COST_PER_PHOTO), same rules as above. Without the file reading is
+    # off: no button, and no paid call.
     env_file:
       - path: /srv/apps/food-st44/google-oauth.env
+        required: false
+      - path: /srv/apps/food-st44/food-ai.env
         required: false
     volumes:
       # The v2 SQLite database (DJANGO_DB_PATH) and its secret key. Compose

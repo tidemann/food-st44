@@ -50,8 +50,9 @@ def path(name: str) -> Path | None:
     return found if found.is_file() else None
 
 
-def prepare(source: IO[bytes]) -> bytes:
-    """The photo as we store it. PhotoError if `source` is not a JPEG, PNG or WebP image."""
+def _upright(source: IO[bytes]) -> tuple[Image.Image, bytes | None]:
+    """The picture, upright, at most LONG_EDGE on its long side and with no EXIF or XMP, and its
+    colour profile. PhotoError if `source` is not a JPEG, PNG or WebP image."""
     try:
         with Image.open(source) as image:
             if image.format not in FORMATS:
@@ -72,8 +73,23 @@ def prepare(source: IO[bytes]) -> bytes:
 
     picture.thumbnail((LONG_EDGE, LONG_EDGE), Image.Resampling.LANCZOS)
     picture.info.clear()  # nothing from the original rides along: no EXIF, no XMP
+    return picture, icc_profile
+
+
+def prepare(source: IO[bytes]) -> bytes:
+    """The photo as we store it. PhotoError if `source` is not a JPEG, PNG or WebP image."""
+    picture, icc_profile = _upright(source)
     out = BytesIO()
     picture.save(out, "WEBP", quality=QUALITY, icc_profile=icc_profile or b"")
+    return out.getvalue()
+
+
+def for_reading(source: IO[bytes]) -> bytes:
+    """The photo as food.reader sends it to a provider: the same checks as `prepare`, upright,
+    as JPEG (which every vision model takes). Kept in memory only, never written to disk."""
+    picture, _ = _upright(source)
+    out = BytesIO()
+    picture.convert("RGB").save(out, "JPEG", quality=85)
     return out.getvalue()
 
 

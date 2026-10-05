@@ -217,6 +217,135 @@
         ]
       }
     },
+    "/api/recipes/read-photo": {
+      "get": {
+        "operationId": "get_photo_reading",
+        "summary": "Whether this visitor can read a recipe from a photo (the button shows only then)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoReadingOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "recipes"
+        ]
+      },
+      "post": {
+        "operationId": "read_recipe_photo",
+        "summary": "Read a recipe from a photo into a draft; saves nothing, not even the photo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDraftOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "multipart/form-data, the file in `photo`. 200 with `readable: false` when no recipe could be read. 503 when reading is off; 502 or 504 when the provider failed or was too slow.",
+        "tags": [
+          "recipes"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "photo": {
+                    "format": "binary",
+                    "title": "Photo",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "photo"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
+    },
     "/api/recipes/{recipe_id}": {
       "get": {
         "operationId": "get_recipe",
@@ -669,6 +798,48 @@
           "ingredients"
         ],
         "title": "RecipeIn",
+        "type": "object"
+      },
+      "PhotoReadingOut": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "PhotoReadingOut",
+        "type": "object"
+      },
+      "RecipeDraftOut": {
+        "description": "A recipe read from a photo, for the \"Ny oppskrift\" form to fill in. Nothing is saved:\nthe editor checks it and saves it with POST /api/recipes like any other.",
+        "properties": {
+          "readable": {
+            "title": "Readable",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "ingredients": {
+            "title": "Ingredients",
+            "type": "string"
+          },
+          "instructions": {
+            "title": "Instructions",
+            "type": "string"
+          }
+        },
+        "required": [
+          "readable",
+          "title",
+          "ingredients",
+          "instructions"
+        ],
+        "title": "RecipeDraftOut",
         "type": "object"
       }
     },

@@ -39,3 +39,28 @@ class Editor(models.Model):
     def clean(self) -> None:
         # Google's addresses are compared lower-case (food.google); store them that way.
         self.email = self.email.strip().lower()
+
+
+class PhotoRead(models.Model):
+    """One "read recipe from photo" sent to a provider (food.reader), so the admin can count
+    them against the cost per photo. Only who, when, which provider and how it went: the photo
+    itself is never stored."""
+
+    class Outcome(models.TextChoices):
+        READ = "read", "lest"
+        UNREADABLE = "unreadable", "kunne ikke leses"
+        FAILED = "failed", "feil hos leverandøren"
+
+    at = models.DateTimeField(default=timezone.now, verbose_name="tidspunkt")
+    editor = models.EmailField(blank=True, verbose_name="redaktør")
+    provider = models.CharField(max_length=40, verbose_name="leverandør")
+    model = models.CharField(max_length=200, blank=True, verbose_name="modell")
+    outcome = models.CharField(max_length=20, choices=Outcome.choices, verbose_name="resultat")
+
+    class Meta:
+        ordering = ("-at",)
+        verbose_name = "lesing fra bilde"
+        verbose_name_plural = "lesinger fra bilde"
+
+    def __str__(self) -> str:
+        return f"{self.at:%Y-%m-%d %H:%M} {self.provider}: {self.outcome}"

@@ -57,6 +57,23 @@ class RecipeOut(ModelSchema):
         return photos.url(obj)
 
 
+class PhotoReadingOut(Schema):
+    # True when reading a recipe from a photo is switched on and the caller is an editor: the
+    # SPA shows "Les oppskrift fra bilde" only then.
+    available: bool
+
+
+class RecipeDraftOut(Schema):
+    """A recipe read from a photo, for the "Ny oppskrift" form to fill in. Nothing is saved:
+    the editor checks it and saves it with POST /api/recipes like any other."""
+
+    # False when no recipe could be read from the photo; the text fields are then empty.
+    readable: bool
+    title: str
+    ingredients: str  # newline-separated, like RecipeIn
+    instructions: str
+
+
 class ErrorOut(Schema):
     detail: str
 
