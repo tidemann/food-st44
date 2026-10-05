@@ -1,25 +1,22 @@
-import { HttpClient } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { Router } from '@angular/router';
-import type { Recipe } from '../api/types';
+import { RouterLink } from '@angular/router';
+import type { PhotoReading } from '../api/types';
 import { ServerError } from '../pages/server-error';
-import { Site } from '../site';
-import { PhotoStepError, saveWithPhoto } from './photo';
-import {
-  type FieldErrors,
-  hasErrors,
-  RecipeForm,
-  type RecipeSave,
-  saveFailure,
-} from './recipe-form';
+import { newRecipe } from './new-recipe';
+import { READING_URL } from './read-photo';
+import { hasErrors, RecipeForm } from './recipe-form';
 
-/** `/recipes/new`: S-NEW and S-NEW-ERR (§2.7, §2.8), with the photo field (M3). */
+/**
+ * `/recipes/new`: S-NEW and S-NEW-ERR (§2.7, §2.8), with the photo field (M3) and, when reading
+ * is on, "Les oppskrift fra bilde" at the top (M4, design row 7).
+ */
 @Component({
   selector: 'app-recipe-new',
-  imports: [RecipeForm, ServerError],
+  imports: [RecipeForm, RouterLink, ServerError],
   template: `
-    @if (failed()) {
+    @if (saving.failed()) {
       <app-server-error />
     } @else {
       <div class="wrap">
@@ -28,13 +25,19 @@ import {
           <h1>Ny oppskrift</h1>
           <p>Tittel og ingredienser må fylles ut. Resten kan du legge til siden.</p>
         </div>
+        @if (canRead()) {
+          <p class="read-photo">
+            <a class="btn" routerLink="/recipes/new/photo">Les oppskrift fra bilde</a>
+            <span>Har du oppskriften på papir? Ta et bilde, så fyller vi ut skjemaet.</span>
+          </p>
+        }
         <app-recipe-form
           submitLabel="Lagre oppskrift"
           [cancelLink]="['/']"
-          [errors]="errors()"
-          [photoOnly]="created() !== null"
-          [busy]="busy()"
-          (save)="create($event)"
+          [errors]="saving.errors()"
+          [photoOnly]="saving.created() !== null"
+          [busy]="saving.busy()"
+          (save)="saving.create($event)"
         />
       </div>
     }
@@ -43,52 +46,21 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RecipeNew {
-  private readonly http = inject(HttpClient);
-  private readonly router = inject(Router);
-  private readonly site = inject(Site);
+  protected readonly saving = newRecipe();
 
-  protected readonly errors = signal<FieldErrors>({});
-  protected readonly busy = signal(false);
-  protected readonly failed = signal(false);
-  /**
-   * The recipe, once its text is saved but its photo was refused. The next "Lagre" then updates
-   * it and sends the photo again, instead of adding the recipe twice.
-   */
-  protected readonly created = signal<number | null>(null);
+  /** Only editors, and only when a provider is switched on; otherwise the button is not there. */
+  private readonly reading = httpResource<PhotoReading>(() => READING_URL);
+  protected readonly canRead = computed(
+    () => this.reading.hasValue() && this.reading.value().available,
+  );
 
   constructor() {
     const title = inject(Title);
     effect(() => {
-      if (this.failed()) return;
+      if (this.saving.failed()) return;
       title.setTitle(
-        hasErrors(this.errors()) ? 'Feil — Ny oppskrift' : 'Ny oppskrift — food.st44.no',
+        hasErrors(this.saving.errors()) ? 'Feil — Ny oppskrift' : 'Ny oppskrift — food.st44.no',
       );
-    });
-  }
-
-  protected create({ recipe: input, photo }: RecipeSave): void {
-    this.busy.set(true);
-    const id = this.created();
-    const text =
-      id === null
-        ? this.http.post<Recipe>('/api/recipes', input)
-        : this.http.put<Recipe>(`/api/recipes/${String(id)}`, input);
-    saveWithPhoto(this.http, text, photo, (saved) => {
-      this.created.set(saved.id);
-    }).subscribe({
-      next: (recipe) => {
-        // The count, the front page and "Sist oppdatert" all come from the collection.
-        this.site.recipes.reload();
-        void this.router.navigate(['/recipes', recipe.id], { queryParams: { flash: 'created' } });
-      },
-      error: (error: unknown) => {
-        this.busy.set(false);
-        // The recipe is in the collection now, if without its photo.
-        if (error instanceof PhotoStepError) this.site.recipes.reload();
-        const failure = saveFailure(error);
-        if (typeof failure === 'string') this.failed.set(true);
-        else this.errors.set(failure);
-      },
     });
   }
 }

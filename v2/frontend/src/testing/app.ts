@@ -6,9 +6,12 @@ import { TestBed } from '@angular/core/testing';
 import { Title } from '@angular/platform-browser';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { ApiError, Me, Recipe } from '../app/api/types';
+import type { ApiError, Me, PhotoReading, Recipe } from '../app/api/types';
 import { routes } from '../app/app.routes';
 import { Auth } from '../app/auth';
+
+/** The photo reader (M4). */
+export const READING = '/api/recipes/read-photo';
 
 const at = (day: string): string => `2026-${day}T10:00:00Z`;
 
@@ -105,6 +108,8 @@ export interface Answers {
   search?: Recipe[] | number;
   /** GET /api/recipes/:id */
   recipe?: Recipe | number;
+  /** GET /api/recipes/read-photo, asked by S-NEW for its button (default: reading off). */
+  reading?: PhotoReading | number;
 }
 
 export function setUp(): void {
@@ -120,10 +125,10 @@ export function setUp(): void {
 function reply(
   http: HttpTestingController,
   match: (url: string, q: boolean) => boolean,
-  body: Me | Recipe | Recipe[] | number,
+  body: Me | PhotoReading | Recipe | Recipe[] | number,
   expect: boolean,
 ): void {
-  const requests = http.match((r) => match(r.url, r.params.has('q')));
+  const requests = http.match((r) => r.method === 'GET' && match(r.url, r.params.has('q')));
   if (expect && requests.length !== 1) {
     throw new Error(`expected one request, got ${String(requests.length)}`);
   }
@@ -151,11 +156,12 @@ export function answer(answers: Answers): void {
   const http = TestBed.inject(HttpTestingController);
   TestBed.tick();
   reply(http, (url, q) => url === '/api/recipes' && !q, answers.all ?? SEED, false);
+  reply(http, (url) => url === READING, answers.reading ?? { available: false }, false);
   if (answers.search !== undefined) {
     reply(http, (url, q) => url === '/api/recipes' && q, answers.search, true);
   }
   if (answers.recipe !== undefined) {
-    reply(http, (url) => url.startsWith('/api/recipes/'), answers.recipe, true);
+    reply(http, (url) => url.startsWith('/api/recipes/') && url !== READING, answers.recipe, true);
   }
 }
 

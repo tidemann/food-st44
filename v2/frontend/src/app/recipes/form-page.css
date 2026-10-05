@@ -26,6 +26,25 @@
   margin-bottom: 20px;
 }
 
+/* "Les oppskrift fra bilde" at the top of S-NEW (M4, design row 7). */
+.read-photo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  max-width: 46rem;
+  margin: 26px 0 0;
+  padding: 16px 20px;
+  background: var(--tint);
+  border: 1px solid var(--rule);
+  font-size: 13.5px;
+  color: var(--soft);
+}
+
+.read-photo .btn {
+  background: var(--paper);
+}
+
 @media (width <= 760px) {
   .form-head {
     padding: 26px 0 0;
