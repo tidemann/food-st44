@@ -127,7 +127,7 @@ immediately if it is exposed.
 | Restart policy | `unless-stopped` |
 | Hostname | `food.st44.no` |
 | nginx upstream | `http://food-st44:80` |
-| Health check | `GET /healthz` → 200, body `ok` |
+| Health check | `GET /healthz` → 200, body `ok`. The host gate runs `docker exec food-st44 wget -qO- http://food-st44:80/healthz`, so the image must ship `wget` |
 
 Do not hand-edit the compose file on the server. Every deploy overwrites it with
 the copy from this repository; edit `infra/docker-compose.yml` and merge.
