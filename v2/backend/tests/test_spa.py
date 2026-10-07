@@ -57,7 +57,9 @@ def test_fixed_client_routes_are_200_with_the_default_title(client: Client, path
     assert title_of(response.text) == "food.st44.no — familiens oppskrifter"
 
 
-@pytest.mark.parametrize("path", ["/nope", "/nonsens/bla", "/recipes", "/recipes/1/edit/more"])
+@pytest.mark.parametrize(
+    "path", ["/nope", "/nonsens/bla", "/recipes", "/recipes/1/edit/more", "/recipes/1/cook/more"]
+)
 def test_an_unknown_path_is_the_spa_with_404(client: Client, path: str) -> None:
     Recipe.objects.create(pk=1, title="Sveler", ingredients="x")
 
@@ -68,7 +70,7 @@ def test_an_unknown_path_is_the_spa_with_404(client: Client, path: str) -> None:
     assert title_of(response.text) == "Siden finnes ikke — food.st44.no"
 
 
-@pytest.mark.parametrize("suffix", ["", "/", "/edit", "/delete"])
+@pytest.mark.parametrize("suffix", ["", "/", "/edit", "/delete", "/cook"])
 @pytest.mark.parametrize("raw_id", ["99999", "0", "-1", "abc", "99999999999999999999"])
 def test_a_missing_recipe_is_the_spa_with_404(client: Client, raw_id: str, suffix: str) -> None:
     response = client.get(f"/recipes/{raw_id}{suffix}")
@@ -94,8 +96,8 @@ def test_a_recipe_page_carries_the_recipe_title(client: Client, recipe: Recipe) 
     assert 'name="description"' not in response.text
 
 
-@pytest.mark.parametrize("suffix", ["/edit", "/delete"])
-def test_edit_and_delete_of_a_real_recipe_are_200(
+@pytest.mark.parametrize("suffix", ["/edit", "/delete", "/cook", "/cook/"])
+def test_edit_delete_and_cook_of_a_real_recipe_are_200(
     client: Client, recipe: Recipe, suffix: str
 ) -> None:
     response = client.get(f"/recipes/{recipe.pk}{suffix}")

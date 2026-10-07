@@ -18,7 +18,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     # From a photo (M4), a link or pasted text (M5).
     re_path(r"^recipes/new/(?:photo|link|text)/?$", spa),
     re_path(r"^recipes/(?P<raw_id>[^/]+)/?$", recipe_detail),
-    re_path(r"^recipes/(?P<raw_id>[^/]+)/(?:edit|delete)/?$", recipe_action),
+    re_path(r"^recipes/(?P<raw_id>[^/]+)/(?:edit|delete|cook)/?$", recipe_action),
     # Recipe photos (food.photos), stored next to the database rather than built into the image.
     path("photos/<str:name>", photo),
     # Anything else that is not API or a static file is the SPA's "page not found".
