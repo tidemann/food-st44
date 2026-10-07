@@ -223,8 +223,9 @@ run ≈46 px desktop / 34 px at ≤760 px; interface text 16 px body, 14.5 px sm
 12.5 px buttons and hints, with letter-spacing only on the small uppercase-ish labels.
 
 Shape: square. `border-radius: 0` on buttons; borders are 1 px hairlines or 3 px accents.
-`--tap: 44px` is the minimum touch target, carried by buttons and the search field (§5 has the
-one place the chrome does not reach it). The single breakpoint is `width <= 760px`
+`--tap: 44px` is the minimum touch target, carried by buttons, the search field and — as an
+invisible out-of-flow band, so the type does not move — the nav band's text links (§5 has the
+two places the chrome still does not reach it). The single breakpoint is `width <= 760px`
 (`.wrap` padding 40 → 20 px, the 12-column `.grid` collapses to one column).
 
 Below that breakpoint the nav band becomes a **sticky opaque bar**, so `Ny oppskrift` stays one
@@ -253,18 +254,20 @@ Before a design is delivered or a UI PR is opened:
   Never colour alone.
 - `prefers-reduced-motion` respected. The site does not animate on its own.
 - 200 % zoom without horizontal scrolling; no horizontal overflow at 1280, 390 or 360 px.
-- Touch targets ≥ 44 × 44 px — a house rule, and the one line the chrome does not reach; read
-  the paragraph below before you act on it.
+- Touch targets ≥ 44 × 44 px — a house rule the chrome meets in the nav band and still misses
+  in two places; read the paragraph below before you act on it.
 
 **The full checklist is §2 of [`COPY-AND-ACCESSIBILITY.md`](COPY-AND-ACCESSIBILITY.md).** Every
-line is honoured by the built site today **except the 44 × 44 px target**, and that line is
-stricter than the heading: 44 × 44 is AAA (2.5.5), while AA asks 24 × 24 (2.5.8, WCAG 2.2).
-Buttons and the search field carry `--tap`. The chrome's three small text links are set as
-type on a rule, not as buttons, and they do not stand alike (measured in Chromium at 1280 and
-390 px):
+line is honoured by the built site today **except the 44 × 44 px target in two places**, and
+that line is stricter than the heading: 44 × 44 is AAA (2.5.5), while AA asks 24 × 24 (2.5.8,
+WCAG 2.2). Buttons and the search field carry `--tap`. The chrome's three small text links are
+set as type on a rule, not as buttons, and they do not stand alike (measured in Chromium at
+1280 and 390 px):
 
-- **Nav band** (23.9–25.9 px high) stands alone in a flex row, so 2.5.8's inline exception
-  does not reach it. Open; ST-748 closes it by carrying `--tap` as an invisible band.
+- **Nav band** (type 23.9–25.9 px high) stands alone in a flex row, so 2.5.8's inline
+  exception does not reach it. Closed by ST-748: a transparent `--tap`-tall `::after`, out of
+  flow and centred on each label, gives every link a 44 px hit box inside `.mastbar`. The
+  type, the underlines and the focus ring stay where they were; the render is pixel-identical.
 - **Breadcrumb** (`.crumb a`, 15 px) sits in a line of text — `/ {tittel}` follows it — so it
   is exempt from AA 2.5.8 as inline. It is below the AAA 44 px house rule.
 - **`Tøm søk`** (`.clear a`, 14 px) is the only content of its own `<p>`, so it is not exempt.
