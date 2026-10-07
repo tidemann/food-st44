@@ -1,0 +1,249 @@
+@switch (state()) {
+  @case ('not-found') {
+    <app-not-found kind="recipe" />
+  }
+  @case ('error') {
+    <app-server-error />
+  }
+  @case ('ready') {
+    @if (view(); as v) {
+      @if (current(); as s) {
+        <div class="cook">
+          <header class="top">
+            <a class="exit" [routerLink]="['/recipes', v.recipe.id]" (click)="leave()">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 5l-7 7 7 7" />
+              </svg>
+              Avslutt
+            </a>
+            <h1 class="top-title">{{ v.recipe.title }}</h1>
+          </header>
+          <progress class="progress" aria-hidden="true" [value]="step()" [max]="count()"></progress>
+
+          @if (timers.running().length) {
+            <section class="timers" aria-label="Tidtakere">
+              @for (timer of timers.running(); track timer.id) {
+                <div class="timer">
+                  <span class="timer-clock" role="timer">{{ clock(timer.remaining) }}</span>
+                  <span class="timer-label">{{ label(timer) }}</span>
+                  <progress
+                    class="timer-bar"
+                    aria-hidden="true"
+                    [value]="timer.progress"
+                  ></progress>
+                  <button
+                    class="btn square"
+                    type="button"
+                    [attr.aria-label]="(timer.running ? 'Pause, ' : 'Fortsett, ') + label(timer)"
+                    (click)="toggle(timer)"
+                  >
+                    @if (timer.running) {
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 6v12M15 6v12" />
+                      </svg>
+                    } @else {
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path class="fill" d="M8 5l11 7-11 7z" />
+                      </svg>
+                    }
+                  </button>
+                  <button
+                    class="btn square"
+                    type="button"
+                    [attr.aria-label]="'Stopp tidtakeren, ' + label(timer)"
+                    (click)="cancel(timer)"
+                  >
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                </div>
+              }
+            </section>
+          }
+
+          <div class="body">
+            <aside
+              class="ing"
+              [class.open]="sheet()"
+              aria-labelledby="ing-heading"
+              [attr.role]="sheet() ? 'dialog' : null"
+              [attr.aria-modal]="sheet() ? 'true' : null"
+            >
+              <div class="ing-head">
+                <div>
+                  <h2 id="ing-heading">Ingredienser</h2>
+                  <p class="ing-count">
+                    {{ ticks().count() }} av {{ v.ingredients.length }} krysset av
+                  </p>
+                </div>
+                <button #sheetClose class="btn ing-close" type="button" (click)="closeSheet()">
+                  Lukk
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+              <ul>
+                @for (item of v.ingredients; track $index) {
+                  <li>
+                    <label [class.plain]="!item.amount">
+                      <span class="box">
+                        <input
+                          type="checkbox"
+                          [checked]="ticks().has($index)"
+                          (change)="ticks().toggle($index)"
+                        />
+                        <svg class="check" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 12.5l4.5 4.5L19 7.5" />
+                        </svg>
+                      </span>
+                      @if (item.amount) {
+                        <b>{{ item.amount }}</b>
+                      }
+                      <span class="name">{{ item.name }}</span>
+                    </label>
+                  </li>
+                }
+              </ul>
+              <div class="ing-foot">
+                <button class="link" type="button" (click)="ticks().reset()">Nullstill</button>
+                <span>Krysset blir husket til du avslutter</span>
+              </div>
+            </aside>
+            @if (sheet()) {
+              <div class="backdrop" aria-hidden="true" (click)="closeSheet()"></div>
+            }
+
+            <div class="main">
+              @for (timer of timers.finished(); track timer.id) {
+                <div class="done" role="alert">
+                  <h2>Tiden er ute</h2>
+                  <p>{{ spoken(timer) }}</p>
+                  <div class="done-acts">
+                    <button class="btn btn-primary" type="button" (click)="dismiss(timer)">
+                      {{ ringing() ? 'Stopp lyden' : 'Ferdig' }}
+                    </button>
+                    <button class="btn" type="button" (click)="oneMore(timer)">+ 1 minutt</button>
+                  </div>
+                </div>
+              }
+
+              <section
+                class="step"
+                aria-labelledby="step-count"
+                (touchstart)="onTouchStart($event)"
+                (touchend)="onTouchEnd($event)"
+              >
+                <div class="meta">
+                  <p id="step-count" class="count" aria-live="polite">
+                    Steg {{ step() }} av {{ count() }}
+                  </p>
+                  @if (awake()) {
+                    <p class="awake">Skjermen står på</p>
+                  }
+                </div>
+
+                <div class="say">
+                  <p class="n" aria-hidden="true">{{ step() }}</p>
+                  <!-- Every part in an element: whitespace-only nodes between them are dropped, so
+                       nothing can come between "10 minutter" and the comma after it. -->
+                  <p class="text">
+                    @for (part of s.parts; track $index) {
+                      @if (part.time) {
+                        <mark>{{ part.text }}</mark>
+                      } @else {
+                        <span>{{ part.text }}</span>
+                      }
+                    }
+                  </p>
+
+                  <div class="timing">
+                    @for (time of s.times; track $index) {
+                      <button
+                        class="btn start"
+                        type="button"
+                        (click)="startTimer(time.seconds, false)"
+                      >
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="12" cy="13.5" r="7.5" />
+                          <path d="M12 10v3.5l2.5 2M9.5 3h5" />
+                        </svg>
+                        <span class="start-label">Start timer</span>
+                        <span class="start-time">{{ clock(time.seconds) }}</span>
+                      </button>
+                    }
+                    @if (custom()) {
+                      <form class="own" (submit)="startCustom($event, minutes.value)">
+                        <label for="own-minutes">Minutter</label>
+                        <input
+                          #minutes
+                          id="own-minutes"
+                          type="number"
+                          inputmode="decimal"
+                          min="0.5"
+                          max="600"
+                          step="any"
+                          [value]="suggested()"
+                        />
+                        <button class="btn btn-primary" type="submit">Start</button>
+                        <button class="link" type="button" (click)="custom.set(false)">
+                          Avbryt
+                        </button>
+                      </form>
+                    } @else {
+                      <button class="link" type="button" (click)="openCustom()">
+                        Sett egen tid
+                      </button>
+                    }
+                  </div>
+                </div>
+              </section>
+
+              <nav class="nav" aria-label="Steg">
+                <button
+                  #sheetOpen
+                  class="btn ing-open"
+                  type="button"
+                  aria-haspopup="dialog"
+                  (click)="openSheet()"
+                >
+                  Ingredienser <span class="ing-n">{{ v.ingredients.length }}</span>
+                </button>
+                <p class="hint">Sveip, eller bruk <kbd>←</kbd> <kbd>→</kbd> på tastaturet.</p>
+                <div class="steps">
+                  <button
+                    class="btn prev"
+                    type="button"
+                    [disabled]="step() === 1"
+                    (click)="go(step() - 1)"
+                  >
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M15 5l-7 7 7 7" />
+                    </svg>
+                    Forrige
+                  </button>
+                  @if (step() < count()) {
+                    <button class="btn btn-primary next" type="button" (click)="go(step() + 1)">
+                      Neste
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  } @else {
+                    <a
+                      class="btn btn-primary next"
+                      [routerLink]="['/recipes', v.recipe.id]"
+                      (click)="leave()"
+                      >Ferdig</a
+                    >
+                  }
+                </div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  }
+}

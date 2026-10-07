@@ -1,5 +1,5 @@
 import { httpResource } from '@angular/common/http';
-import { computed, Injectable } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import type { Recipe } from './api/types';
 import { formatLong } from './recipes/format';
 
@@ -23,4 +23,6 @@ export class Site {
    * be loaded. While loading it stays hidden, so an empty site never flashes a search field.
    */
   readonly searchable = computed(() => this.total() > 0 || this.recipes.error() !== undefined);
+  /** Set by cooking mode while it is open: the masthead and footer step aside (ST-752). */
+  readonly cooking = signal(false);
 }

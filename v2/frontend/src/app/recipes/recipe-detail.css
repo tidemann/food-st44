@@ -55,7 +55,7 @@
   margin: 0;
 }
 
-.rmeta div {
+.rmeta dl > div {
   display: flex;
   justify-content: space-between;
   gap: 14px;
@@ -73,6 +73,38 @@
   margin: 0;
   font-weight: 600;
   text-align: right;
+}
+
+/* "Start matlaging" (ST-752): under the facts, so on a phone it comes before the photo */
+.cook-start {
+  margin-top: 24px;
+}
+
+.cook-start .btn {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cook-start svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: square;
+}
+
+.cook-start p {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--soft);
 }
 
 .rhero {
@@ -198,6 +230,15 @@
 
   .rhero {
     height: 250px;
+  }
+
+  .cook-start {
+    margin-top: 30px;
+  }
+
+  .cook-start p {
+    font-size: 14px;
+    text-align: center;
   }
 
   .rbody {
