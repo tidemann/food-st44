@@ -86,7 +86,11 @@ so on the task.
 
 ## Design: Søndag
 
-The look is Søndag (Bodoni Moda display, Archivo interface). **Six colours, no others:**
+The look is Søndag (Bodoni Moda display, Archivo interface). Before you design or change a
+screen, read `docs/design/DESIGN-GUIDE.md` and the signed-off pictures it points to — that
+file is the spec for the look; this section is only what CI enforces of it.
+
+**Six colours, no others:**
 
 | Token | Value |
 |---|---|
