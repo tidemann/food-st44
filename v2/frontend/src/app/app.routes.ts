@@ -3,6 +3,7 @@ import { editorOnly } from './auth';
 import { NoAccess } from './pages/no-access';
 import { NotFound } from './pages/not-found';
 import { readingAvailable } from './recipes/read-photo';
+import { RecipeCook } from './recipes/recipe-cook';
 import { RecipeDelete } from './recipes/recipe-delete';
 import { RecipeDetail } from './recipes/recipe-detail';
 import { RecipeEdit } from './recipes/recipe-edit';
@@ -41,6 +42,8 @@ export const routes: Routes = [
   },
   { path: 'recipes/new/text', redirectTo: 'recipes/new' },
   { path: 'recipes/:id', component: RecipeDetail },
+  // Cooking mode: for everyone, no sign-in (ST-752).
+  { path: 'recipes/:id/cook', component: RecipeCook },
   { path: 'recipes/:id/edit', component: RecipeEdit, canMatch: [editorOnly] },
   { path: 'recipes/:id/edit', component: NoAccess },
   { path: 'recipes/:id/delete', component: RecipeDelete, canMatch: [editorOnly] },

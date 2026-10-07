@@ -54,6 +54,18 @@
                   </div>
                 }
               </dl>
+              @if (v.steps.length) {
+                <div class="cook-start">
+                  <a class="btn btn-primary" [routerLink]="['/recipes', v.recipe.id, 'cook']">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="13.5" r="7.5" />
+                      <path d="M12 10v3.5l2.5 2M9.5 3h5" />
+                    </svg>
+                    Start matlaging
+                  </a>
+                  <p>Ett steg om gangen, stor skrift. Skjermen står på mens du lager mat.</p>
+                </div>
+              }
             </div>
           </div>
 

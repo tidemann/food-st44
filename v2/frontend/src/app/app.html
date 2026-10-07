@@ -2,81 +2,92 @@
   >Hopp til innhold</a
 >
 
-<header class="mast">
-  <div class="wrap">
-    <p class="mast-meta">
-      <span>{{ today }}</span>
-      <span><b>Familiekjøkkenet</b></span>
-    </p>
-    <div class="mast-brand">
-      @if (home()) {
-        <h1 class="wordmark">
-          <a routerLink="/">food<span class="dot">.</span>st44<span class="dot">.</span>no</a>
-        </h1>
-      } @else {
-        <p class="wordmark">
-          <a routerLink="/">food<span class="dot">.</span>st44<span class="dot">.</span>no</a>
-        </p>
-      }
-      <span class="mast-brandline"></span>
-      @if (site.searchable()) {
-        <form class="search" method="get" action="/" role="search" (submit)="search($event, field)">
-          <label for="q">Søk</label>
-          <input
-            #field
-            class="search-field"
-            type="search"
-            id="q"
-            name="q"
-            placeholder="brun saus, kål, torsk …"
-            [value]="q()"
-          />
-          <button class="visually-hidden-focusable" type="submit">Søk</button>
-        </form>
-      }
+<!-- Cooking mode has the screen to itself: its own bar, no masthead or footer (ST-752). -->
+@if (!site.cooking()) {
+  <header class="mast">
+    <div class="wrap">
+      <p class="mast-meta">
+        <span>{{ today }}</span>
+        <span><b>Familiekjøkkenet</b></span>
+      </p>
+      <div class="mast-brand">
+        @if (home()) {
+          <h1 class="wordmark">
+            <a routerLink="/">food<span class="dot">.</span>st44<span class="dot">.</span>no</a>
+          </h1>
+        } @else {
+          <p class="wordmark">
+            <a routerLink="/">food<span class="dot">.</span>st44<span class="dot">.</span>no</a>
+          </p>
+        }
+        <span class="mast-brandline"></span>
+        @if (site.searchable()) {
+          <form
+            class="search"
+            method="get"
+            action="/"
+            role="search"
+            (submit)="search($event, field)"
+          >
+            <label for="q">Søk</label>
+            <input
+              #field
+              class="search-field"
+              type="search"
+              id="q"
+              name="q"
+              placeholder="brun saus, kål, torsk …"
+              [value]="q()"
+            />
+            <button class="visually-hidden-focusable" type="submit">Søk</button>
+          </form>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- A direct child of the page, so the sticky it gets on a phone can travel the whole page. -->
+  <div class="mastbar">
+    <div class="wrap">
+      <nav class="mast-nav">
+        <a
+          routerLink="/"
+          routerLinkActive
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="{
+            paths: 'exact',
+            queryParams: 'ignored',
+            fragment: 'ignored',
+            matrixParams: 'ignored',
+          }"
+          >Oppskrifter</a
+        >
+        @if (auth.isEditor()) {
+          <a routerLink="/recipes/new" routerLinkActive ariaCurrentWhenActive="page"
+            >Ny oppskrift</a
+          >
+        }
+        @if (site.total() > 0) {
+          <span class="count">{{ count() }} i samlingen</span>
+        }
+        <!-- M2: who is reading. Nothing until /api/auth/me answers, so no "Logg inn" flashes. -->
+        @if (auth.me(); as me) {
+          @if (me.signed_in) {
+            <span class="who">
+              <span class="initial" aria-hidden="true">{{ me.initial }}</span>
+              <span class="who-name">{{ me.name }}</span>
+              <button class="who-link" type="button" (click)="signOut()">Logg ut</button>
+            </span>
+          } @else if (me.sign_in_available) {
+            <span class="who">
+              <a class="who-link" [href]="signInHref()">Logg inn</a>
+            </span>
+          }
+        }
+      </nav>
     </div>
   </div>
-</header>
-
-<!-- A direct child of the page, so the sticky it gets on a phone can travel the whole page. -->
-<div class="mastbar">
-  <div class="wrap">
-    <nav class="mast-nav">
-      <a
-        routerLink="/"
-        routerLinkActive
-        ariaCurrentWhenActive="page"
-        [routerLinkActiveOptions]="{
-          paths: 'exact',
-          queryParams: 'ignored',
-          fragment: 'ignored',
-          matrixParams: 'ignored',
-        }"
-        >Oppskrifter</a
-      >
-      @if (auth.isEditor()) {
-        <a routerLink="/recipes/new" routerLinkActive ariaCurrentWhenActive="page">Ny oppskrift</a>
-      }
-      @if (site.total() > 0) {
-        <span class="count">{{ count() }} i samlingen</span>
-      }
-      <!-- M2: who is reading. Nothing until /api/auth/me answers, so no "Logg inn" flashes. -->
-      @if (auth.me(); as me) {
-        @if (me.signed_in) {
-          <span class="who">
-            <span class="initial" aria-hidden="true">{{ me.initial }}</span>
-            <span class="who-name">{{ me.name }}</span>
-            <button class="who-link" type="button" (click)="signOut()">Logg ut</button>
-          </span>
-        } @else if (me.sign_in_available) {
-          <span class="who">
-            <a class="who-link" [href]="signInHref()">Logg inn</a>
-          </span>
-        }
-      }
-    </nav>
-  </div>
-</div>
+}
 
 <main id="main" tabindex="-1" #main>
   @if (login() === 'failed') {
@@ -94,11 +105,13 @@
   }
 </main>
 
-<footer class="foot">
-  <div class="wrap">
-    <span>food.st44.no — familiens oppskrifter</span>
-    @if (site.updated(); as updated) {
-      <span>Sist oppdatert {{ updated }}</span>
-    }
-  </div>
-</footer>
+@if (!site.cooking()) {
+  <footer class="foot">
+    <div class="wrap">
+      <span>food.st44.no — familiens oppskrifter</span>
+      @if (site.updated(); as updated) {
+        <span>Sist oppdatert {{ updated }}</span>
+      }
+    </div>
+  </footer>
+}

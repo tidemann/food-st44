@@ -24,7 +24,7 @@ describe('RecipeDetail', () => {
       expect(text(el.querySelector('h1'))).toBe('Kjøttkaker i brun saus');
       expect(title()).toBe('Kjøttkaker i brun saus — food.st44.no');
       expect(
-        [...el.querySelectorAll('.rmeta div')].map(
+        [...el.querySelectorAll('.rmeta dl > div')].map(
           (d) => `${text(d.querySelector('dt'))} ${text(d.querySelector('dd'))}`,
         ),
       ).toEqual(['Ingredienser 4', 'Fremgangsmåte 3 steg', 'Lagt inn 2. oktober 2026']);
