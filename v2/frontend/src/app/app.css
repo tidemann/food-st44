@@ -126,6 +126,7 @@ main:focus {
   font-weight: 600;
   text-decoration: none;
   padding-bottom: 3px;
+  position: relative;
 }
 
 .mast-nav a[aria-current] {
@@ -171,6 +172,23 @@ main:focus {
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
+  position: relative;
+}
+
+/* The nav band is type on a rule, not buttons, so the tap target grows where it
+   cannot be seen: a transparent --tap-tall strip centred on each label. It is
+   out of flow, so the baseline, the 30px gap, the --rule and the --red
+   underline all stay exactly where the signed-off picture puts them, and the
+   focus ring still hugs the type. It never grows sideways, so two neighbours
+   can never overlap and take each other's taps. */
+.mast-nav a::after,
+.mast-nav .who-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - var(--tap) / 2);
+  height: var(--tap);
 }
 
 .mast-nav button.who-link {

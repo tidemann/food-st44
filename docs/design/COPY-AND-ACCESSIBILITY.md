@@ -113,13 +113,14 @@ add a label that other screens will want, add it here.
 ## 2. Accessibility checklist (WCAG 2.1 AA, POUR)
 
 A builder should be able to tick every line before opening a PR. Everything on this list is
-honoured by the built site today **except the 44 × 44 px target**, and that line is stricter
-than the heading: 44 × 44 is AAA (2.5.5), while AA asks 24 × 24 (2.5.8, WCAG 2.2). Buttons and
-the search field carry `--tap`. The chrome's three small text links are set as type on a rule,
-not as buttons, and they do not stand alike (measured in Chromium at 1280 and 390 px):
+honoured by the built site today **except the 44 × 44 px target in two places**, and that line
+is stricter than the heading: 44 × 44 is AAA (2.5.5), while AA asks 24 × 24 (2.5.8, WCAG 2.2).
+Buttons and the search field carry `--tap`. The chrome's three small text links are set as type
+on a rule, not as buttons, and they do not stand alike (measured in Chromium at 1280 and 390 px):
 
-- **Nav band** (23.9–25.9 px high) stands alone in a flex row, so 2.5.8's inline exception
-  does not reach it. Open; ST-748 closes it by carrying `--tap` as an invisible band.
+- **Nav band** (19–26.5 px high; `Logg ut` is the low end, a `<button>` does not inherit the
+  body line-height) stands alone in a flex row, so 2.5.8's inline exception does not reach it. Closed by ST-748: a transparent `--tap`-tall `::after`, out of flow and
+  centred on each label, gives every link a 44 px hit box without moving the type.
 - **Breadcrumb** (`.crumb a`, 15 px) sits in a line of text — `/ {tittel}` follows it — so it
   is exempt from AA 2.5.8 as inline. It is below the AAA 44 px house rule.
 - **`Tøm søk`** (`.clear a`, 14 px) is the only content of its own `<p>`, so it is not exempt.
@@ -136,8 +137,9 @@ line is a known gap, and it is closed by growing the invisible hit area, never t
       is nothing to search. The line read "on every template" when every template carried its
       own header.)
 - [ ] Every input has a visible or visually-hidden `<label for>`.
-- [ ] Every interactive target ≥ 44 × 44 px (`--tap`) — see the note above: the chrome's text
-      links are the known exception, and they are not fixed by growing the type.
+- [ ] Every interactive target ≥ 44 × 44 px (`--tap`) — see the note above. The nav band meets
+      it with an invisible band; the breadcrumb and `Tøm søk` are the two open cases, and
+      neither is fixed by growing the type.
 - [ ] Focus visible on every link, button and input — `2px solid var(--red)` at `3px` offset,
       set once in `styles.css`, never removed.
 - [ ] Full keyboard path: list → search → card → detail → Rediger / Slett → confirm → back. Tab
