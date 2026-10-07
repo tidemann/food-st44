@@ -118,8 +118,8 @@ is stricter than the heading: 44 × 44 is AAA (2.5.5), while AA asks 24 × 24 (2
 Buttons and the search field carry `--tap`. The chrome's three small text links are set as type
 on a rule, not as buttons, and they do not stand alike (measured in Chromium at 1280 and 390 px):
 
-- **Nav band** (type 23.9–25.9 px high) stands alone in a flex row, so 2.5.8's inline exception
-  does not reach it. Closed by ST-748: a transparent `--tap`-tall `::after`, out of flow and
+- **Nav band** (19–26.5 px high; `Logg ut` is the low end, a `<button>` does not inherit the
+  body line-height) stands alone in a flex row, so 2.5.8's inline exception does not reach it. Closed by ST-748: a transparent `--tap`-tall `::after`, out of flow and
   centred on each label, gives every link a 44 px hit box without moving the type.
 - **Breadcrumb** (`.crumb a`, 15 px) sits in a line of text — `/ {tittel}` follows it — so it
   is exempt from AA 2.5.8 as inline. It is below the AAA 44 px house rule.
