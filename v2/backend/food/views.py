@@ -66,8 +66,16 @@ def recipe_detail(request: HttpRequest, raw_id: str) -> HttpResponse:
     return _index(f"{recipe.title} — {SITE}")
 
 
+def recipe_cook(request: HttpRequest, raw_id: str) -> HttpResponse:
+    """`/recipes/<id>/cook`: cooking mode, with the <title> the page sets (recipe-cook.ts)."""
+    recipe = _find(raw_id)
+    if recipe is None:
+        return _index(RECIPE_NOT_FOUND, status=404)
+    return _index(f"Matlaging: {recipe.title} — {SITE}")
+
+
 def recipe_action(request: HttpRequest, raw_id: str) -> HttpResponse:
-    """`/recipes/<id>/edit`, `/delete` and `/cook`: 404 when there is no such recipe."""
+    """`/recipes/<id>/edit` and `/delete`: 404 when there is no such recipe."""
     if _find(raw_id) is None:
         return _index(RECIPE_NOT_FOUND, status=404)
     return _index()
