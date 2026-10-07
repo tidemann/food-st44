@@ -113,13 +113,22 @@ add a label that other screens will want, add it here.
 ## 2. Accessibility checklist (WCAG 2.1 AA, POUR)
 
 A builder should be able to tick every line before opening a PR. Everything on this list is
-honoured by the built site today, so a failure is a regression, not a backlog item.
+honoured by the built site today **except the 44 × 44 px target**, and that line is stricter
+than the heading: 44 × 44 is AAA (2.5.5), while AA asks 24 × 24 (2.5.8, WCAG 2.2). Buttons and
+the search field carry `--tap`. The chrome's text links — the nav band, the breadcrumb,
+`Tøm søk` — are ~22 px, because the picture sets them as type on a rule, not as buttons. A
+failure in any other line is a regression, not a backlog item. This one is a known gap, and if
+it is closed it is closed by growing the invisible hit area, never the type.
 
 - [ ] `<html lang="no">` on every page.
 - [ ] One `<h1>` per page; heading levels never skip.
-- [ ] `<header>`, `<main>`, `<form role="search">` landmarks on every template.
+- [ ] `<header>` and `<main>` landmarks on every page, and `role="search"` on the search form.
+      (In v2 the masthead is global and the form is absent when the collection is empty — there
+      is nothing to search. The line read "on every template" when every template carried its
+      own header.)
 - [ ] Every input has a visible or visually-hidden `<label for>`.
-- [ ] Every interactive target ≥ 44 × 44 px (`--tap`).
+- [ ] Every interactive target ≥ 44 × 44 px (`--tap`) — see the note above: the chrome's text
+      links are the known exception, and they are not fixed by growing the type.
 - [ ] Focus visible on every link, button and input — `2px solid var(--red)` at `3px` offset,
       set once in `styles.css`, never removed.
 - [ ] Full keyboard path: list → search → card → detail → Rediger / Slett → confirm → back. Tab

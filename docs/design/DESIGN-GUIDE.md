@@ -124,15 +124,19 @@ It is the first thing the owner judges. Every page carries the full masthead —
 out of the site. The markup lives in `v2/frontend/src/app/app.html`; when you draw a new page,
 draw its masthead too rather than cropping it out of the mockup.
 
-Two things in it come and go, and **both watch the collection, never the query**
-(`v2/frontend/src/app/site.ts`):
+Three things in it come and go (`v2/frontend/src/app/site.ts`, `v2/frontend/src/app/auth.ts`):
 
-- The **count** (`12 oppskrifter i samlingen`) is the size of `/api/recipes`. It is hidden only
-  when that is zero.
+- The **count** (`12 oppskrifter i samlingen`) is the size of `/api/recipes`. It is hidden when
+  that is zero — and hidden on a phone altogether (`.count { display: none }` under 760 px),
+  which is what the mobile picture shows: its nav band is `Oppskrifter` and `Ny oppskrift`,
+  nothing else.
 - The **search field** is hidden when the collection is known to be empty — there is nothing to
   search — and shown when it could not be loaded at all.
+- **`Ny oppskrift`** is shown only to a signed-in editor. The picture is the editor's view; a
+  reader who is not signed in sees the band without it.
 
-So a **failed query is not empty: both stay.** The search stays, and the count goes on reading
+The count and the search both watch the collection, never the query. So a **failed query is not
+empty: both stay.** The search stays, and on a desktop the count goes on reading
 `12 oppskrifter i samlingen` behind a result page that says `Ingen treff på «zzz»`. That is
 deliberate — the masthead tells you the collection is still there.
 
@@ -219,7 +223,8 @@ run ≈46 px desktop / 34 px at ≤760 px; interface text 16 px body, 14.5 px sm
 12.5 px buttons and hints, with letter-spacing only on the small uppercase-ish labels.
 
 Shape: square. `border-radius: 0` on buttons; borders are 1 px hairlines or 3 px accents.
-`--tap: 44px` is the minimum touch target. The single breakpoint is `width <= 760px`
+`--tap: 44px` is the minimum touch target, carried by buttons and the search field (§5 has the
+one place the chrome does not reach it). The single breakpoint is `width <= 760px`
 (`.wrap` padding 40 → 20 px, the 12-column `.grid` collapses to one column).
 
 Below that breakpoint the nav band becomes a **sticky opaque bar**, so `Ny oppskrift` stays one
@@ -248,10 +253,16 @@ Before a design is delivered or a UI PR is opened:
   Never colour alone.
 - `prefers-reduced-motion` respected. The site does not animate on its own.
 - 200 % zoom without horizontal scrolling; no horizontal overflow at 1280, 390 or 360 px.
-- Touch targets ≥ 44 × 44 px.
+- Touch targets ≥ 44 × 44 px — a house rule, and the one line the chrome does not reach; read
+  the paragraph below before you act on it.
 
 **The full checklist is §2 of [`COPY-AND-ACCESSIBILITY.md`](COPY-AND-ACCESSIBILITY.md).** Every
-line of it is honoured by the built site today, so a failure there is a regression.
+line is honoured by the built site today **except the 44 × 44 px target**, and that line is
+stricter than the heading: 44 × 44 is AAA (2.5.5), while AA asks 24 × 24 (2.5.8, WCAG 2.2).
+Buttons and the search field carry `--tap`. The chrome's text links — the nav band, the
+breadcrumb, `Tøm søk` — are ~22 px, because the picture sets them as type on a rule, not as
+buttons. A failure in any other line is a regression. This one is a known gap, and if it is
+closed it is closed by growing the invisible hit area, never the type.
 
 ---
 
