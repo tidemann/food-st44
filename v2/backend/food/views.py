@@ -67,7 +67,7 @@ def recipe_detail(request: HttpRequest, raw_id: str) -> HttpResponse:
 
 
 def recipe_action(request: HttpRequest, raw_id: str) -> HttpResponse:
-    """`/recipes/<id>/edit` and `/recipes/<id>/delete`: 404 when there is no such recipe."""
+    """`/recipes/<id>/edit`, `/delete` and `/cook`: 404 when there is no such recipe."""
     if _find(raw_id) is None:
         return _index(RECIPE_NOT_FOUND, status=404)
     return _index()
