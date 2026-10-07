@@ -259,10 +259,20 @@ Before a design is delivered or a UI PR is opened:
 **The full checklist is §2 of [`COPY-AND-ACCESSIBILITY.md`](COPY-AND-ACCESSIBILITY.md).** Every
 line is honoured by the built site today **except the 44 × 44 px target**, and that line is
 stricter than the heading: 44 × 44 is AAA (2.5.5), while AA asks 24 × 24 (2.5.8, WCAG 2.2).
-Buttons and the search field carry `--tap`. The chrome's text links — the nav band, the
-breadcrumb, `Tøm søk` — are ~22 px, because the picture sets them as type on a rule, not as
-buttons. A failure in any other line is a regression. This one is a known gap, and if it is
-closed it is closed by growing the invisible hit area, never the type.
+Buttons and the search field carry `--tap`. The chrome's three small text links are set as
+type on a rule, not as buttons, and they do not stand alike (measured in Chromium at 1280 and
+390 px):
+
+- **Nav band** (23.9–25.9 px high) stands alone in a flex row, so 2.5.8's inline exception
+  does not reach it. Open; ST-748 closes it by carrying `--tap` as an invisible band.
+- **Breadcrumb** (`.crumb a`, 15 px) sits in a line of text — `/ {tittel}` follows it — so it
+  is exempt from AA 2.5.8 as inline. It is below the AAA 44 px house rule.
+- **`Tøm søk`** (`.clear a`, 14 px) is the only content of its own `<p>`, so it is not exempt.
+  An invisible band gives it a 24 × 24 hit box (AA). It stops at 24, because a 44 px band
+  reaches into the first hit card below.
+
+A failure in any other line is a regression. What is left of the 44 × 44 line is a known gap,
+and it is closed by growing the invisible hit area, never the type.
 
 ---
 

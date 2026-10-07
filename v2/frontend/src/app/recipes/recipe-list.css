@@ -260,6 +260,22 @@
   margin: 0;
 }
 
+/* "Tøm søk" stands alone in the flex row, so WCAG 2.5.8 gives it no inline exception. An
+   invisible band lifts its 14 px line to a 24 px hit box without moving the type. Not --tap:
+   a 44 px band reaches into the first hit card below (ST-751). */
+.clear a {
+  position: relative;
+}
+
+.clear a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 12px);
+  height: 24px;
+}
+
 .hits {
   list-style: none;
   margin: 0;
