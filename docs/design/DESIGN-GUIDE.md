@@ -11,8 +11,9 @@ project's design guide and its signed-off pictures first*.
 2. **This guide.** It describes that picture; it is never stricter than the picture. If a rule
    here would remove or tone down something the picture visibly does, the rule is wrong — fix
    the rule, not the picture.
-3. **`AGENTS.md`** for what CI enforces (palette, Angular, API contract), and `ST-233`'s style
-   guide for the MVP component and accessibility checklists that survived (§6, §7 there).
+3. **`AGENTS.md`** for what CI enforces (palette, Angular, API contract), and
+   [`COPY-AND-ACCESSIBILITY.md`](COPY-AND-ACCESSIBILITY.md) beside this file for the full
+   Norwegian label set and the accessibility checklist.
 
 Who does what: **Ida** owns design and UX for food.st44.no — flows, wireframes, UI behaviour,
 the Norwegian label set. **Astrid** owns art direction — the look: type, colour, grid, image
@@ -67,20 +68,26 @@ Write a new screen against this list, not against a memory of it.
   **Fremgangsmåte** with large crimson numerals and each step on a hairline. It closes on a
   tinted note block with a crimson left rule, set in Bodoni italic.
 - **Mobile is the same material in reading order**, not a different design. The masthead
-  compresses to the same three bands; lead dish, the three latest, the register, then the rest;
-  the nav becomes a sticky opaque bar under 760 px so **Ny oppskrift** stays one tap away.
+  compresses to the same three bands; lead dish, the three latest, the register, then the rest.
 - **Mood:** quiet, dense, printed. Lots of white paper and small type doing careful work; the
   loud things are the photographs and the wordmark.
 
 Reference photographs of the **built** site (every page, 1280/390/360 px, including search,
-empty collection, forms, errors) are in the `sondag-levert` document on ST-286.
+empty collection, forms, errors) are in the `sondag-levert` document on ST-286. Those stay on
+the task on purpose — they are a large set of renders of a moving site, not rules. The four
+files above are the spec, and they are in the repo.
 
 ### Crimson is rationed
 
-In the picture crimson appears in: the wordmark dots, the masthead rule, the current-page
-underline, the keyword under a dish, the step numerals, the ingredient sub-headings, the focus
-ring, and the `Slett` outline. It is a **fill** only on the delete confirmation button. Keep it
-that way: crimson marks where you are and what is dangerous, never a decoration.
+In the picture crimson appears in **at least** these places: the wordmark dots, the masthead
+rule, the current-page underline, the breadcrumb link on the recipe page, the keyword under a
+dish, the step numerals, the ingredient sub-headings, the left rule on the note block, the focus
+ring, and the `Slett` outline. It is a **fill** only on the delete confirmation button.
+
+The list is what the picture shows, not a budget. It is **not** a reason to take crimson off
+something the picture puts it on — if you find such a place, the list is short, so add it here.
+What the rule means is the other direction: do not *spend* crimson on new decoration. It marks
+where you are and what is dangerous.
 
 ---
 
@@ -98,9 +105,13 @@ These substitutions were accepted when Søndag was built and still stand:
 | Ingredients grouped under `Kjøttkaker` / `Brun saus` | One flat list, the amount split into its own column | Groups would be a new feature. The amount column is parsed from the line. |
 | `Høstens rett` kicker | `Sist lagt inn` | Seasonal editing is a person's job; this one is true and explains why that dish is there. |
 | `Familiekjøkkenet på Nordfjordeid` | `Familiekjøkkenet` | The place could not be verified. |
+| The recipe closes on a tinted note block with a crimson left rule — *Bestemors notat i margen: la farsen hvile kaldt …* | Not built. The recipe page ends on **Fremgangsmåte**. | No notes field. This is the one element of the picture that is simply absent rather than substituted; §1 still describes it, because §1 describes the picture. If a notes field is ever added, this is the design it gets. |
 
 **Do not restore the picture by inventing data.** A new field (category, time, cook, servings)
 is a product decision for Maria and Stig, not something a design PR adds.
+
+This table runs one way only: places where the data is **poorer** than the picture. The site has
+one accepted element the picture does **not** have — sign-in in the masthead — recorded in §3.1.
 
 ---
 
@@ -110,10 +121,26 @@ is a product decision for Maria and Stig, not something a design PR adds.
 
 It is the first thing the owner judges. Every page carries the full masthead — including
 *Fant ikke oppskriften*, *Siden finnes ikke* and *Noe gikk galt*, so a reader is never thrown
-out of the site. The only accepted change is the empty collection, where the search field and
-the count are removed because there is nothing to search. A failed query is **not** empty: the
-search stays, the count goes. The markup lives in `v2/frontend/src/app/app.html`; when you draw
-a new page, draw its masthead too rather than cropping it out of the mockup.
+out of the site. The markup lives in `v2/frontend/src/app/app.html`; when you draw a new page,
+draw its masthead too rather than cropping it out of the mockup.
+
+Two things in it come and go, and **both watch the collection, never the query**
+(`v2/frontend/src/app/site.ts`):
+
+- The **count** (`12 oppskrifter i samlingen`) is the size of `/api/recipes`. It is hidden only
+  when that is zero.
+- The **search field** is hidden when the collection is known to be empty — there is nothing to
+  search — and shown when it could not be loaded at all.
+
+So a **failed query is not empty: both stay.** The search stays, and the count goes on reading
+`12 oppskrifter i samlingen` behind a result page that says `Ingen treff på «zzz»`. That is
+deliberate — the masthead tells you the collection is still there.
+
+**Sign-in sits in the nav band** (`Logg inn`, or the reader's initial, name and `Logg ut`,
+right of the count). It is **not** in the signed-off picture: ST-265 was drawn before the site
+had accounts, and it was added when sign-in was built. It is an accepted addition, in the
+picture's idiom — plain text links on the nav rule, no avatar, no badge, no menu. Draw it on a
+new masthead; §1 describes the picture and will not remind you.
 
 ### 3.2 Food is visual — plan for photography
 
@@ -131,8 +158,9 @@ a new page, draw its masthead too rather than cropping it out of the mockup.
 ### 3.3 Real Norwegian content
 
 Norwegian bokmål everywhere, in mockups as well as in the app: `Oppskrifter`, `Ny oppskrift`,
-`Rediger`, `Slett`, `Søk`, `Fremgangsmåte`, `Ingredienser`, `Porsjoner`. The full label set is
-§6 of the style guide on ST-233.
+`Rediger`, `Slett`, `Søk`, `Fremgangsmåte`, `Ingredienser`, `Porsjoner`. **The full label set is
+§1 of [`COPY-AND-ACCESSIBILITY.md`](COPY-AND-ACCESSIBILITY.md)** — copy from there rather than
+re-translating per screen, and note §1.1, where the built site has moved on from it.
 
 Use real dishes — Fårikål, Kjøttkaker i brun saus, Fiskegrateng, Lapskaus, Pinnekjøtt,
 Rømmegrøt, Raspeballer, Sveler, Tilslørte bondepiker — with plausible ingredients and method.
@@ -194,6 +222,10 @@ Shape: square. `border-radius: 0` on buttons; borders are 1 px hairlines or 3 px
 `--tap: 44px` is the minimum touch target. The single breakpoint is `width <= 760px`
 (`.wrap` padding 40 → 20 px, the 12-column `.grid` collapses to one column).
 
+Below that breakpoint the nav band becomes a **sticky opaque bar**, so `Ny oppskrift` stays one
+tap away down a long register. This is built behaviour, not something the static picture shows —
+it is why `.mastbar` is a direct child of the page rather than part of `<header>`.
+
 ---
 
 ## 5. Accessibility inside the look
@@ -218,7 +250,8 @@ Before a design is delivered or a UI PR is opened:
 - 200 % zoom without horizontal scrolling; no horizontal overflow at 1280, 390 or 360 px.
 - Touch targets ≥ 44 × 44 px.
 
-The full MVP checklist is §7 of the style guide on ST-233.
+**The full checklist is §2 of [`COPY-AND-ACCESSIBILITY.md`](COPY-AND-ACCESSIBILITY.md).** Every
+line of it is honoured by the built site today, so a failure there is a regression.
 
 ---
 
@@ -257,3 +290,14 @@ From Ida's agent instructions (ST-743):
 Nothing was dropped for being wrong. What was *added* here is the part the instructions could
 not carry: the signed-off picture itself (§1), the accepted differences between it and the data
 (§2), and the system as it is actually built (§4, §5).
+
+From Ida's style guide on ST-233, moved in review of this file so that the guide stands on its
+own without opening a task:
+
+| Rule | Where it went |
+|---|---|
+| §6, the full Norwegian label set | §1 of [`COPY-AND-ACCESSIBILITY.md`](COPY-AND-ACCESSIBILITY.md), with §1.1 recording where the built site has moved on from it. |
+| §7, the WCAG 2.1 AA checklist | §2 of the same file. |
+| §1–§4 (tokens, type, spacing, global rules) | Not moved: superseded by §4 here, which describes the tokens as they exist in `styles.css`. |
+| §5, the v1 component specs (`.btn`, `.recipe-card`, `.app-header` …) | Not moved: v1 class names. The Angular components carry their own CSS beside them. |
+| §8, definition of done for a UI PR | Not moved: it rested on ADR 0001, which ADR 0002 reversed. §6 here is the hand-in list; `AGENTS.md` is what CI enforces. |
