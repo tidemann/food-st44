@@ -106,6 +106,17 @@ def test_edit_delete_and_cook_of_a_real_recipe_are_200(
     assert "<app-root>" in response.text
 
 
+@pytest.mark.parametrize("suffix", ["/cook", "/cook/", "/cook?steg=1"])
+def test_cooking_mode_carries_the_recipe_title(client: Client, recipe: Recipe, suffix: str) -> None:
+    response = client.get(f"/recipes/{recipe.pk}{suffix}")
+
+    assert response.status_code == 200
+    # The title recipe-cook.ts sets once the recipe has loaded.
+    assert title_of(response.text) == (
+        "Matlaging: Kjøttkaker i brun saus &amp; &lt;potet&gt; — food.st44.no"
+    )
+
+
 def test_the_id_is_parsed_leniently_like_v1(client: Client, recipe: Recipe) -> None:
     for raw_id in (f"{recipe.pk}abc", f"+{recipe.pk}", f"%20{recipe.pk}"):
         assert client.get(f"/recipes/{raw_id}").status_code == 200, raw_id

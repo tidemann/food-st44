@@ -2,7 +2,15 @@ from django.urls import URLPattern, URLResolver, path, re_path
 
 from food.admin import site as admin_site
 from food.api import api
-from food.views import healthz, not_found, photo, recipe_action, recipe_detail, spa
+from food.views import (
+    healthz,
+    not_found,
+    photo,
+    recipe_action,
+    recipe_cook,
+    recipe_detail,
+    spa,
+)
 
 # The client routes (frontend/src/app/app.routes.ts) mirrored here, so a path the SPA would
 # answer with a 404 page also gets a 404 status. A trailing slash is accepted, as in v1.
@@ -18,7 +26,8 @@ urlpatterns: list[URLPattern | URLResolver] = [
     # From a photo (M4), a link or pasted text (M5).
     re_path(r"^recipes/new/(?:photo|link|text)/?$", spa),
     re_path(r"^recipes/(?P<raw_id>[^/]+)/?$", recipe_detail),
-    re_path(r"^recipes/(?P<raw_id>[^/]+)/(?:edit|delete|cook)/?$", recipe_action),
+    re_path(r"^recipes/(?P<raw_id>[^/]+)/(?:edit|delete)/?$", recipe_action),
+    re_path(r"^recipes/(?P<raw_id>[^/]+)/cook/?$", recipe_cook),
     # Recipe photos (food.photos), stored next to the database rather than built into the image.
     path("photos/<str:name>", photo),
     # Anything else that is not API or a static file is the SPA's "page not found".
