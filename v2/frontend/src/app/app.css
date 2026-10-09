@@ -127,6 +127,9 @@ main:focus {
   text-decoration: none;
   padding-bottom: 3px;
   position: relative;
+
+  /* a label never breaks: when the row is short, the reader's name ellipsises instead */
+  white-space: nowrap;
 }
 
 .mast-nav a[aria-current] {
