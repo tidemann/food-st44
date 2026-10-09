@@ -284,3 +284,17 @@ main:focus {
     padding-bottom: 40px;
   }
 }
+
+/* Below 350px the name would get under 33px, a letter or two and an ellipsis.
+   The initial already says who is signed in, so the name leaves the row; it
+   stays for a screen reader, since the initial is aria-hidden. */
+@media (width < 350px) {
+  .who-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
