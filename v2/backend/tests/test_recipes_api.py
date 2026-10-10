@@ -56,6 +56,7 @@ def test_list_is_newest_first_with_every_field(client: Client) -> None:
         "instructions": "Stek.",
         "created_at": "2026-10-04T12:00:00Z",
         "photo_url": None,
+        "tags": [],
     }
     assert titles(client) == ["Sveler", "Lapskaus"]
 
@@ -241,3 +242,4 @@ def test_every_response_code_is_in_the_schema() -> None:
     assert set(paths["/api/recipes/{recipe_id}"]["get"]["responses"]) == {200, 404}
     assert set(paths["/api/recipes/{recipe_id}"]["put"]["responses"]) == {200, 403, 404, 422}
     assert set(paths["/api/recipes/{recipe_id}"]["delete"]["responses"]) == {204, 403, 404}
+    assert set(paths["/api/tags"]["get"]["responses"]) == {200}

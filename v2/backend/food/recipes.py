@@ -16,6 +16,7 @@ from food.schemas import (
     RecipeDraftOut,
     RecipeIn,
     RecipeOut,
+    TagOut,
     TextDraftOut,
     TextImportIn,
     ValidationErrors,
@@ -23,11 +24,28 @@ from food.schemas import (
 
 # Reads are public. Writes need a signed-in editor (food.auth); anyone else gets 403.
 router = Router(tags=["recipes"])
+# /api/tags: the emneord in use (ST-784). Read-only; tags change with the recipes that carry them.
+tags_router = Router(tags=["tags"])
 
 
-@router.get("", response=list[RecipeOut], operation_id="list_recipes")
-def list_recipes(request: HttpRequest, q: str = "") -> list[Recipe]:
-    return services.search_recipes(q)
+@router.get(
+    "",
+    response=list[RecipeOut],
+    operation_id="list_recipes",
+    summary="The collection, newest first; `q` searches the titles, `tag` keeps one emneord",
+)
+def list_recipes(request: HttpRequest, q: str = "", tag: str = "") -> list[Recipe]:
+    return services.search_recipes(q, tag)
+
+
+@tags_router.get(
+    "",
+    response=list[TagOut],
+    operation_id="list_tags",
+    summary="Every emneord at least one recipe carries, with its count, in Norwegian order",
+)
+def list_tags(request: HttpRequest) -> list[dict[str, object]]:
+    return services.tags_in_use()
 
 
 @router.post(
