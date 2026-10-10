@@ -2,6 +2,16 @@ from django.db import models
 from django.utils import timezone
 
 
+class Tag(models.Model):
+    """An "emneord" on recipes (ST-784), stored as food.tags.normalise leaves it: lower case,
+    trimmed, at most food.tags.MAX_CHARS. A tag no recipe carries any more is deleted."""
+
+    name = models.CharField(max_length=24, unique=True)
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Recipe(models.Model):
     """A recipe. Mirrors the live site's `recipes` table so ids and dates can be copied over."""
 
@@ -12,6 +22,7 @@ class Recipe(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     # The file name of the recipe's one photo in settings.PHOTOS_DIR; "" when it has none.
     photo = models.CharField(max_length=100, blank=True, default="")
+    tags = models.ManyToManyField(Tag, blank=True, related_name="recipes")
 
     class Meta:
         ordering = ("-created_at", "-id")

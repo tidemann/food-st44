@@ -26,6 +26,7 @@ describe('RecipeNew', () => {
       );
       expect([...el.querySelectorAll('label')].map(text)).toEqual([
         'Tittel',
+        'Emneord (valgfritt)',
         'Ingredienser',
         'Fremgangsmåte (valgfritt)',
       ]);
@@ -83,6 +84,7 @@ describe('RecipeNew', () => {
         title: '   ',
         ingredients: '600 g kjøttdeig',
         instructions: '',
+        tags: [],
       });
       reject(request, { title: TITLE_ERROR });
       await harness.fixture.whenStable();
@@ -149,6 +151,7 @@ describe('RecipeNew', () => {
         instructions: '',
         created_at: '2026-10-04T10:00:00Z',
         photo_url: null,
+        tags: [],
       };
       const navigated = navigation();
       submit(el, 'POST', '/api/recipes').flush(created, { status: 201, statusText: 'Created' });

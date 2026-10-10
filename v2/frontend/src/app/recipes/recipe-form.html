@@ -39,6 +39,8 @@
     }
   </div>
 
+  <app-tag-field [value]="draft().tags ?? []" (valueChange)="tagsChanged($event)" />
+
   <div class="field" [class.field-invalid]="shown().ingredients">
     <label for="ingredients">Ingredienser</label>
     <p class="field-hint" id="ingredients-hint">

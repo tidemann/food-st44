@@ -13,9 +13,10 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Recipe, RecipeInput, ValidationErrors } from '../api/types';
-import { failureOf } from './load';
+import { type Carried, failureOf } from './load';
 import { PHOTO_NOT_SAVED, type PhotoChange, PhotoStepError, TOO_LARGE } from './photo';
 import { PhotoField, type Rejected } from './photo-field';
+import { TagField } from './tag-field';
 
 /** The API's message per field (§3.2): title and ingredients, and the photo (M3). */
 export interface FieldErrors {
@@ -34,7 +35,7 @@ export interface RecipeSave {
   photo: PhotoChange;
 }
 
-export const EMPTY: RecipeInput = { title: '', ingredients: '', instructions: '' };
+export const EMPTY: RecipeInput = { title: '', ingredients: '', instructions: '', tags: [] };
 
 /**
  * What a failed save means for the page: the field errors to show (a 422, or a 413 for the
@@ -68,7 +69,7 @@ export function saveFailure(error: unknown): FieldErrors | 'not-found' | 'error'
  */
 @Component({
   selector: 'app-recipe-form',
-  imports: [RouterLink, PhotoField],
+  imports: [RouterLink, PhotoField, TagField],
   templateUrl: './recipe-form.html',
   styleUrl: './recipe-form.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -84,15 +85,15 @@ export class RecipeForm {
   readonly submitLabel = input.required<string>();
   /** Where "Avbryt" goes. */
   readonly cancelLink = input.required<readonly (string | number)[]>();
-  readonly cancelQuery = input<{ q?: string }>({});
+  readonly cancelQuery = input<Carried>({});
 
   /** The values as typed, untrimmed, so they survive an error (§2.8), and the photo change. */
   readonly save = output<RecipeSave>();
 
   /** Only the fields the API takes, even when `initial` is a whole stored recipe. */
   protected readonly draft = linkedSignal<RecipeInput>(() => {
-    const { title, ingredients, instructions } = this.initial();
-    return { title, ingredients, instructions };
+    const { title, ingredients, instructions, tags = [] } = this.initial();
+    return { title, ingredients, instructions, tags };
   });
   protected readonly currentPhoto = computed(() => {
     const initial = this.initial();
@@ -113,6 +114,7 @@ export class RecipeForm {
   );
 
   private readonly summary = viewChild<ElementRef<HTMLElement>>('summary');
+  private readonly tagField = viewChild.required(TagField);
 
   constructor() {
     // Each failed save moves focus to the summary, as v1's autofocus did on every 400. The ring
@@ -125,8 +127,12 @@ export class RecipeForm {
     });
   }
 
-  protected edit(field: keyof RecipeInput, value: string): void {
+  protected edit(field: 'title' | 'ingredients' | 'instructions', value: string): void {
     this.draft.update((draft) => ({ ...draft, [field]: value }));
+  }
+
+  protected tagsChanged(tags: readonly string[]): void {
+    this.draft.update((draft) => ({ ...draft, tags: [...tags] }));
   }
 
   /** A new photo or "Fjern bilde" answers the photo's error, so the summary drops it. */
@@ -152,6 +158,8 @@ export class RecipeForm {
   protected submit(event: Event): void {
     event.preventDefault();
     if (this.busy()) return;
+    // A tag typed but not yet added with Enter is kept, not dropped.
+    this.tagField().commit();
     // A refused file is still on screen: nothing is sent until it is replaced or removed.
     const rejected = this.rejected();
     if (rejected) {

@@ -1,6 +1,8 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { open, SEED, setUp, text, title } from '../../testing/app';
+import { RouterTestingHarness } from '@angular/router/testing';
+import type { Recipe } from '../api/types';
+import { answer, open, page, seed, SEED, setUp, signIn, text, title } from '../../testing/app';
 
 describe('RecipeList', () => {
   beforeEach(() => {
@@ -147,6 +149,116 @@ describe('RecipeList', () => {
       const el = await open('/', { all: 500 });
       expect(el.querySelector('.alert')?.getAttribute('role')).toBe('alert');
       expect(el.querySelector('.alert a')?.getAttribute('href')).toBe('/');
+    });
+  });
+
+  describe('ST-784: emneord', () => {
+    const middag = SEED.filter((r) => r.tags.includes('middag'));
+
+    /** Opens `url`, checks the one filtered request asks for `params`, and answers it. */
+    async function filtered(url: string, params: Record<string, string>, hits: Recipe[]) {
+      const harness = await RouterTestingHarness.create();
+      signIn();
+      await harness.navigateByUrl(url);
+      TestBed.tick();
+      const http = TestBed.inject(HttpTestingController);
+      const request = http.expectOne((r) => r.url === '/api/recipes' && r.params.keys().length > 0);
+      const asked = Object.fromEntries(
+        request.request.params.keys().map((k) => [k, request.request.params.get(k)]),
+      );
+      expect(asked).toEqual(params);
+      request.flush(hits);
+      answer({});
+      await harness.fixture.whenStable();
+      return page(harness);
+    }
+
+    it('shows every tag in use with its count, each a link that filters on it', async () => {
+      const el = await open('/');
+      const band = el.querySelector('nav.tagband');
+      expect(band?.getAttribute('aria-labelledby')).toBe('tagband-head');
+      expect(text(band?.querySelector('h2'))).toBe('Emneord');
+      const links = [...(band?.querySelectorAll('a') ?? [])];
+      expect(links.map((a) => text(a.querySelector('.name')))).toEqual([
+        'Fisk',
+        'Høst',
+        'Jul',
+        'Kjøtt',
+        'Middag',
+        'Suppe',
+      ]);
+      expect(text(links[3])).toBe('Kjøtt 4 oppskrifter');
+      expect(text(links[0])).toBe('Fisk 1 oppskrift');
+      expect(links[3]?.getAttribute('href')).toBe('/?tag=kj%C3%B8tt');
+      expect(el.querySelector('.tagband [aria-current]')).toBeNull();
+    });
+
+    it('has no band when no recipe has a tag', async () => {
+      const el = await open('/', { tags: [] });
+      expect(el.querySelector('.tagband')).toBeNull();
+    });
+
+    it('shows each recipe line with its tags, the first in red', async () => {
+      const el = await open('/');
+      const line = el.querySelector('.band .sideitem .m');
+      expect(text(line)).toBe('Høst · Kjøtt · Middag 1 ingrediens · 29. sep');
+      expect(text(line?.querySelector('.hot'))).toBe('Høst');
+    });
+
+    it('/?tag=middag lists only those recipes, the filtered tag red and marked', async () => {
+      const el = await filtered('/?tag=Middag', { tag: 'middag' }, middag);
+      expect(text(el.querySelector('.result-count'))).toBe('4 oppskrifter merket «middag»');
+      expect(title()).toBe('Emneord: middag — food.st44.no');
+      const clear = [...el.querySelectorAll('.clear a')];
+      expect(clear.map(text)).toEqual(['Tøm filter']);
+      expect(clear[0]?.getAttribute('href')).toBe('/');
+
+      const hot = [...el.querySelectorAll('.hits .hot')].map(text);
+      expect(hot).toEqual(['Middag', 'Middag', 'Middag', 'Middag']);
+      expect(el.querySelector('.hits a')?.getAttribute('href')).toBe('/recipes/9?tag=middag');
+
+      const on = el.querySelector('.tagband a[aria-current="true"]');
+      expect(on?.classList).toContain('on');
+      expect(text(on?.querySelector('.name'))).toBe('Middag');
+      expect(on?.getAttribute('href')).toBe('/');
+      expect(text(on)).toContain('valgt. Trykk for å vise alle.');
+    });
+
+    it('/?tag=middag&q=kylling combines the two, and each can be cleared alone', async () => {
+      const hit = { ...seed(9), title: 'Kyllingfrikassé' };
+      const el = await filtered('/?tag=middag&q=kylling', { q: 'kylling', tag: 'middag' }, [hit]);
+      expect(text(el.querySelector('.result-count'))).toBe('1 treff på «kylling» merket «middag»');
+      expect(title()).toBe('Søk: kylling, merket middag — food.st44.no');
+      const clear = [...el.querySelectorAll('.clear a')];
+      expect(clear.map(text)).toEqual(['Tøm søk', 'Tøm filter']);
+      expect(clear.map((a) => a.getAttribute('href'))).toEqual(['/?tag=middag', '/?q=kylling']);
+      // Another tag keeps the search; the one that is on clears to the search alone.
+      const band = [...el.querySelectorAll('.tagband a')];
+      expect(band[0]?.getAttribute('href')).toBe('/?q=kylling&tag=fisk');
+      expect(el.querySelector('.tagband a.on')?.getAttribute('href')).toBe('/?q=kylling');
+      expect(el.querySelector('.hits a')?.getAttribute('href')).toBe(
+        '/recipes/9?q=kylling&tag=middag',
+      );
+    });
+
+    it('says so when no recipe carries the tag', async () => {
+      const el = await filtered('/?tag=ukjent', { tag: 'ukjent' }, []);
+      expect(text(el.querySelector('.notice h2'))).toBe('Ingen oppskrifter merket «ukjent»');
+      expect(text(el.querySelector('.notice p'))).toBe(
+        'Velg et annet emneord, eller se alle oppskriftene.',
+      );
+    });
+
+    it('offers to clear the filter when tag and search find nothing', async () => {
+      const el = await filtered('/?tag=fisk&q=kake', { q: 'kake', tag: 'fisk' }, []);
+      expect(text(el.querySelector('.notice h2'))).toBe('Ingen treff på «kake» merket «fisk»');
+      const actions = [...el.querySelectorAll('.notice-actions a')];
+      expect(actions.map((a) => a.getAttribute('href'))).toEqual(['/', '/?q=kake']);
+    });
+
+    it('retries the same filter after an error', async () => {
+      const el = await open('/?tag=middag&q=saus', { search: 500 });
+      expect(el.querySelector('.alert a')?.getAttribute('href')).toBe('/?q=saus&tag=middag');
     });
   });
 });

@@ -128,7 +128,7 @@
     "/api/recipes": {
       "get": {
         "operationId": "list_recipes",
-        "summary": "List Recipes",
+        "summary": "The collection, newest first; `q` searches the titles, `tag` keeps one emneord",
         "parameters": [
           {
             "in": "query",
@@ -136,6 +136,16 @@
             "schema": {
               "default": "",
               "title": "Q",
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "schema": {
+              "default": "",
+              "title": "Tag",
               "type": "string"
             },
             "required": false
@@ -799,6 +809,32 @@
           }
         ]
       }
+    },
+    "/api/tags": {
+      "get": {
+        "operationId": "list_tags",
+        "summary": "Every emneord at least one recipe carries, with its count, in Norwegian order",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TagOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "tags"
+        ]
+      }
     }
   },
   "components": {
@@ -875,6 +911,13 @@
             ],
             "title": "Photo Url"
           },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -889,6 +932,7 @@
           "instructions",
           "created_at",
           "photo_url",
+          "tags",
           "title",
           "ingredients"
         ],
@@ -927,6 +971,13 @@
             "default": "",
             "title": "Instructions",
             "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
           }
         },
         "required": [
@@ -1045,6 +1096,25 @@
           "text"
         ],
         "title": "TextImportIn",
+        "type": "object"
+      },
+      "TagOut": {
+        "description": "A tag in use, and how many recipes carry it.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ],
+        "title": "TagOut",
         "type": "object"
       }
     },

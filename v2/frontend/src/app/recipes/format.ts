@@ -114,6 +114,8 @@ export interface Card {
   date: string;
   /** "2. oktober 2026" */
   added: string;
+  /** Its emneord, lower case, in Norwegian order (ST-784). */
+  tags: string[];
   /** The dish's photo, or null: the plate stands in for it. */
   photo: string | null;
 }
@@ -130,6 +132,7 @@ export function toCard(recipe: Recipe): Card {
     date,
     added: formatLong(recipe.created_at),
     photo: recipe.photo_url,
+    tags: recipe.tags,
   };
 }
 

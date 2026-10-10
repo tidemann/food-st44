@@ -251,6 +251,7 @@ describe('RecipeFromPhoto', () => {
         title: 'Kjøttkaker i brun saus (mormor)',
         ingredients: '600 g kjøttdeig\n1 dl melk\n3 ss potetmel',
         instructions: DRAFT.instructions,
+        tags: [],
       });
       const created: Recipe = {
         id: 10,
@@ -259,6 +260,7 @@ describe('RecipeFromPhoto', () => {
         instructions: DRAFT.instructions,
         created_at: '2026-10-05T10:00:00Z',
         photo_url: null,
+        tags: [],
       };
       const navigated = navigation();
       request.flush(created, { status: 201, statusText: 'Created' });

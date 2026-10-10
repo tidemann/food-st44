@@ -1,0 +1,16 @@
+.sep {
+  white-space: pre;
+}
+
+.hot {
+  color: var(--red);
+}
+
+/* The thin upright between the tags and the rest of the line, as in the pictures. */
+.bar {
+  display: inline-block;
+  height: 0.95em;
+  margin: 0 5px 0 9px;
+  border-left: 1px solid var(--rule);
+  vertical-align: -0.12em;
+}

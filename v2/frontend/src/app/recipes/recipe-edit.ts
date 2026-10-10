@@ -75,7 +75,9 @@ export class RecipeEdit {
   readonly id = input.required<string>();
   /** The search the recipe was reached from: kept on every link and after the save (§3.1). */
   readonly q = input<string>();
-  protected readonly carried = computed(() => carry(this.q()));
+  /** The tag filter it was reached from (ST-784), carried on like `q`. */
+  readonly tag = input<string>();
+  protected readonly carried = computed(() => carry(this.q(), this.tag()));
 
   private readonly load = loadRecipe(this.id);
   protected readonly stored = computed(() =>
@@ -104,7 +106,7 @@ export class RecipeEdit {
     const text = this.http.put<Recipe>(`/api/recipes/${String(id)}`, input);
     saveWithPhoto(this.http, text, photo).subscribe({
       next: (recipe) => {
-        this.site.recipes.reload();
+        this.site.changed();
         void this.router.navigate(['/recipes', recipe.id], {
           queryParams: { flash: 'updated', ...this.carried() },
         });
@@ -113,7 +115,7 @@ export class RecipeEdit {
         this.busy.set(false);
         // The text is saved; only the photo was refused.
         this.photoOnly.set(error instanceof PhotoStepError);
-        if (error instanceof PhotoStepError) this.site.recipes.reload();
+        if (error instanceof PhotoStepError) this.site.changed();
         const failure = saveFailure(error);
         if (typeof failure === 'string') this.failure.set(failure);
         else this.errors.set(failure);

@@ -202,6 +202,31 @@
   color: var(--red);
 }
 
+/* ST-784: the emneord, each a link to the list filtered on it. A 24 px line gives each word a
+   24 px hit box (WCAG 2.5.8) when they wrap. */
+.rmeta .tags {
+  line-height: 24px;
+  margin: -5px 0;
+}
+
+.rmeta .tags a {
+  display: inline-block;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.rmeta .tags a:hover,
+.rmeta .tags a:focus-visible {
+  text-decoration-color: var(--red);
+}
+
+.rmeta .tags .sep {
+  margin: 0 2px;
+  color: var(--soft);
+  font-weight: 400;
+}
+
 @media (width <= 760px) {
   .rh-top {
     flex-direction: column;

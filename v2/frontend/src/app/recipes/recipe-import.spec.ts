@@ -173,6 +173,7 @@ describe('RecipeImport', () => {
         title: 'Aspargessuppe med urter',
         ingredients: DRAFT.ingredients,
         instructions: DRAFT.instructions,
+        tags: [],
       });
       const created: Recipe = {
         id: 10,
@@ -181,6 +182,7 @@ describe('RecipeImport', () => {
         instructions: DRAFT.instructions,
         created_at: '2026-10-05T10:00:00Z',
         photo_url: null,
+        tags: [],
       };
       const navigated = navigation();
       request.flush(created, { status: 201, statusText: 'Created' });

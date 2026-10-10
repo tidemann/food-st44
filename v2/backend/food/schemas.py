@@ -2,11 +2,12 @@ from datetime import datetime
 from typing import Literal
 
 from ninja import ModelSchema, Schema
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_core import PydanticCustomError
 
-from food import importer, photos
+from food import importer, photos, services
 from food.models import Recipe
+from food.tags import normalise as normalise_tags
 
 
 def _required(value: str, message: str) -> str:
@@ -23,6 +24,9 @@ class RecipeIn(Schema):
     title: str
     ingredients: str
     instructions: str = ""
+    # Emneord (ST-784): the whole list, replacing the stored one. Stored as food.tags.normalise
+    # leaves it, so "Middag " and "middag" are one tag.
+    tags: list[str] = Field(default_factory=list)
 
     @field_validator("title")
     @classmethod
@@ -39,6 +43,11 @@ class RecipeIn(Schema):
     def _instructions(cls, value: str) -> str:
         return value.strip()
 
+    @field_validator("tags")
+    @classmethod
+    def _tags(cls, value: list[str]) -> list[str]:
+        return normalise_tags(value)
+
 
 class RecipeOut(ModelSchema):
     # Always present in a response. Declared here so the generated client types are required
@@ -48,6 +57,8 @@ class RecipeOut(ModelSchema):
     created_at: datetime
     # Where the photo is served (/photos/<name>), or null when the recipe has none.
     photo_url: str | None
+    # Its emneord, lower case, in Norwegian order (Æ, Ø, Å last). Empty when it has none.
+    tags: list[str]
 
     class Meta:
         model = Recipe
@@ -56,6 +67,17 @@ class RecipeOut(ModelSchema):
     @staticmethod
     def resolve_photo_url(obj: Recipe) -> str | None:
         return photos.url(obj)
+
+    @staticmethod
+    def resolve_tags(obj: Recipe) -> list[str]:
+        return services.tag_names(obj)
+
+
+class TagOut(Schema):
+    """A tag in use, and how many recipes carry it."""
+
+    name: str
+    count: int
 
 
 class PhotoReadingOut(Schema):

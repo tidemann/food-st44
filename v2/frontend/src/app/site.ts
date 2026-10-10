@@ -1,6 +1,6 @@
 import { httpResource } from '@angular/common/http';
 import { computed, Injectable, signal } from '@angular/core';
-import type { Recipe } from './api/types';
+import type { Recipe, Tag } from './api/types';
 import { formatLong } from './recipes/format';
 
 /**
@@ -11,6 +11,8 @@ import { formatLong } from './recipes/format';
 @Injectable({ providedIn: 'root' })
 export class Site {
   readonly recipes = httpResource<Recipe[]>(() => '/api/recipes');
+  /** The emneord in use, with counts, in Norwegian order: the tag band and the suggestions. */
+  readonly tags = httpResource<Tag[]>(() => '/api/tags');
 
   readonly total = computed(() => (this.recipes.hasValue() ? this.recipes.value().length : 0));
   /** "Sist oppdatert": the newest `created_at`, or '' when there is none. */
@@ -25,4 +27,10 @@ export class Site {
   readonly searchable = computed(() => this.total() > 0 || this.recipes.error() !== undefined);
   /** Set by cooking mode while it is open: the masthead and footer step aside (ST-752). */
   readonly cooking = signal(false);
+
+  /** After a save or a delete: the collection and the tags in use (and their counts) moved. */
+  changed(): void {
+    this.recipes.reload();
+    this.tags.reload();
+  }
 }

@@ -36,13 +36,13 @@ export function newRecipe() {
     }).subscribe({
       next: (recipe) => {
         // The count, the front page and "Sist oppdatert" all come from the collection.
-        site.recipes.reload();
+        site.changed();
         void router.navigate(['/recipes', recipe.id], { queryParams: { flash: 'created' } });
       },
       error: (error: unknown) => {
         busy.set(false);
         // The recipe is in the collection now, if without its photo.
-        if (error instanceof PhotoStepError) site.recipes.reload();
+        if (error instanceof PhotoStepError) site.changed();
         const failure = saveFailure(error);
         if (typeof failure === 'string') failed.set(true);
         else errors.set(failure);

@@ -98,6 +98,18 @@ describe('App chrome', () => {
     await fixture.whenStable();
   });
 
+  it('searches inside the tag filter, keeping ?tag= (ST-784)', async () => {
+    const el = await render('/?tag=middag', { search: [] });
+    const input = el.querySelector<HTMLInputElement>('#q');
+    if (!input) throw new Error('no search field');
+    input.value = 'kylling';
+    el.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(TestBed.inject(Router).url).toBe('/?q=kylling&tag=middag');
+    answer({ search: [] });
+    await fixture.whenStable();
+  });
+
   describe('S-404P', () => {
     it('shows "Siden finnes ikke" for an unknown path', async () => {
       const el = await render('/nonsens/bla');

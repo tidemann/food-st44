@@ -4,6 +4,7 @@ from ninja.errors import ValidationError
 
 from food.auth import router as auth_router
 from food.recipes import router as recipes_router
+from food.recipes import tags_router
 
 # Every endpoint goes under /api/ (add routers with api.add_router("/api/...")), which the SPA
 # fallback never catches. /healthz is a plain view in food.views: its body must be `ok`, not JSON.
@@ -15,6 +16,7 @@ api = NinjaAPI(
 )
 api.add_router("/api/auth", auth_router)
 api.add_router("/api/recipes", recipes_router)
+api.add_router("/api/tags", tags_router)
 
 
 @api.exception_handler(ValidationError)

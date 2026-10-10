@@ -89,11 +89,17 @@ export class App {
     this.main().nativeElement.focus();
   }
 
-  /** GET / with `q`, as the v1 form did, but without a page load. Blank `q` is the front page. */
+  /**
+   * GET / with `q`, as the v1 form did, but without a page load. Blank `q` is the front page.
+   * A search on a filtered list stays inside the filter (`?tag=`, ST-784).
+   */
   protected search(event: Event, field: HTMLInputElement): void {
     event.preventDefault();
     const q = field.value.trim();
-    void this.router.navigate(['/'], { queryParams: q ? { q } : {} });
+    const tag: unknown = this.home() ? this.url()?.queryParams['tag'] : undefined;
+    void this.router.navigate(['/'], {
+      queryParams: { ...(q ? { q } : {}), ...(typeof tag === 'string' && tag ? { tag } : {}) },
+    });
   }
 
   /** Signs out and runs the route again, so a form on screen gives way to NoAccess. */

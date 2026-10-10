@@ -33,6 +33,7 @@ const lapskaus: Recipe = {
   instructions: '',
   created_at: '2026-10-04T10:00:00Z',
   photo_url: null,
+  tags: [],
 };
 const withPhoto = (recipe: Recipe, photo_url: string | null = PHOTO_URL): Recipe => ({
   ...recipe,

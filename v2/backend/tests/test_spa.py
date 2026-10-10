@@ -40,6 +40,10 @@ def recipe() -> Recipe:
         "/",
         "/?q=",
         "/?q=k%C3%A5l",
+        # ST-784: the tag filter, alone and with a search.
+        "/?tag=middag",
+        "/?tag=middag&q=kylling",
+        "/?tag=h%C3%B8st",
         "/recipes/new",
         "/recipes/new/",
         # M4 and M5: "new" is not a recipe id here either.
@@ -134,3 +138,9 @@ def test_healthz_and_api_are_unchanged(client: Client) -> None:
     assert client.get("/healthz").content == b"ok"
     assert client.get("/api/recipes/99999").status_code == 404
     assert client.get("/api/recipes/99999")["Content-Type"] == "application/json; charset=utf-8"
+
+
+def test_a_tagged_recipe_page_is_200(client: Client, recipe: Recipe) -> None:
+    """ST-784: a recipe page reached from the tag filter carries `?tag=` and still answers 200."""
+    for path in (f"/recipes/{recipe.pk}", f"/recipes/{recipe.pk}?tag=middag"):
+        assert client.get(path).status_code == 200, path
