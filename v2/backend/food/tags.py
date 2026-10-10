@@ -14,9 +14,15 @@ MAX_CHARS = 24
 _LAST = str.maketrans({"æ": "{", "ø": "|", "å": "}"})
 
 
+def _composed(name: str) -> str:
+    """NFC: a pasted "å" made of "a" + ring is the same string as a typed "å"."""
+    return unicodedata.normalize("NFC", name)
+
+
 def normalise_one(name: str) -> str:
-    """Trimmed, inner spaces collapsed, lower case, cut to MAX_CHARS. "" when nothing is left."""
-    return " ".join(name.split()).lower()[:MAX_CHARS].rstrip()
+    """Composed (NFC), trimmed, inner spaces collapsed, lower case, cut to MAX_CHARS.
+    "" when nothing is left."""
+    return _composed(" ".join(name.split()).lower())[:MAX_CHARS].rstrip()
 
 
 def normalise(names: Iterable[str]) -> list[str]:
@@ -32,7 +38,7 @@ def normalise(names: Iterable[str]) -> list[str]:
 
 def sort_key(name: str) -> str:
     """Norwegian order: Æ, Ø, Å last; other accents sort with their letter ("é" as "e")."""
-    decomposed = unicodedata.normalize("NFD", name.lower().translate(_LAST))
+    decomposed = unicodedata.normalize("NFD", _composed(name.lower()).translate(_LAST))
     return "".join(char for char in decomposed if not unicodedata.combining(char))
 
 

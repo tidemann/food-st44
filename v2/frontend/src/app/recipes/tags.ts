@@ -4,9 +4,17 @@
 /** The longest tag the API keeps (food.tags.MAX_CHARS). */
 export const MAX_TAG = 24;
 
-/** Trimmed, inner spaces collapsed, lower case, cut to MAX_TAG. '' when nothing is left. */
+/** Composed (NFC), trimmed, inner spaces collapsed, lower case, cut to MAX_TAG. '' when nothing
+ * is left. NFC so a pasted "a" + ring is the same tag as a typed "å". */
 export function normaliseTag(name: string): string {
-  return name.trim().split(/\s+/).join(' ').toLocaleLowerCase('nb').slice(0, MAX_TAG).trimEnd();
+  return name
+    .trim()
+    .split(/\s+/)
+    .join(' ')
+    .toLocaleLowerCase('nb')
+    .normalize('NFC')
+    .slice(0, MAX_TAG)
+    .trimEnd();
 }
 
 /** "middag" is shown as "Middag", as in the pictures; it is stored and linked in lower case. */

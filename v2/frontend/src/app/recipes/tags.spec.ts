@@ -8,6 +8,12 @@ describe('tags', () => {
     expect(normaliseTag('   ')).toBe('');
   });
 
+  it('makes a decomposed letter the same tag as the composed one', () => {
+    const decomposed = 'År'.normalize('NFD');
+    expect(decomposed).not.toBe('År');
+    expect(normaliseTag(decomposed)).toBe('år');
+  });
+
   it(`cuts a tag at ${String(MAX_TAG)} characters, never ending on a space`, () => {
     expect(normaliseTag('a'.repeat(30))).toHaveLength(MAX_TAG);
     expect(normaliseTag(`${'a'.repeat(23)} b`)).toBe('a'.repeat(23));

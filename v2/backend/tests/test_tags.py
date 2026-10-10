@@ -1,6 +1,7 @@
 """Tags ("emneord", ST-784): the normalising rule, the model, the filter, /api/tags, orphan
 removal and who may change them."""
 
+import unicodedata
 from typing import Any
 
 import pytest
@@ -41,6 +42,14 @@ def test_normalise_keeps_norwegian_letters() -> None:
     assert normalise(["Kjøtt", "ÅRSTID", "Smørbrød"]) == ["kjøtt", "årstid", "smørbrød"]
 
 
+def test_a_decomposed_letter_is_the_same_tag() -> None:
+    # "å" as "a" + combining ring, as some pasted or Mac text has it.
+    decomposed = unicodedata.normalize("NFD", "År")
+    assert decomposed != "År"
+    assert normalise(["år", decomposed]) == ["år"]
+    assert normalise_one(decomposed) == "år"
+
+
 def test_tags_sort_in_norwegian_order() -> None:
     names = ["ål", "øl", "æble", "zucchini", "barnebursdag", "épler", "aprikos"]
     assert sort_names(names) == [
@@ -52,6 +61,11 @@ def test_tags_sort_in_norwegian_order() -> None:
         "øl",
         "ål",
     ]
+
+
+def test_a_decomposed_letter_sorts_in_its_norwegian_place() -> None:
+    decomposed = unicodedata.normalize("NFD", "ål")
+    assert sort_names([decomposed, "zz", "al"]) == ["al", "zz", decomposed]
 
 
 # --- the model ---
