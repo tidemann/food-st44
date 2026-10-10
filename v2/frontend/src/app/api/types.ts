@@ -24,3 +24,5 @@ export type TextImport = components['schemas']['TextImportIn'];
  * simple rules when reading is off or failed (`read_by: 'rules'`, `notice` says why).
  */
 export type TextDraft = components['schemas']['TextDraftOut'];
+/** `GET /api/tags`: an emneord in use, and how many recipes carry it (ST-784). */
+export type Tag = components['schemas']['TagOut'];

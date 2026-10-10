@@ -1,3 +1,35 @@
+<!-- ST-784: one band under the nav, on the list pages only. Tapping a tag filters on it; tapping
+     the one that is on clears it. The search stays as it is either way. -->
+@if (band().length && state() !== 'empty') {
+  <nav class="tagband" aria-labelledby="tagband-head">
+    <div class="wrap">
+      <h2 class="tagband-head" id="tagband-head">Emneord</h2>
+      <ul>
+        @for (tag of band(); track tag.name) {
+          <li>
+            <a
+              routerLink="/"
+              [queryParams]="tag.query"
+              [class.on]="tag.on"
+              [attr.aria-current]="tag.on ? 'true' : null"
+              ><span class="name">{{ tag.label }}</span
+              >&ngsp;<span class="n"
+                >{{ tag.count
+                }}<span class="visually-hidden">
+                  {{ tag.count === 1 ? 'oppskrift' : 'oppskrifter' }}</span
+                ></span
+              >
+              @if (tag.on) {
+                <span class="visually-hidden">, valgt. Trykk for å vise alle.</span>
+              }
+            </a>
+          </li>
+        }
+      </ul>
+    </div>
+  </nav>
+}
+
 <app-flash [key]="flash()" />
 
 @switch (state()) {
@@ -34,10 +66,17 @@
     <div class="wrap">
       <div class="notice">
         <div class="notice-rule"></div>
-        <h2>Ingen treff på «{{ term() }}»</h2>
-        <p>Prøv et kortere søk, eller se alle oppskriftene.</p>
+        <h2>{{ noHitsLine() }}</h2>
+        @if (term()) {
+          <p>Prøv et kortere søk, eller se alle oppskriftene.</p>
+        } @else {
+          <p>Velg et annet emneord, eller se alle oppskriftene.</p>
+        }
         <div class="notice-actions">
           <a class="btn btn-lg" routerLink="/">Vis alle oppskrifter</a>
+          @if (term() && active()) {
+            <a class="btn btn-lg" routerLink="/" [queryParams]="withoutTag()">Tøm filter</a>
+          }
         </div>
       </div>
     </div>
@@ -49,17 +88,23 @@
       <div class="wrap">
         <h2 class="visually-hidden">Søkeresultater</h2>
         <div class="results-head">
-          <p class="result-count" role="status">{{ hitCards().length }} treff på «{{ term() }}»</p>
-          <p class="clear"><a routerLink="/">Tøm søk</a></p>
+          <p class="result-count" role="status">{{ countLine() }}</p>
+          <p class="clear">
+            @if (term()) {
+              <a routerLink="/" [queryParams]="withoutSearch()">Tøm søk</a>
+            }
+            @if (term() && active()) {
+              <span class="clear-sep" aria-hidden="true">|</span>
+            }
+            @if (active()) {
+              <a routerLink="/" [queryParams]="withoutTag()">Tøm filter</a>
+            }
+          </p>
         </div>
         <ul class="hits">
           @for (recipe of hitCards(); track recipe.id) {
             <li>
-              <a
-                class="sideitem"
-                [routerLink]="['/recipes', recipe.id]"
-                [queryParams]="{ q: term() }"
-              >
+              <a class="sideitem" [routerLink]="['/recipes', recipe.id]" [queryParams]="carried()">
                 @if (recipe.photo) {
                   <span class="shot"><img [ngSrc]="recipe.photo" alt="" fill /></span>
                 } @else {
@@ -67,7 +112,9 @@
                 }
                 <div>
                   <h3>{{ recipe.title }}</h3>
-                  <p class="m">{{ recipe.meta }}</p>
+                  <p class="m">
+                    <app-tag-line [tags]="recipe.tags" [active]="active()" />{{ recipe.meta }}
+                  </p>
                 </div>
               </a>
             </li>
@@ -111,7 +158,7 @@
                     }
                     <div>
                       <h3>{{ recipe.title }}</h3>
-                      <p class="m">{{ recipe.meta }}</p>
+                      <p class="m"><app-tag-line [tags]="recipe.tags" />{{ recipe.meta }}</p>
                     </div>
                   </a>
                 }
@@ -158,7 +205,7 @@
                   <span class="plate"></span>
                 }
                 <h3>{{ recipe.title }}</h3>
-                <p class="m">{{ recipe.meta }}</p>
+                <p class="m"><app-tag-line [tags]="recipe.tags" />{{ recipe.meta }}</p>
               </a>
             }
           </div>

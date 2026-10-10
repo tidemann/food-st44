@@ -12,7 +12,10 @@
         <div class="wrap">
           <div class="rh-top">
             <p class="crumb">
-              <a routerLink="/" [queryParams]="carried()">Oppskrifter</a> &nbsp;/&nbsp;
+              <a routerLink="/" [queryParams]="searched()">Oppskrifter</a> &nbsp;/&nbsp;
+              @if (crumbTag(); as crumb) {
+                <a routerLink="/" [queryParams]="carried()">{{ crumb }}</a> &nbsp;/&nbsp;
+              }
               {{ v.recipe.title }}
             </p>
             @if (editor()) {
@@ -51,6 +54,20 @@
                   <div>
                     <dt>Lagt inn</dt>
                     <dd>{{ v.added }}</dd>
+                  </div>
+                }
+                <!-- ST-784: each emneord is a link to the list filtered on it. -->
+                @if (v.tags.length) {
+                  <div>
+                    <dt>Emneord</dt>
+                    <dd class="tags">
+                      @for (tag of v.tags; track tag.name) {
+                        @if (!$first) {
+                          <span class="sep" aria-hidden="true">&ngsp;·&ngsp;</span>
+                        }
+                        <a routerLink="/" [queryParams]="{ tag: tag.name }">{{ tag.label }}</a>
+                      }
+                    </dd>
                   </div>
                 }
               </dl>

@@ -67,7 +67,9 @@ export class RecipeDelete {
   readonly id = input.required<string>();
   /** The search the recipe was reached from: "Avbryt" keeps it, a delete drops it (§3.1). */
   readonly q = input<string>();
-  protected readonly carried = computed(() => carry(this.q()));
+  /** The tag filter it was reached from (ST-784), carried on like `q`. */
+  readonly tag = input<string>();
+  protected readonly carried = computed(() => carry(this.q(), this.tag()));
 
   private readonly load = loadRecipe(this.id);
   protected readonly stored = computed(() =>
@@ -95,7 +97,7 @@ export class RecipeDelete {
     this.busy.set(true);
     this.http.delete(`/api/recipes/${String(id)}`).subscribe({
       next: () => {
-        this.site.recipes.reload();
+        this.site.changed();
         void this.router.navigate(['/'], { queryParams: { flash: 'deleted' } });
       },
       error: (error: unknown) => {

@@ -27,7 +27,12 @@ describe('RecipeDetail', () => {
         [...el.querySelectorAll('.rmeta dl > div')].map(
           (d) => `${text(d.querySelector('dt'))} ${text(d.querySelector('dd'))}`,
         ),
-      ).toEqual(['Ingredienser 4', 'Fremgangsmåte 3 steg', 'Lagt inn 2. oktober 2026']);
+      ).toEqual([
+        'Ingredienser 4',
+        'Fremgangsmåte 3 steg',
+        'Lagt inn 2. oktober 2026',
+        'Emneord Kjøtt · Middag',
+      ]);
       expect(text(el.querySelector('.crumb'))).toBe('Oppskrifter / Kjøttkaker i brun saus');
       expect(el.querySelector('.crumb a')?.getAttribute('href')).toBe('/');
       expect(el.querySelector('img')).toBeNull();
@@ -104,6 +109,35 @@ describe('RecipeDetail', () => {
         ['Til alle oppskrifter', '/'],
       ]);
       expect(title()).toBe('Noe gikk galt — food.st44.no');
+    });
+  });
+
+  describe('ST-784: emneord', () => {
+    it('links each tag to the list filtered on it', async () => {
+      const el = await openRecipe('/recipes/9', kjottkaker);
+      const links = [...el.querySelectorAll('.rmeta .tags a')];
+      expect(links.map(text)).toEqual(['Kjøtt', 'Middag']);
+      expect(links.map((a) => a.getAttribute('href'))).toEqual([
+        '/?tag=kj%C3%B8tt',
+        '/?tag=middag',
+      ]);
+    });
+
+    it('has no Emneord row for a recipe without tags', async () => {
+      const el = await openRecipe('/recipes/7', pannekaker);
+      expect(el.querySelector('.rmeta .tags')).toBeNull();
+    });
+
+    it('reached from a filter, the crumb goes back to it and the actions carry it', async () => {
+      const el = await openRecipe('/recipes/9?q=saus&tag=middag', kjottkaker);
+      expect(text(el.querySelector('.crumb'))).toBe(
+        'Oppskrifter / Middag / Kjøttkaker i brun saus',
+      );
+      const crumbs = [...el.querySelectorAll('.crumb a')].map((a) => a.getAttribute('href'));
+      expect(crumbs).toEqual(['/?q=saus', '/?q=saus&tag=middag']);
+      expect(el.querySelector('.acts a')?.getAttribute('href')).toBe(
+        '/recipes/9/edit?q=saus&tag=middag',
+      );
     });
   });
 });

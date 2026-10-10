@@ -285,6 +285,80 @@
   gap: 0 46px;
 }
 
+/* ---------- the emneord band (ST-784): under the nav, on the list pages only ---------- */
+.tagband {
+  border-bottom: 1px solid var(--rule);
+}
+
+.tagband .wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px 34px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.tagband-head {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--soft);
+  white-space: nowrap;
+}
+
+.tagband ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 26px;
+}
+
+/* Each tag is a full --tap tall, so the rows sit a tap apart and no two hit boxes overlap. */
+.tagband a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--tap);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tagband .name {
+  padding-bottom: 3px;
+  border-bottom: 2.5px solid transparent;
+}
+
+.tagband .n {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--soft);
+  padding-bottom: 3px;
+}
+
+.tagband a.on {
+  color: var(--red);
+}
+
+.tagband a.on .name {
+  border-bottom-color: var(--red);
+}
+
+.tagband a:hover .name,
+.tagband a:focus-visible .name {
+  border-bottom-color: var(--red);
+}
+
+.clear-sep {
+  margin: 0 2px;
+  color: var(--rule);
+}
+
 /* ---------- links: no underline until hovered or focused, then a red one ---------- */
 .index a,
 .sideitem,
@@ -382,5 +456,17 @@
 
   .results {
     padding: 26px 0 50px;
+  }
+
+  /* On a phone the label stands above the tags, which wrap into rows. */
+  .tagband .wrap {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 12px;
+    padding-bottom: 6px;
+  }
+
+  .tagband ul {
+    gap: 0 22px;
   }
 }

@@ -1,0 +1,67 @@
+<div class="field tag-field">
+  <label for="tags">Emneord (valgfritt)</label>
+  <p class="field-hint" id="tags-hint">
+    Korte ord dere vil lete etter oppskriften på, for eksempel «middag» eller «kake». Enter legger
+    til. Lagres med små bokstaver.
+  </p>
+
+  @if (chips().length) {
+    <ul class="chips" aria-label="Emneord på oppskriften">
+      @for (chip of chips(); track chip.name) {
+        <li class="chip">
+          <span class="chip-name">{{ chip.label }}</span>
+          <button
+            class="chip-remove"
+            type="button"
+            [attr.aria-label]="'Fjern emneordet ' + chip.label"
+            (click)="remove(chip.name)"
+          >
+            Fjern
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="combo">
+    <input
+      #field
+      type="text"
+      id="tags"
+      name="tags"
+      autocomplete="off"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls="tag-options"
+      aria-describedby="tags-hint"
+      [attr.aria-expanded]="open()"
+      [attr.aria-activedescendant]="markedId()"
+      [attr.maxlength]="max"
+      (input)="input(field.value)"
+      (keydown)="keydown($event)"
+    />
+    <div class="popup" [hidden]="!open()">
+      <p class="popup-head" aria-hidden="true">Forslag</p>
+      <ul class="options" id="tag-options" role="listbox" aria-label="Forslag">
+        @for (option of suggestions(); track option.name) {
+          <li
+            role="option"
+            [id]="'tag-option-' + $index"
+            [class.marked]="$index === marked()"
+            tabindex="-1"
+            [attr.aria-selected]="$index === marked()"
+            (mousedown)="$event.preventDefault()"
+            (click)="pick(option)"
+            (keydown.enter)="pick(option)"
+          >
+            <span class="option-name">{{ option.label }}</span
+            >&ngsp;<span class="option-note">{{
+              option.count === null ? 'nytt emneord' : option.count
+            }}</span>
+          </li>
+        }
+      </ul>
+    </div>
+  </div>
+  <p class="visually-hidden" role="status">{{ said() }}</p>
+</div>

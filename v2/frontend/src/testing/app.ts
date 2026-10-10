@@ -6,7 +6,7 @@ import { TestBed } from '@angular/core/testing';
 import { Title } from '@angular/platform-browser';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { ApiError, Me, PhotoReading, Recipe } from '../app/api/types';
+import type { ApiError, Me, PhotoReading, Recipe, Tag } from '../app/api/types';
 import { routes } from '../app/app.routes';
 import { Auth } from '../app/auth';
 
@@ -24,6 +24,7 @@ export const SEED: Recipe[] = [
     instructions: 'Bland kjøttdeig og salt.\n\nForm kaker og brun dem i smør.\n\nLa dem trekke.',
     created_at: at('10-02'),
     photo_url: null,
+    tags: ['kjøtt', 'middag'],
   },
   {
     id: 8,
@@ -32,6 +33,7 @@ export const SEED: Recipe[] = [
     instructions: 'Kok.',
     created_at: at('09-29'),
     photo_url: null,
+    tags: ['høst', 'kjøtt', 'middag'],
   },
   {
     id: 7,
@@ -40,6 +42,7 @@ export const SEED: Recipe[] = [
     instructions: '',
     created_at: at('09-25'),
     photo_url: null,
+    tags: [],
   },
   {
     id: 6,
@@ -48,6 +51,7 @@ export const SEED: Recipe[] = [
     instructions: 'Stek.',
     created_at: at('09-21'),
     photo_url: null,
+    tags: ['fisk', 'middag'],
   },
   {
     id: 5,
@@ -56,6 +60,7 @@ export const SEED: Recipe[] = [
     instructions: 'Damp.',
     created_at: at('09-17'),
     photo_url: null,
+    tags: ['jul', 'kjøtt'],
   },
   {
     id: 4,
@@ -64,7 +69,18 @@ export const SEED: Recipe[] = [
     instructions: 'Kok.',
     created_at: at('09-13'),
     photo_url: null,
+    tags: ['kjøtt', 'middag', 'suppe'],
   },
+];
+
+/** The tags SEED carries, as GET /api/tags answers: in Norwegian order, with counts. */
+export const TAGS: Tag[] = [
+  { name: 'fisk', count: 1 },
+  { name: 'høst', count: 1 },
+  { name: 'jul', count: 1 },
+  { name: 'kjøtt', count: 4 },
+  { name: 'middag', count: 4 },
+  { name: 'suppe', count: 1 },
 ];
 
 export function seed(id: number): Recipe {
@@ -104,8 +120,10 @@ export interface Answers {
   me?: Me | number;
   /** GET /api/recipes, the whole collection (default: SEED). */
   all?: Recipe[] | number;
-  /** GET /api/recipes?q=… */
+  /** GET /api/recipes?q=… or ?tag=… (or both) */
   search?: Recipe[] | number;
+  /** GET /api/tags (default: TAGS) */
+  tags?: Tag[] | number;
   /** GET /api/recipes/:id */
   recipe?: Recipe | number;
   /** GET /api/recipes/read-photo, asked by S-NEW for its button (default: reading off). */
@@ -124,11 +142,13 @@ export function setUp(): void {
 
 function reply(
   http: HttpTestingController,
-  match: (url: string, q: boolean) => boolean,
-  body: Me | PhotoReading | Recipe | Recipe[] | number,
+  match: (url: string, filtered: boolean) => boolean,
+  body: Me | PhotoReading | Recipe | Recipe[] | Tag[] | number,
   expect: boolean,
 ): void {
-  const requests = http.match((r) => r.method === 'GET' && match(r.url, r.params.has('q')));
+  const requests = http.match(
+    (r) => r.method === 'GET' && match(r.url, r.params.has('q') || r.params.has('tag')),
+  );
   if (expect && requests.length !== 1) {
     throw new Error(`expected one request, got ${String(requests.length)}`);
   }
@@ -157,6 +177,7 @@ export function answer(answers: Answers): void {
   TestBed.tick();
   reply(http, (url, q) => url === '/api/recipes' && !q, answers.all ?? SEED, false);
   reply(http, (url) => url === READING, answers.reading ?? { available: false }, false);
+  reply(http, (url) => url === '/api/tags', answers.tags ?? TAGS, false);
   if (answers.search !== undefined) {
     reply(http, (url, q) => url === '/api/recipes' && q, answers.search, true);
   }
