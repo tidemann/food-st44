@@ -2,7 +2,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { App } from './app';
-import { answer, type Answers, SEED, setUp, signIn, text, title } from '../testing/app';
+import { answer, type Answers, READER, SEED, setUp, signIn, text, title } from '../testing/app';
 
 let fixture: ComponentFixture<App>;
 
@@ -58,6 +58,16 @@ describe('App chrome', () => {
     ]);
   });
 
+  it('links to «Koble til en assistent» in the footer, for everyone, not in the nav (ST-833)', async () => {
+    const el = await render('/', { me: READER });
+    const link = el.querySelector('.foot a.foot-link');
+    expect([text(link), link?.getAttribute('href')]).toEqual([
+      'Koble til en assistent',
+      '/assistent',
+    ]);
+    expect(el.querySelector('.mast-nav a[href="/assistent"]')).toBeNull();
+  });
+
   it('says "1 oppskrift" for one', async () => {
     const el = await render('/', { all: SEED.slice(0, 1) });
     expect(text(el.querySelector('.count'))).toBe('1 oppskrift i samlingen');
@@ -67,7 +77,9 @@ describe('App chrome', () => {
     const el = await render('/', { all: [] });
     expect(el.querySelector('form[role=search]')).toBeNull();
     expect(el.querySelector('.count')).toBeNull();
-    expect(text(el.querySelector('.foot'))).toBe('food.st44.no — familiens oppskrifter');
+    expect([...el.querySelectorAll('.foot span')].map((s) => text(s))).toEqual([
+      'food.st44.no — familiens oppskrifter',
+    ]);
   });
 
   it('keeps the search but drops the count when the collection cannot be loaded', async () => {

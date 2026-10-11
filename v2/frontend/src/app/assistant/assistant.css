@@ -1,0 +1,400 @@
+/* ============================================================================
+   ST-818 — MCP server screens for food.st44.no.
+   New component CSS, in the Søndag idiom. Six tokens only; every pattern below
+   is lifted from one that the signed-off picture already shows:
+     .page / .page-top  <- the recipe page's .rh / .rh-top (breadcrumb + actions)
+     .addr / .token     <- the .plate (tint + 3px crimson top rule)
+     .how / .step       <- Fremgangsmåte (3px ink rule, crimson Bodoni numerals)
+     .facts             <- the recipe page's facts table on hairlines
+     .keys / .key       <- Hele samlingen, the register on hairlines
+     .note              <- the tinted note block with a crimson left rule
+     .foot-link         <- in app.css, with the footer it sits in
+
+   The masthead is untouched: Maria decided on 2026-10-10 that the help page is
+   reached from the footer, so the nav band keeps the two links the signed-off
+   picture shows and this file adds no rule to it. The approval step's .who-card
+   comes with part 2 (the Claude app sign-in), where it is used.
+   ========================================================================== */
+
+.page {
+  padding: 40px 0 80px;
+  max-width: 1180px;
+}
+
+.page-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 30px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 14px;
+}
+
+.crumb {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--soft);
+}
+
+.crumb a {
+  color: var(--red);
+  text-decoration: none;
+  border-bottom: 1px solid currentcolor;
+}
+
+.acts {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.page h1 {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  margin: 30px 0 0;
+  max-width: 18ch;
+  overflow-wrap: anywhere;
+}
+
+.lead {
+  font-family: var(--disp);
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.5;
+  margin: 16px 0 0;
+  max-width: 54ch;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 32px;
+  margin-top: 34px;
+}
+
+.main-col {
+  grid-column: 1/9;
+}
+
+.side-col {
+  grid-column: 10/13;
+  align-self: start;
+}
+
+/* ---------- the address, and the key shown once ---------- */
+
+/* The band stops at the main column, so on a desktop it lines up with the
+   steps under it and the facts table beside it. */
+.addr,
+.token {
+  max-width: 45.5rem;
+  background: var(--tint);
+  border-top: 3px solid var(--red);
+  padding: 18px 22px 20px;
+  margin-top: 28px;
+}
+
+.addr-label,
+.token-label {
+  margin: 0 0 7px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--soft);
+}
+
+/* The address and its button stay together: a wide band with the two ends far
+   apart reads as two unrelated things. */
+.addr-row {
+  display: flex;
+  align-items: center;
+  gap: 14px 26px;
+  flex-wrap: wrap;
+}
+
+.addr code,
+.token code {
+  font-family: var(--ui);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+
+.addr code {
+  font-size: 17px;
+}
+
+.token code {
+  display: block;
+  font-size: 19px;
+  line-height: 1.75;
+  margin-bottom: 18px;
+}
+
+/* ---------- numbered steps ---------- */
+.how {
+  margin-top: 40px;
+}
+
+.how h2,
+.sec h2 {
+  font-family: var(--disp);
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 18px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--ink);
+}
+
+.how p.sub,
+.sec p.sub {
+  margin: -8px 0 18px;
+  font-size: 14px;
+  color: var(--soft);
+  max-width: 56ch;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 18px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.step .n {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 30px;
+  color: var(--red);
+  line-height: 1;
+}
+
+.step p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.68;
+  max-width: 62ch;
+}
+
+.step a {
+  color: var(--red);
+}
+
+.step code {
+  font-family: var(--ui);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the facts table ---------- */
+.facts {
+  padding-top: 12px;
+  border-top: 3px solid var(--ink);
+}
+
+.facts h2 {
+  font-family: var(--disp);
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.facts dl {
+  margin: 0;
+}
+
+.facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+
+.facts dt {
+  color: var(--soft);
+  margin: 0;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The limits — "Ingen", "Nei" — are ink like every other value. Maria decided on
+   2026-10-10 that the word carries the meaning on its own, so crimson is not
+   spent here. */
+
+/* ---------- the note block ---------- */
+.note {
+  background: var(--tint);
+  border-left: 3px solid var(--red);
+  padding: 14px 20px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  margin: 34px 0 0;
+  max-width: 62ch;
+}
+
+.note p {
+  margin: 0;
+}
+
+/* ---------- the key register ---------- */
+
+/* "Lag ny nøkkel" belongs with the register it adds to, not above the title. */
+.keyhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 20px;
+  flex-wrap: wrap;
+  margin-top: 36px;
+
+  /* same measure as .keys below it, so the button lands on the register's own
+     right edge and not out in the twelfth column */
+  max-width: 45.5rem;
+}
+
+.keyhead h2 {
+  font-family: var(--disp);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.keyhead .m {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--soft);
+}
+
+/* The register takes the page's own measure, the same 45.5rem as .addr and
+   .token, so `Slett` stays beside the key it deletes instead of drifting out to
+   the twelfth column. */
+.keys {
+  max-width: 45.5rem;
+  margin-top: 12px;
+  border-top: 3px solid var(--ink);
+  list-style: none;
+  padding: 0;
+}
+
+.key {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.key-text {
+  min-width: 0;
+}
+
+.key h3 {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0 0 5px;
+  overflow-wrap: anywhere;
+}
+
+.key .m {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--soft);
+  overflow-wrap: anywhere;
+}
+
+.key .m b {
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.key .acts {
+  padding-top: 2px;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+/* ---------- the quiet pages: empty keys, delete confirm ---------- */
+.notice h1 {
+  max-width: 20ch;
+  overflow-wrap: anywhere;
+}
+
+@media (width <= 760px) {
+  .page {
+    padding: 26px 0 56px;
+  }
+
+  .page-top {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .page h1 {
+    font-size: 36px;
+    margin-top: 20px;
+  }
+
+  .lead {
+    font-size: 17px;
+  }
+
+  .cols {
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: 26px;
+  }
+
+  .main-col,
+  .side-col {
+    grid-column: auto;
+  }
+
+  .side-col {
+    margin-top: 40px;
+  }
+
+  .step {
+    grid-template-columns: 36px 1fr;
+    gap: 12px;
+  }
+
+  .step .n {
+    font-size: 24px;
+  }
+
+  .step p {
+    font-size: 15.5px;
+  }
+
+  .token code {
+    font-size: 17px;
+  }
+
+  .addr code {
+    font-size: 15.5px;
+  }
+}
