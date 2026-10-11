@@ -32,3 +32,8 @@ export type ApiKey = components['schemas']['ApiKeyOut'];
 export type ApiKeyInput = components['schemas']['ApiKeyIn'];
 /** The answer to `POST /api/keys`: the key and its whole token, the only time it is sent. */
 export type ApiKeyCreated = components['schemas']['ApiKeyCreatedOut'];
+/**
+ * `GET /api/oauth/approval` (ST-834): what the Claude app's approval page shows, and the hidden
+ * fields its form posts to the authorization endpoint.
+ */
+export type OAuthApproval = components['schemas']['ApprovalOut'];

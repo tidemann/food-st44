@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "ninja",
+    "oauth2_provider",
     "food",
 ]
 
@@ -126,6 +127,57 @@ WHITENOISE_USE_FINDERS = True
 FOOD_SITE_URL = os.environ.get(
     "FOOD_SITE_URL", "http://localhost:8000" if DEBUG else "https://food.st44.no"
 ).rstrip("/")
+
+# --- The Claude app's sign-in to the MCP server (food.oauth, ST-834) ---
+
+# OAuth 2.1 as the MCP spec asks, by django-oauth-toolkit: the app registers itself (RFC 7591),
+# sends the person through Google sign-in and one approval page, and gets an access token for
+# an hour and a refresh token that is replaced on every use. Only hashes of the tokens are
+# stored. The addresses are built from FOOD_SITE_URL, not the request: TLS ends at nginx-proxy,
+# so Django sees http.
+MCP_RESOURCE = f"{FOOD_SITE_URL}/api/mcp"
+OAUTH2_PROVIDER = {
+    "SCOPES": {
+        "read": "Søke i og lese oppskriftene",
+        "write": "Legge inn og endre oppskrifter",
+    },
+    "DEFAULT_SCOPES": ["read"],
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 60,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 90 * 24 * 60 * 60,  # as long as a site sign-in lasts
+    "ROTATE_REFRESH_TOKEN": True,
+    # A refresh token used twice means it leaked: the whole chain is revoked.
+    "REFRESH_TOKEN_REUSE_PROTECTION": True,
+    "PKCE_REQUIRED": True,
+    # Claude's callback is https. Plain http only for a local run.
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["https", "http"] if DEBUG else ["https"],
+    # The app registers itself; nothing is open to it until a person approves.
+    "DCR_ENABLED": True,
+    "DCR_REGISTRATION_PERMISSION_CLASSES": ("oauth2_provider.dcr.AllowAllDCRPermission",),
+    # RFC 9700: no implicit or password grant, no "plain" PKCE, no token in the query string,
+    # `iss` in the authorization response, tokens hashed at rest.
+    "COMPLIANT_BCP_RFC9700_IMPLICIT_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PASSWORD_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    "COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT": True,
+    "COMPLIANT_BCP_RFC9700_AUTHZ_RESPONSE_ISS": True,
+    "COMPLIANT_BCP_RFC9700_TOKEN_STORAGE": True,
+    # Authorization-server metadata (RFC 8414) at /.well-known/oauth-authorization-server.
+    "OIDC_ISS_ENDPOINT": FOOD_SITE_URL,
+    "OAUTH2_RESPONSE_TYPES_SUPPORTED": ["code"],
+    "OAUTH2_GRANT_TYPES_SUPPORTED": ["authorization_code", "refresh_token"],
+    "OAUTH2_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED": [
+        "none",
+        "client_secret_post",
+        "client_secret_basic",
+    ],
+    # Protected-resource metadata (RFC 9728) at /.well-known/oauth-protected-resource.
+    "OAUTH2_PROTECTED_RESOURCE_IDENTIFIER": MCP_RESOURCE,
+    "OAUTH2_PROTECTED_RESOURCE_AUTHORIZATION_SERVERS": [FOOD_SITE_URL],
+    "OAUTH2_PROTECTED_RESOURCE_NAME": "food.st44.no",
+    "OAUTH2_PROTECTED_RESOURCE_DOCUMENTATION": f"{FOOD_SITE_URL}/assistent",
+}
+# The authorize step sends someone who is not signed in through Google sign-in and back.
+LOGIN_URL = "/api/auth/google/login"
 
 # --- Sign-in (food.auth, food.google) ---
 

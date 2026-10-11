@@ -1,6 +1,6 @@
-from django.urls import URLPattern, URLResolver, path, re_path
+from django.urls import URLPattern, URLResolver, include, path, re_path
 
-from food import mcp
+from food import mcp, oauth
 from food.admin import site as admin_site
 from food.api import api
 from food.views import (
@@ -21,6 +21,10 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("api/admin/", admin_site.urls),
     # The MCP server (ST-833): JSON-RPC over POST, not a REST endpoint, so not in the API schema.
     path("api/mcp", mcp.endpoint),
+    # The Claude app's sign-in to it (ST-834): OAuth under /api/oauth/, and the two metadata
+    # documents the spec puts at /.well-known/ in the root, the one exception to the SPA rule.
+    # The library's namespace, so its metadata views find the endpoints by name.
+    path("", include((oauth.urlpatterns, "oauth2_provider"))),
     # The front page is the SPA. Mounted at the root, Ninja adds its own "home" view at "",
     # which 404s when the docs live elsewhere, so this has to come before api.urls.
     path("", spa),
@@ -35,6 +39,8 @@ urlpatterns: list[URLPattern | URLResolver] = [
     re_path(r"^assistent/?$", spa),
     re_path(r"^assistent/nokler(?:/ny)?/?$", spa),
     re_path(r"^assistent/nokler/\d+/slett/?$", spa),
+    # The Claude app's approval step (ST-834); food.oauth sends the browser here.
+    re_path(r"^assistent/godkjenn/?$", spa),
     # Recipe photos (food.photos), stored next to the database rather than built into the image.
     path("photos/<str:name>", photo),
     # Anything else that is not API or a static file is the SPA's "page not found".

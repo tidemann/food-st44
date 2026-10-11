@@ -8,8 +8,11 @@ stream) answers 405. This is a small hand-written handler for `initialize`, `pin
 (Starlette + anyio) app and would need a second server process or an async bridge inside this
 WSGI app for four methods.
 
-Reads are open to anyone, as on the site. The write tools need `Authorization: Bearer <key>`
-(food.keys) whose user is on the editor list at the time of the call. There is no delete tool.
+Reads are open to anyone, as on the site. The write tools need `Authorization: Bearer
+<token>` of a user on the editor list at the time of the call: either a personal key
+(food.keys) or, from the Claude app, an OAuth access token granted `write` (food.oauth, ST-834).
+An app token that is expired, revoked or unknown gets HTTP 401 with a WWW-Authenticate
+challenge, so the app refreshes it or signs in again. There is no delete tool.
 Every write is logged in McpChange. The tools call food.services and food.importer, the same
 code the site's API uses.
 """
@@ -21,14 +24,16 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from food import importer, services
-from food.keys import editor_for
-from food.models import ApiKey, McpChange, Recipe
+from food import importer, oauth, services
+from food.auth import is_editor
+from food.keys import KEY_START, editor_for
+from food.models import McpChange, Recipe
 from food.schemas import LinkImportIn, RecipeIn
 from food.tags import sort_names
 
@@ -44,7 +49,8 @@ SERVER_INFO = {
 }
 INSTRUCTIONS = (
     "The household's recipe collection at food.st44.no, in Norwegian. Search and read freely. "
-    "Adding, importing and editing need an editor's key. Recipes cannot be deleted from here. "
+    "Adding, importing and editing need an editor: an editor's key, or the Claude app signed "
+    "in with an editor's Google account. Recipes cannot be deleted from here. "
     "Ingredients are one per line; instructions are paragraphs, one step each."
 )
 
@@ -59,6 +65,14 @@ NO_KEY = (
     "Å legge inn eller endre oppskrifter krever en nøkkel fra en redaktør, sendt som "
     "«Authorization: Bearer <nøkkel>». Nøkler lages på https://food.st44.no/assistent/nokler. "
     "Søk og lesing går uten nøkkel."
+)
+APP_NOT_AN_EDITOR = (
+    "Kontoen du logget inn med i Claude-appen, er ikke redaktør. Claude kan søke og lese, men "
+    "ikke legge inn eller endre oppskrifter."
+)
+APP_READ_ONLY = (
+    "Claude fikk bare lesetilgang da du koblet til. Fjern food.st44.no i Claude-appen og koble "
+    "til på nytt for å kunne legge inn og endre oppskrifter."
 )
 NOT_FOUND = "Fant ingen oppskrift med id {id}."
 UNREADABLE = "Fant ingen oppskrift på siden. Skriv den inn med create_recipe i stedet."
@@ -78,26 +92,45 @@ class ToolError(Exception):
 
 
 @dataclass(frozen=True)
-class Caller:
-    """Who is calling: the key from the Authorization header, if it is an editor's, and else
-    why writes are refused."""
+class Writer:
+    """An editor writing: who, and through what (the key's name, or "Claude app")."""
 
-    key: ApiKey | None
+    user: User
+    via: str
+
+
+@dataclass(frozen=True)
+class Caller:
+    """Who is calling: the editor behind the Authorization header, and else why writes are
+    refused."""
+
+    writer: Writer | None
     refusal: str
 
-    def editor_key(self) -> ApiKey:
-        if self.key is None:
+    def editor(self) -> Writer:
+        if self.writer is None:
             raise ToolError(self.refusal)
-        return self.key
+        return self.writer
 
 
-def _caller(request: HttpRequest) -> Caller:
+def _caller(request: HttpRequest) -> Caller | None:
+    """None for an app token that is not valid (any more): the endpoint answers 401."""
     header = request.headers.get("Authorization", "")
     scheme, _, token = header.partition(" ")
-    if scheme.lower() != "bearer" or not token.strip():
+    token = token.strip()
+    if scheme.lower() != "bearer" or not token:
         return Caller(None, NO_KEY)
-    key, why = editor_for(token.strip())
-    return Caller(key, why)
+    if token.startswith(KEY_START):
+        key, why = editor_for(token)
+        return Caller(Writer(key.user, key.name) if key else None, why)
+    access = oauth.access_for(token)
+    if access is None:
+        return None
+    if not is_editor(access.user):
+        return Caller(None, APP_NOT_AN_EDITOR)
+    if not access.can_write:
+        return Caller(None, APP_READ_ONLY)
+    return Caller(Writer(access.user, oauth.VIA), "")
 
 
 # --- the tools' arguments: validated by pydantic, and their JSON Schema is what tools/list sends
@@ -196,9 +229,9 @@ def _messages(exc: ValidationError) -> str:
     )
 
 
-def _log(key: ApiKey, tool: str, recipe_id: int, summary: str) -> None:
+def _log(writer: Writer, tool: str, recipe_id: int, summary: str) -> None:
     McpChange.objects.create(
-        user=key.user, via=key.name, tool=tool, recipe_id=recipe_id, summary=summary[:200]
+        user=writer.user, via=writer.via, tool=tool, recipe_id=recipe_id, summary=summary[:200]
     )
 
 
@@ -219,17 +252,17 @@ def list_tags(args: NoArgs, caller: Caller) -> dict[str, Any]:
 
 
 def create_recipe(args: CreateArgs, caller: Caller) -> dict[str, Any]:
-    key = caller.editor_key()
+    writer = caller.editor()
     valid = _validated(**args.model_dump())
     with transaction.atomic():
         recipe = services.create_recipe(**valid.model_dump())
-        _log(key, "create_recipe", recipe.id, f"ny oppskrift: {recipe.title}")
+        _log(writer, "create_recipe", recipe.id, f"ny oppskrift: {recipe.title}")
     return _full(recipe)
 
 
 def update_recipe(args: UpdateArgs, caller: Caller) -> dict[str, Any]:
     """Changes only the fields given: the rest are read back from the recipe first."""
-    key = caller.editor_key()
+    writer = caller.editor()
     recipe = _recipe(args.id)
     before = {
         "title": recipe.title,
@@ -245,12 +278,12 @@ def update_recipe(args: UpdateArgs, caller: Caller) -> dict[str, Any]:
         summary = "endret: " + ", ".join(FIELD_NAMES[name] for name in changed)
         with transaction.atomic():
             recipe = services.update_recipe(recipe, **valid)
-            _log(key, "update_recipe", recipe.id, summary)
+            _log(writer, "update_recipe", recipe.id, summary)
     return {**_full(_recipe(recipe.id)), "changed": changed}
 
 
 def import_recipe_from_link(args: ImportArgs, caller: Caller) -> dict[str, Any]:
-    key = caller.editor_key()
+    writer = caller.editor()
     try:
         url = LinkImportIn(url=args.url).url
         draft = importer.import_link(url)
@@ -265,7 +298,7 @@ def import_recipe_from_link(args: ImportArgs, caller: Caller) -> dict[str, Any]:
     )
     with transaction.atomic():
         recipe = services.create_recipe(**valid.model_dump())
-        _log(key, "import_recipe_from_link", recipe.id, f"hentet fra {url}")
+        _log(writer, "import_recipe_from_link", recipe.id, f"hentet fra {url}")
     return _full(recipe)
 
 
@@ -295,7 +328,7 @@ class Tool:
         }
 
 
-WRITE_NOTE = " Needs an editor's key. Answers with the recipe and its link on food.st44.no."
+WRITE_NOTE = " Needs an editor. Answers with the recipe and its link on food.st44.no."
 
 TOOLS = {
     tool.name: tool
@@ -444,7 +477,7 @@ def _origin_allowed(request: HttpRequest) -> bool:
     return origin is None or origin in settings.CSRF_TRUSTED_ORIGINS
 
 
-# Bearer keys, not cookies: there is no session for a cross-site request to ride on.
+# Bearer tokens, not cookies: there is no session for a cross-site request to ride on.
 @csrf_exempt
 def endpoint(request: HttpRequest) -> HttpResponse:
     if request.method != "POST":
@@ -464,7 +497,12 @@ def endpoint(request: HttpRequest) -> HttpResponse:
     if isinstance(message, list):
         # Batches were dropped from the protocol in 2025-06-18.
         return JsonResponse(_error(None, INVALID_REQUEST, "Batches are not supported"))
-    answer = _answer(message, _caller(request))
+    caller = _caller(request)
+    if caller is None:
+        refused = JsonResponse(_error(None, INVALID_REQUEST, "Invalid access token"), status=401)
+        refused["WWW-Authenticate"] = oauth.challenge(request)
+        return refused
+    answer = _answer(message, caller)
     if answer is None:
         return HttpResponse(status=202)
     return JsonResponse(answer, json_dumps_params={"ensure_ascii": False})

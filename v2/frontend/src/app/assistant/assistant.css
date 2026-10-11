@@ -12,8 +12,9 @@
 
    The masthead is untouched: Maria decided on 2026-10-10 that the help page is
    reached from the footer, so the nav band keeps the two links the signed-off
-   picture shows and this file adds no rule to it. The approval step's .who-card
-   comes with part 2 (the Claude app sign-in), where it is used.
+   picture shows and this file adds no rule to it.
+     .who-card          <- the approval step (ST-834): the account, its initial
+                           as the menu shows it
    ========================================================================== */
 
 .page {
@@ -245,6 +246,39 @@
 
 .note p {
   margin: 0;
+}
+
+/* ---------- the approval step (ST-834) ---------- */
+.who-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 12px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.who-card p {
+  margin: 0;
+  font-size: 13.5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.who-card b {
+  font-weight: 600;
+}
+
+.who-mail {
+  display: block;
+  color: var(--soft);
+  font-size: 12px;
+}
+
+.approve-facts {
+  margin-top: 34px;
 }
 
 /* ---------- the key register ---------- */

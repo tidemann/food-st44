@@ -971,6 +971,48 @@
           }
         ]
       }
+    },
+    "/api/oauth/approval": {
+      "get": {
+        "operationId": "get_oauth_approval",
+        "summary": "What the approval page shows for an app's authorization request (same query)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "oauth"
+        ]
+      }
     }
   },
   "components": {
@@ -1355,6 +1397,52 @@
           "name"
         ],
         "title": "ApiKeyIn",
+        "type": "object"
+      },
+      "ApprovalOut": {
+        "properties": {
+          "client_name": {
+            "title": "Client Name",
+            "type": "string"
+          },
+          "client_host": {
+            "title": "Client Host",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "initial": {
+            "title": "Initial",
+            "type": "string"
+          },
+          "can_write": {
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "object"
+          }
+        },
+        "required": [
+          "client_name",
+          "client_host",
+          "name",
+          "email",
+          "initial",
+          "can_write",
+          "fields"
+        ],
+        "title": "ApprovalOut",
         "type": "object"
       }
     },
