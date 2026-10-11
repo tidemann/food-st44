@@ -140,3 +140,38 @@ class TextDraftOut(RecipeDraftOut):
     read_by: Literal["ai", "rules"]
     # Why the rules were used, for the form; empty when read_by is "ai".
     notice: str
+
+
+# --- personal keys for assistants (food.keys, ST-833) ---
+
+# The key page's limit, so a long name cannot break the register or the delete page (ST-818 §4).
+KEY_NAME_MAX_CHARS = 40
+
+
+class ApiKeyIn(Schema):
+    # Who uses the key, e.g. "Samantha" or "Claude på mobilen". Stored trimmed.
+    name: str
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, value: str) -> str:
+        value = _required(value, "Gi nøkkelen et navn.")
+        if len(value) > KEY_NAME_MAX_CHARS:
+            raise PydanticCustomError("too_long", "Navnet kan være høyst 40 tegn.")
+        return value
+
+
+class ApiKeyOut(Schema):
+    """A key as the key page lists it. The token is never in here: only its first characters."""
+
+    id: int
+    name: str
+    prefix: str  # "food_sk_7Qd4"
+    created_at: datetime
+    last_used_at: datetime | None  # null until an assistant has used it
+
+
+class ApiKeyCreatedOut(ApiKeyOut):
+    """The answer to making a key: the only time the whole token is sent."""
+
+    token: str
