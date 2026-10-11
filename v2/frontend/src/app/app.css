@@ -114,6 +114,7 @@ main:focus {
 
 .mast-nav {
   display: flex;
+  flex-wrap: wrap; /* at 375 px and less the row breaks between items, never inside one */
   align-items: baseline;
   gap: 30px;
   border-top: 1px solid var(--rule);
@@ -220,6 +221,27 @@ main:focus {
   padding-bottom: 60px;
   font-size: 12px;
   color: var(--soft);
+
+  /* three items on one rule, so they sit on one line rather than on the top edge (ST-818) */
+  align-items: center;
+}
+
+/* The way to "Koble til en assistent" (ST-833): the only route to the help page, so it reads as
+   a link against the soft grey around it, crimson like the keyword under a dish. Padding and an
+   equal negative margin buy the 44 px target without moving the line. */
+.foot-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  margin: -13px 0;
+  padding: 13px 0;
+  color: var(--red);
+  font-weight: 600;
+
+  /* underline on the text, not on the padded box the tap target needs */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
 }
 
 @media (width <= 760px) {

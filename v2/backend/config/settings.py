@@ -119,6 +119,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # image needs no collectstatic step. It is a few hundred small files, indexed once at start.
 WHITENOISE_USE_FINDERS = True
 
+# --- The MCP server (food.mcp) ---
+
+# The site's own address, for the recipe links the assistant tools answer with. TLS ends at
+# nginx-proxy, so Django cannot tell it from the request.
+FOOD_SITE_URL = os.environ.get(
+    "FOOD_SITE_URL", "http://localhost:8000" if DEBUG else "https://food.st44.no"
+).rstrip("/")
+
 # --- Sign-in (food.auth, food.google) ---
 
 # A Google OAuth "Web application" client. Without both, the site runs read-only: /api/auth/me

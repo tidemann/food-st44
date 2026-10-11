@@ -82,3 +82,53 @@ class PhotoRead(models.Model):
 
     def __str__(self) -> str:
         return f"{self.at:%Y-%m-%d %H:%M} {self.kind} {self.provider}: {self.outcome}"
+
+
+class ApiKey(models.Model):
+    """A personal key an editor makes for one assistant (ST-833), sent as
+    `Authorization: Bearer <token>` to /api/mcp. Only the token's SHA-256 is stored; the token
+    itself is shown once, when it is made. A deleted key is kept, marked, so the change log
+    still names it; it opens nothing any more. A key writes only while its user is an editor."""
+
+    user = models.ForeignKey(
+        "auth.User", on_delete=models.CASCADE, related_name="api_keys", verbose_name="konto"
+    )
+    name = models.CharField(max_length=40, verbose_name="navn")
+    token_hash = models.CharField(max_length=64, unique=True, editable=False)
+    # The start of the token ("food_sk_7Qd4"), so a key can be told apart whatever its name.
+    prefix = models.CharField(max_length=16, editable=False, verbose_name="starter med")
+    created_at = models.DateTimeField(default=timezone.now, verbose_name="laget")
+    last_used_at = models.DateTimeField(null=True, blank=True, verbose_name="sist brukt")
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="slettet")
+
+    class Meta:
+        ordering = ("-created_at", "-id")
+        verbose_name = "nøkkel"
+        verbose_name_plural = "nøkler"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.prefix}…)"
+
+
+class McpChange(models.Model):
+    """One recipe an assistant created or changed through /api/mcp (ST-833): who, through which
+    key (or "Claude app"), which tool, which recipe, when, and which fields. Read in the admin."""
+
+    at = models.DateTimeField(default=timezone.now, verbose_name="tidspunkt")
+    user = models.ForeignKey(
+        "auth.User", on_delete=models.SET_NULL, null=True, related_name="+", verbose_name="konto"
+    )
+    # The key's name, or "Claude app" for the app's sign-in (part 2).
+    via = models.CharField(max_length=40, verbose_name="via")
+    tool = models.CharField(max_length=40, verbose_name="verktøy")
+    # Not a foreign key: the row outlives a recipe deleted on the site.
+    recipe_id = models.IntegerField(verbose_name="oppskrift")
+    summary = models.CharField(max_length=200, verbose_name="endret")
+
+    class Meta:
+        ordering = ("-at", "-id")
+        verbose_name = "endring fra assistent"
+        verbose_name_plural = "endringer fra assistenter"
+
+    def __str__(self) -> str:
+        return f"{self.at:%Y-%m-%d %H:%M} {self.tool} #{self.recipe_id}: {self.summary}"

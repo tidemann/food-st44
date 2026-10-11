@@ -26,3 +26,9 @@ export type TextImport = components['schemas']['TextImportIn'];
 export type TextDraft = components['schemas']['TextDraftOut'];
 /** `GET /api/tags`: an emneord in use, and how many recipes carry it (ST-784). */
 export type Tag = components['schemas']['TagOut'];
+/** `GET /api/keys` (ST-833): one of the editor's keys for an assistant. Never the token itself. */
+export type ApiKey = components['schemas']['ApiKeyOut'];
+/** `POST /api/keys`: the key's name, at most 40 characters. */
+export type ApiKeyInput = components['schemas']['ApiKeyIn'];
+/** The answer to `POST /api/keys`: the key and its whole token, the only time it is sent. */
+export type ApiKeyCreated = components['schemas']['ApiKeyCreatedOut'];

@@ -8,7 +8,7 @@ from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 
 from food import reader
 from food.auth import admin_emails
-from food.models import Editor, PhotoRead
+from food.models import ApiKey, Editor, McpChange, PhotoRead
 
 
 class FoodAdminSite(admin.AdminSite):
@@ -43,8 +43,11 @@ site = FoodAdminSite(name="admin")
 if TYPE_CHECKING:
     _EditorAdminBase = admin.ModelAdmin[Editor]
     _PhotoReadAdminBase = admin.ModelAdmin[PhotoRead]
+    _ApiKeyAdminBase = admin.ModelAdmin[ApiKey]
+    _McpChangeAdminBase = admin.ModelAdmin[McpChange]
 else:
     _EditorAdminBase = _PhotoReadAdminBase = admin.ModelAdmin
+    _ApiKeyAdminBase = _McpChangeAdminBase = admin.ModelAdmin
 
 
 @admin.register(Editor, site=site)
@@ -87,3 +90,40 @@ class PhotoReadAdmin(_PhotoReadAdminBase):
             **(extra_context or {}),
         }
         return super().changelist_view(request, context)
+
+
+@admin.register(McpChange, site=site)
+class McpChangeAdmin(_McpChangeAdminBase):
+    """Every recipe an assistant added or changed through /api/mcp (ST-833), read-only."""
+
+    list_display = ("at", "user", "via", "tool", "recipe_id", "summary")
+    list_filter = ("tool", "via")
+    search_fields = ("user__email", "via", "summary")
+    date_hierarchy = "at"
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: McpChange | None = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: McpChange | None = None) -> bool:
+        return False
+
+
+@admin.register(ApiKey, site=site)
+class ApiKeyAdmin(_ApiKeyAdminBase):
+    """Every editor's keys, read-only: the change log names them. Editors delete their own on
+    the key page; the token is never stored, so there is nothing here to leak."""
+
+    list_display = ("name", "user", "prefix", "created_at", "last_used_at", "deleted_at")
+    list_filter = ("deleted_at",)
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: ApiKey | None = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: ApiKey | None = None) -> bool:
+        return False

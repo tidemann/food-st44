@@ -1,5 +1,6 @@
 from django.urls import URLPattern, URLResolver, path, re_path
 
+from food import mcp
 from food.admin import site as admin_site
 from food.api import api
 from food.views import (
@@ -18,6 +19,8 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("healthz", healthz),
     # The editor list (food.admin). Under /api/ like every other non-SPA path.
     path("api/admin/", admin_site.urls),
+    # The MCP server (ST-833): JSON-RPC over POST, not a REST endpoint, so not in the API schema.
+    path("api/mcp", mcp.endpoint),
     # The front page is the SPA. Mounted at the root, Ninja adds its own "home" view at "",
     # which 404s when the docs live elsewhere, so this has to come before api.urls.
     path("", spa),
@@ -28,6 +31,10 @@ urlpatterns: list[URLPattern | URLResolver] = [
     re_path(r"^recipes/(?P<raw_id>[^/]+)/?$", recipe_detail),
     re_path(r"^recipes/(?P<raw_id>[^/]+)/(?:edit|delete)/?$", recipe_action),
     re_path(r"^recipes/(?P<raw_id>[^/]+)/cook/?$", recipe_cook),
+    # Connecting an assistant (ST-833): the help page, and the editor's keys.
+    re_path(r"^assistent/?$", spa),
+    re_path(r"^assistent/nokler(?:/ny)?/?$", spa),
+    re_path(r"^assistent/nokler/\d+/slett/?$", spa),
     # Recipe photos (food.photos), stored next to the database rather than built into the image.
     path("photos/<str:name>", photo),
     # Anything else that is not API or a static file is the SPA's "page not found".

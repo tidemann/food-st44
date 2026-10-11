@@ -142,3 +142,18 @@ const collator = new Intl.Collator('nb');
 export function toIndex(cards: readonly Card[]): Card[] {
   return [...cards].sort((a, b) => collator.compare(a.title, b.title));
 }
+
+const clock = new Intl.DateTimeFormat('nb-NO', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: ZONE,
+});
+const day = new Intl.DateTimeFormat('en-CA', { timeZone: ZONE });
+
+/** When a key was last used (ST-833): "i dag kl. 09.14" today, else "9. oktober 2026". */
+export function formatLastUsed(value: string, now: Date = new Date()): string {
+  const date = parse(value);
+  if (!date) return '';
+  if (day.format(date) !== day.format(now)) return longDate.format(date);
+  return `i dag kl. ${clock.format(date).replace(':', '.')}`;
+}

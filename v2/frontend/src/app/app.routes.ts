@@ -1,4 +1,8 @@
 import { Routes } from '@angular/router';
+import { AssistantHelp } from './assistant/help';
+import { AssistantKeyDelete } from './assistant/key-delete';
+import { AssistantKeyNew } from './assistant/key-new';
+import { AssistantKeys } from './assistant/keys';
 import { editorOnly } from './auth';
 import { NoAccess } from './pages/no-access';
 import { NotFound } from './pages/not-found';
@@ -48,5 +52,13 @@ export const routes: Routes = [
   { path: 'recipes/:id/edit', component: NoAccess },
   { path: 'recipes/:id/delete', component: RecipeDelete, canMatch: [editorOnly] },
   { path: 'recipes/:id/delete', component: NoAccess },
+  // Connecting an assistant (ST-833): the help page for everyone, the keys for editors.
+  { path: 'assistent', component: AssistantHelp },
+  { path: 'assistent/nokler', component: AssistantKeys, canMatch: [editorOnly] },
+  { path: 'assistent/nokler', component: NoAccess },
+  { path: 'assistent/nokler/ny', component: AssistantKeyNew, canMatch: [editorOnly] },
+  { path: 'assistent/nokler/ny', component: NoAccess },
+  { path: 'assistent/nokler/:id/slett', component: AssistantKeyDelete, canMatch: [editorOnly] },
+  { path: 'assistent/nokler/:id/slett', component: NoAccess },
   { path: '**', component: NotFound },
 ];
