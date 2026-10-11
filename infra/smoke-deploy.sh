@@ -120,6 +120,17 @@ for i in $(seq 1 30); do
 done
 tar -tzf "$archive" | grep -x food.sqlite3 >/dev/null
 
+# The backup container's own health check, run now rather than after its 5-minute interval:
+# it passes with this fresh archive and fails once the newest one is older than 26 h.
+backup_health() {
+  local check
+  mapfile -t check < <(docker inspect food-st44-backup | jq -r '.[0].Config.Healthcheck.Test[1:][]')
+  docker exec food-st44-backup "${check[@]}"
+}
+backup_health || { echo '::error::backup health check fails with a fresh archive'; exit 1; }
+docker exec food-st44-backup touch -d '27 hours ago' "/backups/$(basename "$archive")"
+! backup_health || { echo '::error::backup health check passes with a stale archive'; exit 1; }
+
 # The import runs once: a recipe deleted on v2 stays deleted across a restart.
 django 'from food.models import Recipe; Recipe.objects.filter(pk=1).delete()'
 compose restart

@@ -78,6 +78,15 @@ services:
     entrypoint: ["python", "manage.py", "backup", "/backups", "--nightly"]
     # Python as PID 1 ignores SIGTERM; SIGINT stops it at once instead of after the 10 s kill.
     stop_signal: SIGINT
+    # The image's HEALTHCHECK asks the web app for /healthz, and this container runs no web app,
+    # so it would always say unhealthy. Healthy instead means: an archive under 26 h old is on
+    # the backup disk (one a day, so a missed night or a lost NAS shows as unhealthy).
+    healthcheck:
+      test: ["CMD", "sh", "-c", "find /backups -maxdepth 1 -name 'food-*.tar.gz' -mmin -1560 | grep -q ."]
+      interval: 5m
+      timeout: 10s
+      start_period: 2m
+      retries: 1
     environment:
       DJANGO_DB_PATH: /data/food.sqlite3
     volumes:
