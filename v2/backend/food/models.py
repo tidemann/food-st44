@@ -132,3 +132,19 @@ class McpChange(models.Model):
 
     def __str__(self) -> str:
         return f"{self.at:%Y-%m-%d %H:%M} {self.tool} #{self.recipe_id}: {self.summary}"
+
+
+class ClientRegistration(models.Model):
+    """One app that registered itself at /api/oauth/register/ (ST-919), by the address it came
+    from. Registration is open, and each one stores an application, so food.oauth lets one
+    address register only so many times an hour. Rows older than that hour are deleted on the
+    next registration."""
+
+    ip = models.GenericIPAddressField()
+    at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = (models.Index(fields=("ip", "at")),)
+
+    def __str__(self) -> str:
+        return f"{self.at:%Y-%m-%d %H:%M} {self.ip}"

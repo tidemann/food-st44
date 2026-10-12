@@ -90,6 +90,12 @@ if compose logs food-st44 | grep -F '[ERROR]'; then
   echo '::error::gunicorn logged an error at start'
   exit 1
 fi
+# The entrypoint clears expired OAuth tokens on start, in the background (ST-919).
+for i in $(seq 1 30); do
+  compose logs food-st44 | grep -F 'cleartokens: expired tokens cleared' >/dev/null && break
+  [ "$i" != 30 ] || { echo '::error::cleartokens did not run on start'; compose logs food-st44; exit 1; }
+  sleep 1
+done
 get -H 'Host: food.st44.no' -fo /dev/null "http://$ip/"
 get "http://$ip/api/recipes" | jq -e 'map(.id) | sort == [1, 3]' >/dev/null
 test "$(get -o /dev/null -w '%{http_code}' "http://$ip/recipes/3")" = 200
@@ -137,7 +143,8 @@ compose restart
 ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' food-st44)"
 wait_healthy
 get "http://$ip/api/recipes" | jq -e 'map(.id) | sort == [3, 5]' >/dev/null
-compose logs food-st44 | grep -q 'v1 import: already done'
+# grep -q would quit at the match and, under pipefail, fail the pipe with compose's SIGPIPE.
+compose logs food-st44 | grep -F 'v1 import: already done' >/dev/null
 
 # The restore procedure in DEPLOY.md, with this project's names: app stopped, restore_backup in
 # a one-off container on the data volume, app started. Recipe 1, deleted above, is back.

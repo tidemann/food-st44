@@ -44,4 +44,19 @@ if [ -n "${V1_PHOTOS_DIR:-}" ]; then
   fi
 fi
 
+# The Claude app's sign-in (ST-834) leaves expired and revoked tokens in the database until
+# django-oauth-toolkit's cleartokens deletes them (ST-919). Now and then once a day, in the
+# background next to gunicorn: the image has no cron, and the backup container mounts the data
+# read-only. A failed run is logged and tried again the next day; it never stops the site.
+(
+  while :; do
+    if python manage.py cleartokens; then
+      echo "cleartokens: expired tokens cleared"
+    else
+      echo "cleartokens: failed, next try in a day"
+    fi
+    sleep 86400
+  done
+) &
+
 exec "$@"
