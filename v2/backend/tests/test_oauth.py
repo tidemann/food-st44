@@ -50,9 +50,12 @@ def person(email: str, *, editor: bool) -> User:
     return user
 
 
-def registration(client: Client, ip: str | None = None, **metadata: object) -> "Response":
+def registration(
+    client: Client, ip: str | None = None, *, cf: str | None = None, **metadata: object
+) -> "Response":
     """What the app does first (RFC 7591): register as a public client, no secret. `ip`: the
-    address nginx-proxy passes on in X-Real-IP."""
+    address nginx-proxy passes on in X-Real-IP; `cf`: the one Cloudflare passes on in
+    CF-Connecting-IP."""
     body = {
         "client_name": "Claude",
         "redirect_uris": [CALLBACK],
@@ -62,6 +65,8 @@ def registration(client: Client, ip: str | None = None, **metadata: object) -> "
         **metadata,
     }
     headers = {"X-Real-IP": ip} if ip else {}
+    if cf:
+        headers["CF-Connecting-IP"] = cf
     return client.post("/api/oauth/register/", json.dumps(body), content_type=JSON, headers=headers)
 
 
@@ -543,6 +548,34 @@ def test_without_x_real_ip_the_socket_address_counts(client: Client, settings: S
     assert registration(client).status_code == 201
     assert registration(client).status_code == 429
     assert ClientRegistration.objects.get().ip == "127.0.0.1"
+
+
+def test_behind_cloudflare_the_client_counts_not_the_edge(
+    client: Client, settings: Settings
+) -> None:
+    settings.OAUTH_REGISTRATIONS_PER_HOUR = 1
+    edge = "172.68.0.1"  # nginx-proxy's peer: the Cloudflare edge, shared by many clients
+
+    assert registration(client, edge, cf="198.51.100.7").status_code == 201
+    assert registration(client, edge, cf="198.51.100.7").status_code == 429
+    # Another client through the same edge is not held up.
+    assert registration(client, edge, cf="203.0.113.9").status_code == 201
+    assert set(ClientRegistration.objects.values_list("ip", flat=True)) == {
+        "198.51.100.7",
+        "203.0.113.9",
+    }
+
+
+def test_all_addresses_together_have_a_cap(client: Client, settings: Settings) -> None:
+    # Around Cloudflare, CF-Connecting-IP can be forged, a new address every time.
+    settings.OAUTH_REGISTRATIONS_PER_HOUR = 1
+    settings.OAUTH_REGISTRATIONS_PER_HOUR_TOTAL = 3
+    for n in range(3):
+        assert registration(client, f"198.51.100.{n}").status_code == 201
+    refused = registration(client, "198.51.100.99")
+    assert refused.status_code == 429
+    assert 3000 < int(refused["Retry-After"]) <= 3601
+    assert get_application_model().objects.count() == 3
 
 
 def test_an_app_registered_before_the_limit_still_signs_in(

@@ -177,8 +177,10 @@ OAUTH2_PROVIDER = {
     "OAUTH2_PROTECTED_RESOURCE_DOCUMENTATION": f"{FOOD_SITE_URL}/assistent",
 }
 # Open registration stores an application each time, so one address may register this many
-# apps an hour; the next gets 429 (food.oauth.Register, ST-919).
+# apps an hour; the next gets 429 (food.oauth.Register, ST-919). The whole site takes at most
+# the second number an hour, which bounds what a forged client address can get past the first.
 OAUTH_REGISTRATIONS_PER_HOUR = 10
+OAUTH_REGISTRATIONS_PER_HOUR_TOTAL = 100
 # The authorize step sends someone who is not signed in through Google sign-in and back.
 LOGIN_URL = "/api/auth/google/login"
 

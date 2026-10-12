@@ -19,11 +19,12 @@ closes their token at once.
 """
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser, User
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.urls import URLPattern, path
 from django.utils import timezone
@@ -176,35 +177,48 @@ def challenge(request: HttpRequest) -> str:
 
 
 def client_ip(request: HttpRequest) -> str:
-    """The address a request came from. nginx-proxy, the only way in (the container publishes
-    no port), puts its peer in X-Real-IP; without that header (a local run) the socket's."""
-    return request.headers.get("X-Real-IP") or str(request.META.get("REMOTE_ADDR", ""))
+    """The address a request came from. food.st44.no is behind Cloudflare, so nginx-proxy's
+    peer (X-Real-IP) is a Cloudflare edge that many clients share; Cloudflare puts the client
+    in CF-Connecting-IP. Without that, X-Real-IP (nginx-proxy reached directly), and without
+    both (a local run) the socket's. A request that goes around Cloudflare can forge
+    CF-Connecting-IP; OAUTH_REGISTRATIONS_PER_HOUR_TOTAL bounds what that buys."""
+    return (
+        request.headers.get("CF-Connecting-IP")
+        or request.headers.get("X-Real-IP")
+        or str(request.META.get("REMOTE_ADDR", ""))
+    )
+
+
+def too_many(recent: QuerySet[ClientRegistration], now: datetime) -> JsonResponse:
+    """429, with Retry-After: when the oldest of `recent` leaves the hour."""
+    first = recent.order_by("at").values_list("at", flat=True)[0]
+    wait = first + REGISTRATION_WINDOW - now
+    response = JsonResponse(
+        {"error": "too_many_requests", "error_description": "Too many registrations. Try later."},
+        status=429,
+    )
+    response["Retry-After"] = str(max(1, int(wait.total_seconds()) + 1))
+    return response
 
 
 class Register(views.DynamicClientRegistrationView):
     """django-oauth-toolkit's open registration (RFC 7591), at most
-    OAUTH_REGISTRATIONS_PER_HOUR new apps an hour from one address; above that, 429. Each
-    registration stores an application, so a loop must not be able to fill the table. The
-    Claude app registers once per connection. Counted in the database, so both gunicorn workers
-    and a restart see the same count."""
+    OAUTH_REGISTRATIONS_PER_HOUR new apps an hour from one client address and
+    OAUTH_REGISTRATIONS_PER_HOUR_TOTAL from all; above that, 429. Each registration stores an
+    application, so a loop must not be able to fill the table. The Claude app registers once
+    per connection. Counted in the database, so both gunicorn workers and a restart see the
+    same count."""
 
     def post(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         ip = client_ip(request)
         now = timezone.now()
         ClientRegistration.objects.filter(at__lte=now - REGISTRATION_WINDOW).delete()
-        recent = ClientRegistration.objects.filter(ip=ip).order_by("at")
-        if recent.count() >= settings.OAUTH_REGISTRATIONS_PER_HOUR:
-            first = recent.values_list("at", flat=True)[0]
-            wait = first + REGISTRATION_WINDOW - now
-            response = JsonResponse(
-                {
-                    "error": "too_many_requests",
-                    "error_description": "Too many registrations from this address. Try later.",
-                },
-                status=429,
-            )
-            response["Retry-After"] = str(max(1, int(wait.total_seconds()) + 1))
-            return response
+        everyone = ClientRegistration.objects.all()
+        if everyone.count() >= settings.OAUTH_REGISTRATIONS_PER_HOUR_TOTAL:
+            return too_many(everyone, now)
+        mine = everyone.filter(ip=ip)
+        if mine.count() >= settings.OAUTH_REGISTRATIONS_PER_HOUR:
+            return too_many(mine, now)
         registered = super().post(request, *args, **kwargs)
         if registered.status_code == 201:
             ClientRegistration.objects.create(ip=ip, at=now)
