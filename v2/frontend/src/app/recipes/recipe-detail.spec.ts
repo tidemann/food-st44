@@ -38,7 +38,7 @@ describe('RecipeDetail', () => {
       expect(el.querySelector('img')).toBeNull();
     });
 
-    it('splits amounts into their own column, plain lines span the row', async () => {
+    it('splits amounts into their own column, plain lines keep the name column', async () => {
       const el = await openRecipe('/recipes/9', kjottkaker);
       const rows = [...el.querySelectorAll('.ing li')];
       expect(rows.map((li) => text(li.querySelector('b')))).toEqual(['600 g', '1', '1', '']);
