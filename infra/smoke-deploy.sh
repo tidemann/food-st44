@@ -143,7 +143,8 @@ compose restart
 ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' food-st44)"
 wait_healthy
 get "http://$ip/api/recipes" | jq -e 'map(.id) | sort == [3, 5]' >/dev/null
-compose logs food-st44 | grep -q 'v1 import: already done'
+# grep -q would quit at the match and, under pipefail, fail the pipe with compose's SIGPIPE.
+compose logs food-st44 | grep -F 'v1 import: already done' >/dev/null
 
 # The restore procedure in DEPLOY.md, with this project's names: app stopped, restore_backup in
 # a one-off container on the data volume, app started. Recipe 1, deleted above, is back.
