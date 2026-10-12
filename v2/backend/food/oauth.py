@@ -19,12 +19,14 @@ closes their token at once.
 """
 
 from dataclasses import dataclass
+from datetime import timedelta
 from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser, User
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.urls import URLPattern, path
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from ninja import Router, Schema, Status
 from ninja.decorators import decorate_view
@@ -36,6 +38,7 @@ from oauth2_provider.oauth2_backends import get_oauthlib_core
 from oauth2_provider.www_authenticate import build_bearer_challenge
 
 from food.auth import is_editor
+from food.models import ClientRegistration
 from food.schemas import ErrorOut
 
 READ = "read"
@@ -44,6 +47,8 @@ WRITE = "write"
 APPROVAL_PAGE = "/assistent/godkjenn"
 # How a write through an OAuth token is named in the change log (McpChange.via).
 VIA = "Claude app"
+# The period settings.OAUTH_REGISTRATIONS_PER_HOUR counts over.
+REGISTRATION_WINDOW = timedelta(hours=1)
 
 BROKEN_LINK = "Lenken fra appen virker ikke. Start tilkoblingen på nytt fra Claude-appen."
 SIGNED_OUT = "Du er ikke logget inn. Logg inn med Google-kontoen du bruker på food.st44.no."
@@ -167,6 +172,45 @@ def challenge(request: HttpRequest) -> str:
     )
 
 
+# --- registration, limited per address (ST-919)
+
+
+def client_ip(request: HttpRequest) -> str:
+    """The address a request came from. nginx-proxy, the only way in (the container publishes
+    no port), puts its peer in X-Real-IP; without that header (a local run) the socket's."""
+    return request.headers.get("X-Real-IP") or str(request.META.get("REMOTE_ADDR", ""))
+
+
+class Register(views.DynamicClientRegistrationView):
+    """django-oauth-toolkit's open registration (RFC 7591), at most
+    OAUTH_REGISTRATIONS_PER_HOUR new apps an hour from one address; above that, 429. Each
+    registration stores an application, so a loop must not be able to fill the table. The
+    Claude app registers once per connection. Counted in the database, so both gunicorn workers
+    and a restart see the same count."""
+
+    def post(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
+        ip = client_ip(request)
+        now = timezone.now()
+        ClientRegistration.objects.filter(at__lte=now - REGISTRATION_WINDOW).delete()
+        recent = ClientRegistration.objects.filter(ip=ip).order_by("at")
+        if recent.count() >= settings.OAUTH_REGISTRATIONS_PER_HOUR:
+            first = recent.values_list("at", flat=True)[0]
+            wait = first + REGISTRATION_WINDOW - now
+            response = JsonResponse(
+                {
+                    "error": "too_many_requests",
+                    "error_description": "Too many registrations from this address. Try later.",
+                },
+                status=429,
+            )
+            response["Retry-After"] = str(max(1, int(wait.total_seconds()) + 1))
+            return response
+        registered = super().post(request, *args, **kwargs)
+        if registered.status_code == 201:
+            ClientRegistration.objects.create(ip=ip, at=now)
+        return registered
+
+
 # --- the routes, mounted at the site root in config.urls under the library's namespace, so its
 # metadata views find the endpoints by name.
 
@@ -188,7 +232,7 @@ urlpatterns: list[URLPattern] = [
     path("api/oauth/revoke_token/", views.RevokeTokenView.as_view(), name="revoke-token"),
     path(
         "api/oauth/register/",
-        views.DynamicClientRegistrationView.as_view(),
+        Register.as_view(),
         name="dcr-register",
     ),
     path(

@@ -11,13 +11,18 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 import pytest
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone
-from oauth2_provider.models import get_access_token_model
+from oauth2_provider.models import (
+    get_access_token_model,
+    get_application_model,
+    get_refresh_token_model,
+)
 from pytest_django import Settings
 
 from food import mcp, oauth
-from food.models import Editor, McpChange, Recipe
+from food.models import ClientRegistration, Editor, McpChange, Recipe
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
@@ -45,16 +50,23 @@ def person(email: str, *, editor: bool) -> User:
     return user
 
 
-def register(client: Client) -> str:
-    """What the app does first (RFC 7591): register as a public client, no secret."""
-    metadata = {
+def registration(client: Client, ip: str | None = None, **metadata: object) -> "Response":
+    """What the app does first (RFC 7591): register as a public client, no secret. `ip`: the
+    address nginx-proxy passes on in X-Real-IP."""
+    body = {
         "client_name": "Claude",
         "redirect_uris": [CALLBACK],
         "grant_types": ["authorization_code", "refresh_token"],
         "response_types": ["code"],
         "token_endpoint_auth_method": "none",
+        **metadata,
     }
-    response = client.post("/api/oauth/register/", json.dumps(metadata), content_type=JSON)
+    headers = {"X-Real-IP": ip} if ip else {}
+    return client.post("/api/oauth/register/", json.dumps(body), content_type=JSON, headers=headers)
+
+
+def register(client: Client) -> str:
+    response = registration(client)
     assert response.status_code == 201, response.content
     body = response.json()
     assert "client_secret" not in body
@@ -487,3 +499,84 @@ def test_healthz_is_still_ok(client: Client) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
     assert response.content == b"ok"
+
+
+# --- registration limit and token clean-up (ST-919)
+
+
+def test_one_address_may_register_only_so_many_apps_an_hour(
+    client: Client, settings: Settings
+) -> None:
+    settings.OAUTH_REGISTRATIONS_PER_HOUR = 3
+    application = get_application_model()
+    for _ in range(3):
+        assert registration(client, "198.51.100.7").status_code == 201
+    refused = registration(client, "198.51.100.7")
+    assert refused.status_code == 429
+    assert refused.json()["error"] == "too_many_requests"
+    assert 3000 < int(refused["Retry-After"]) <= 3601
+    assert application.objects.count() == 3
+    # Another address is not held up.
+    assert registration(client, "203.0.113.9").status_code == 201
+
+
+def test_the_limit_lifts_after_an_hour(client: Client, settings: Settings) -> None:
+    settings.OAUTH_REGISTRATIONS_PER_HOUR = 2
+    for _ in range(2):
+        assert registration(client, "198.51.100.7").status_code == 201
+    assert registration(client, "198.51.100.7").status_code == 429
+    ClientRegistration.objects.update(at=timezone.now() - timedelta(minutes=61))
+    assert registration(client, "198.51.100.7").status_code == 201
+    # The hour-old rows are gone; only the new one is counted.
+    assert ClientRegistration.objects.count() == 1
+
+
+def test_a_refused_registration_is_not_counted(client: Client, settings: Settings) -> None:
+    settings.OAUTH_REGISTRATIONS_PER_HOUR = 1
+    bad = registration(client, "198.51.100.7", redirect_uris=["http://evil.example/cb"])
+    assert bad.status_code == 400
+    assert registration(client, "198.51.100.7").status_code == 201
+
+
+def test_without_x_real_ip_the_socket_address_counts(client: Client, settings: Settings) -> None:
+    settings.OAUTH_REGISTRATIONS_PER_HOUR = 1
+    assert registration(client).status_code == 201
+    assert registration(client).status_code == 429
+    assert ClientRegistration.objects.get().ip == "127.0.0.1"
+
+
+def test_an_app_registered_before_the_limit_still_signs_in(
+    client: Client, settings: Settings
+) -> None:
+    settings.OAUTH_REGISTRATIONS_PER_HOUR = 1
+    tokens = sign_in_with_app(client, person("kari@example.com", editor=True))
+    assert registration(client).status_code == 429
+    # The limit is on registering only: authorize, token and refresh go on as before.
+    created = wrote(
+        mcp_call(client, tokens["access_token"], "create_recipe", title="Lapskaus", ingredients="x")
+    )
+    assert Recipe.objects.get(pk=created["id"]).title == "Lapskaus"
+    refreshed = token(
+        client,
+        grant_type="refresh_token",
+        refresh_token=tokens["refresh_token"],
+        client_id=tokens["client_id"],
+    )
+    assert refreshed["status"] == 200, refreshed
+
+
+def test_cleartokens_removes_dormant_tokens_and_keeps_live_ones(client: Client) -> None:
+    dormant = person("kari@example.com", editor=True)
+    live = person("ola@example.com", editor=True)
+    sign_in_with_app(client, dormant)
+    sign_in_with_app(client, live)
+    access, refresh = get_access_token_model(), get_refresh_token_model()
+    # Unused for longer than a refresh token lasts (90 days).
+    access.objects.filter(user=dormant).update(expires=timezone.now() - timedelta(days=91))
+
+    call_command("cleartokens")
+
+    assert not access.objects.filter(user=dormant).exists()
+    assert not refresh.objects.filter(user=dormant).exists()
+    assert access.objects.filter(user=live).count() == 1
+    assert refresh.objects.filter(user=live).count() == 1

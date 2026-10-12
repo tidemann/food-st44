@@ -176,6 +176,9 @@ OAUTH2_PROVIDER = {
     "OAUTH2_PROTECTED_RESOURCE_NAME": "food.st44.no",
     "OAUTH2_PROTECTED_RESOURCE_DOCUMENTATION": f"{FOOD_SITE_URL}/assistent",
 }
+# Open registration stores an application each time, so one address may register this many
+# apps an hour; the next gets 429 (food.oauth.Register, ST-919).
+OAUTH_REGISTRATIONS_PER_HOUR = 10
 # The authorize step sends someone who is not signed in through Google sign-in and back.
 LOGIN_URL = "/api/auth/google/login"
 
