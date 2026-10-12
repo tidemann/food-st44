@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { AssistantApprove } from './assistant/approve';
 import { AssistantHelp } from './assistant/help';
 import { AssistantKeyDelete } from './assistant/key-delete';
 import { AssistantKeyNew } from './assistant/key-new';
@@ -60,5 +61,8 @@ export const routes: Routes = [
   { path: 'assistent/nokler/ny', component: NoAccess },
   { path: 'assistent/nokler/:id/slett', component: AssistantKeyDelete, canMatch: [editorOnly] },
   { path: 'assistent/nokler/:id/slett', component: NoAccess },
+  // The Claude app's approval step (ST-834). Open to everyone: the backend answers who is
+  // signed in, and the scope follows the editor list.
+  { path: 'assistent/godkjenn', component: AssistantApprove },
   { path: '**', component: NotFound },
 ];

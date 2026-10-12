@@ -7,6 +7,7 @@ dependencies = [
     "anthropic~=1.11",
     "django~=6.1",
     "django-ninja~=1.7",
+    "django-oauth-toolkit>=3.4.1",
     "gunicorn~=26.2",
     "pillow~=12.0",
     "whitenoise~=6.12",
@@ -38,6 +39,8 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "DJ", "ANN", "S", "PT", "RUF"]
 [tool.mypy]
 strict = true
 plugins = ["mypy_django_plugin.main"]
+# django-oauth-toolkit ships no type hints: stubs/oauth2_provider types what food.oauth uses.
+mypy_path = "stubs"
 
 [tool.django-stubs]
 django_settings_module = "config.settings"

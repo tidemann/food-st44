@@ -75,7 +75,9 @@ so on the task.
   re-export `openapi.json`, and import from `src/app/api/types.ts`. A stale `openapi.json` fails
   CI; a breaking API change fails `ng build`.
 - **URLs.** `/healthz` stays at the root and answers plain `ok` (deploy contract: the public gate
-  compares the body). Every other endpoint lives under
+  compares the body). The OAuth metadata the MCP spec puts at the root also stays there:
+  `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource[/…]`
+  (`food/oauth.py`, ST-834). Every other endpoint lives under
   `/api/` (`api.add_router("/api/…", router)`). Any other path serves the SPA.
 - **Python.** Fully typed (`mypy --strict`); ruff rules in `pyproject.toml`. Dependencies only
   via `uv add`, so `uv.lock` is always committed with them.
