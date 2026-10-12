@@ -159,8 +159,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ing li.li-plain {
-  grid-template-columns: 1fr;
+.ing li.li-plain span {
+  grid-column: 2;
 }
 
 /* ---------- steps ---------- */
