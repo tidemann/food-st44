@@ -18,15 +18,16 @@ import { PHOTO_NOT_SAVED, type PhotoChange, PhotoStepError, TOO_LARGE } from './
 import { PhotoField, type Rejected } from './photo-field';
 import { TagField } from './tag-field';
 
-/** The API's message per field (§3.2): title and ingredients, and the photo (M3). */
+/** The API's message per field (§3.2): title and ingredients, the photo (M3), porsjoner. */
 export interface FieldErrors {
   title?: string;
   ingredients?: string;
+  servings?: string;
   photo?: string;
 }
 
 export function hasErrors(errors: FieldErrors): boolean {
-  return !!(errors.title ?? errors.ingredients ?? errors.photo);
+  return !!(errors.title ?? errors.ingredients ?? errors.servings ?? errors.photo);
 }
 
 /** What "Lagre" asks the page to save. */
@@ -35,7 +36,13 @@ export interface RecipeSave {
   photo: PhotoChange;
 }
 
-export const EMPTY: RecipeInput = { title: '', ingredients: '', instructions: '', tags: [] };
+export const EMPTY: RecipeInput = {
+  title: '',
+  ingredients: '',
+  instructions: '',
+  tags: [],
+  servings: null,
+};
 
 /**
  * What a failed save means for the page: the field errors to show (a 422, or a 413 for the
@@ -54,6 +61,7 @@ export function saveFailure(error: unknown): FieldErrors | 'not-found' | 'error'
     const found: FieldErrors = {};
     if (errors['title']) found.title = errors['title'];
     if (errors['ingredients']) found.ingredients = errors['ingredients'];
+    if (errors['servings']) found.servings = errors['servings'];
     if (errors['photo']) found.photo = errors['photo'];
     else if (error.status === 413) found.photo = TOO_LARGE;
     // A 422 for no field the form has is not something the user can fix.
@@ -92,8 +100,8 @@ export class RecipeForm {
 
   /** Only the fields the API takes, even when `initial` is a whole stored recipe. */
   protected readonly draft = linkedSignal<RecipeInput>(() => {
-    const { title, ingredients, instructions, tags = [] } = this.initial();
-    return { title, ingredients, instructions, tags };
+    const { title, ingredients, instructions, tags = [], servings = null } = this.initial();
+    return { title, ingredients, instructions, tags, servings };
   });
   protected readonly currentPhoto = computed(() => {
     const initial = this.initial();
@@ -108,7 +116,7 @@ export class RecipeForm {
   /** Saves refused because a refused file was showing. */
   private readonly refused = signal(0);
   protected readonly summaryTitle = computed(() =>
-    this.photoOnly() && !this.shown().title && !this.shown().ingredients
+    this.photoOnly() && !this.shown().title && !this.shown().ingredients && !this.shown().servings
       ? 'Oppskriften er lagret, men ikke bildet'
       : 'Oppskriften ble ikke lagret',
   );
@@ -129,6 +137,15 @@ export class RecipeForm {
 
   protected edit(field: 'title' | 'ingredients' | 'instructions', value: string): void {
     this.draft.update((draft) => ({ ...draft, [field]: value }));
+  }
+
+  /** Porsjoner (ST-1231): a blank field is "not given". */
+  protected servingsChanged(value: string): void {
+    const servings = Number.parseInt(value, 10);
+    this.draft.update((draft) => ({
+      ...draft,
+      servings: Number.isNaN(servings) ? null : servings,
+    }));
   }
 
   protected tagsChanged(tags: readonly string[]): void {

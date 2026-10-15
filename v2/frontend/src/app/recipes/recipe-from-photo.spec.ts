@@ -252,6 +252,7 @@ describe('RecipeFromPhoto', () => {
         ingredients: '600 g kjøttdeig\n1 dl melk\n3 ss potetmel',
         instructions: DRAFT.instructions,
         tags: [],
+        servings: null,
       });
       const created: Recipe = {
         id: 10,
@@ -261,6 +262,7 @@ describe('RecipeFromPhoto', () => {
         created_at: '2026-10-05T10:00:00Z',
         photo_url: null,
         tags: [],
+        servings: null,
       };
       const navigated = navigation();
       request.flush(created, { status: 201, statusText: 'Created' });

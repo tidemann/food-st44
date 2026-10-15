@@ -66,6 +66,7 @@ describe('format', () => {
       instructions: '',
       created_at: '2026-10-02T10:00:00Z',
       photo_url: null,
+      servings: null,
       tags: [],
     };
     const card = toCard(recipe);

@@ -8,6 +8,14 @@
   @case ('ready') {
     @if (view(); as v) {
       <app-flash [key]="flash()" />
+      @if (planAdded(); as added) {
+        <div class="wrap">
+          <p class="flash" role="status">
+            {{ added.text }}
+            <a routerLink="/ukeplan" [queryParams]="{ uke: added.week }">Se ukeplanen</a>
+          </p>
+        </div>
+      }
       <section class="rh">
         <div class="wrap">
           <div class="rh-top">
@@ -42,6 +50,12 @@
             </div>
             <div class="rmeta">
               <dl>
+                @if (v.recipe.servings; as servings) {
+                  <div>
+                    <dt>Porsjoner</dt>
+                    <dd>{{ servings }}</dd>
+                  </div>
+                }
                 <div>
                   <dt>Ingredienser</dt>
                   <dd>{{ v.ingredients.length }}</dd>
@@ -83,7 +97,29 @@
                   <p>Ett steg om gangen, stor skrift. Skjermen står på mens du lager mat.</p>
                 </div>
               }
+              <!-- ST-1231: the week plan is the household's, so the button is for editors. -->
+              @if (editor()) {
+                <div class="plan-add">
+                  <button
+                    class="btn"
+                    type="button"
+                    [attr.aria-expanded]="planOpen()"
+                    aria-controls="plan-pick"
+                    (click)="togglePlan()"
+                  >
+                    Legg til i ukeplan
+                  </button>
+                </div>
+              }
             </div>
+            @if (editor() && planOpen()) {
+              <app-plan-pick
+                class="plan-panel"
+                id="plan-pick"
+                [recipe]="v.recipe"
+                (added)="planned($event)"
+              />
+            }
           </div>
 
           @if (v.recipe.photo_url; as photo) {

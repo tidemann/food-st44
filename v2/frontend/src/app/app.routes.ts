@@ -7,6 +7,8 @@ import { AssistantKeys } from './assistant/keys';
 import { editorOnly } from './auth';
 import { NoAccess } from './pages/no-access';
 import { NotFound } from './pages/not-found';
+import { PlanDay } from './plan/plan-day';
+import { PlanWeek } from './plan/plan-week';
 import { readingAvailable } from './recipes/read-photo';
 import { RecipeCook } from './recipes/recipe-cook';
 import { RecipeDelete } from './recipes/recipe-delete';
@@ -64,5 +66,10 @@ export const routes: Routes = [
   // The Claude app's approval step (ST-834). Open to everyone: the backend answers who is
   // signed in, and the scope follows the editor list.
   { path: 'assistent/godkjenn', component: AssistantApprove },
+  // The week plan (ST-1231): private to the household, so editors only, the week included.
+  { path: 'ukeplan', component: PlanWeek, canMatch: [editorOnly] },
+  { path: 'ukeplan', component: NoAccess },
+  { path: 'ukeplan/:date', component: PlanDay, canMatch: [editorOnly] },
+  { path: 'ukeplan/:date', component: NoAccess },
   { path: '**', component: NotFound },
 ];

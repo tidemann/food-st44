@@ -28,6 +28,7 @@ describe('RecipeDetail', () => {
           (d) => `${text(d.querySelector('dt'))} ${text(d.querySelector('dd'))}`,
         ),
       ).toEqual([
+        'Porsjoner 4',
         'Ingredienser 4',
         'Fremgangsmåte 3 steg',
         'Lagt inn 2. oktober 2026',

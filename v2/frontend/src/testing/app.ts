@@ -25,6 +25,7 @@ export const SEED: Recipe[] = [
     created_at: at('10-02'),
     photo_url: null,
     tags: ['kjøtt', 'middag'],
+    servings: 4,
   },
   {
     id: 8,
@@ -34,6 +35,7 @@ export const SEED: Recipe[] = [
     created_at: at('09-29'),
     photo_url: null,
     tags: ['høst', 'kjøtt', 'middag'],
+    servings: null,
   },
   {
     id: 7,
@@ -43,6 +45,7 @@ export const SEED: Recipe[] = [
     created_at: at('09-25'),
     photo_url: null,
     tags: [],
+    servings: null,
   },
   {
     id: 6,
@@ -52,6 +55,7 @@ export const SEED: Recipe[] = [
     created_at: at('09-21'),
     photo_url: null,
     tags: ['fisk', 'middag'],
+    servings: null,
   },
   {
     id: 5,
@@ -61,6 +65,7 @@ export const SEED: Recipe[] = [
     created_at: at('09-17'),
     photo_url: null,
     tags: ['jul', 'kjøtt'],
+    servings: null,
   },
   {
     id: 4,
@@ -70,6 +75,7 @@ export const SEED: Recipe[] = [
     created_at: at('09-13'),
     photo_url: null,
     tags: ['kjøtt', 'middag', 'suppe'],
+    servings: null,
   },
 ];
 

@@ -3,49 +3,20 @@
   padding: 30px 0 80px;
 }
 
-/* A link from the error summary must land the field with its label, not with the label cropped
-   off the top or hidden by the sticky phone nav. So the margin clears the bar plus whatever
-   stands between the control and its label: a hint line on the fields that have one. */
-.field input,
-.field textarea {
-  scroll-margin-top: 96px;
-  width: 100%;
-  font-family: var(--ui);
-  font-size: 16px;
-  line-height: 1.55;
-  color: var(--ink);
-  background: var(--tint);
-  border: 1px solid var(--rule);
-  border-bottom: 1.5px solid var(--ink);
-  border-radius: 0;
-  padding: 11px 13px;
-}
-
-.field-hint + input,
-.field-hint + textarea {
-  scroll-margin-top: 124px;
-}
-
-.field textarea {
-  resize: vertical;
-  min-height: 7em;
-}
-
-.field-invalid input,
-.field-invalid textarea {
-  border-color: var(--red);
-}
-
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
-  margin-top: 34px;
-}
+/* The field furniture — .field input / .field textarea, .field-invalid, .form-actions and the
+   scroll-margin the error summary needs — moved to styles.css in ST-1213: it is shared with the
+   week plan's day page, and a component sheet reaches only its own component. */
 
 @media (width <= 760px) {
   .recipe-form {
     padding: 22px 0 60px;
   }
+}
+
+/* Porsjoner (ST-1231): a short number field, as on the week plan's day page. Two classes, so the
+   narrow width beats the full-width .field input in styles.css. */
+.field.num input {
+  width: 6.5rem;
+  font-variant-numeric: tabular-nums;
+  min-height: var(--tap);
 }

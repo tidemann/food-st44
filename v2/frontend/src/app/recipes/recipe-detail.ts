@@ -1,11 +1,21 @@
 import { NgOptimizedImage } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { Auth } from '../auth';
 import { Flash } from '../pages/flash';
 import { NotFound } from '../pages/not-found';
 import { ServerError } from '../pages/server-error';
+import { dayLong } from '../plan/plan';
+import { type Added, PlanPick } from '../plan/plan-pick';
 import { formatLong, ingredientsFor, stepsFor } from './format';
 import { carry, loadRecipe } from './load';
 import { tagLabel } from './tags';
@@ -13,9 +23,10 @@ import { tagLabel } from './tags';
 /** `/recipes/:id` (S-DETAIL, §2.6), or S-404R / S-500 when it cannot be shown. */
 @Component({
   selector: 'app-recipe-detail',
-  imports: [NgOptimizedImage, RouterLink, NotFound, ServerError, Flash],
+  imports: [NgOptimizedImage, RouterLink, NotFound, ServerError, Flash, PlanPick],
   templateUrl: './recipe-detail.html',
-  styleUrl: './recipe-detail.css',
+  // ukeplan.css for "Legg til i ukeplan" (ST-1231): the button, and the panel's place in the grid.
+  styleUrls: ['./recipe-detail.css', '../plan/ukeplan.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RecipeDetail {
@@ -54,6 +65,21 @@ export class RecipeDetail {
       tags: recipe.tags.map((name) => ({ name, label: tagLabel(name) })),
     };
   });
+
+  /** "Legg til i ukeplan" is open (ST-1231). */
+  protected readonly planOpen = signal(false);
+  /** "Lagt til torsdag 22. oktober", and the week to link to, after a day was set. */
+  protected readonly planAdded = signal<{ text: string; week: string } | null>(null);
+
+  protected togglePlan(): void {
+    this.planOpen.update((open) => !open);
+    this.planAdded.set(null);
+  }
+
+  protected planned(added: Added): void {
+    this.planOpen.set(false);
+    this.planAdded.set({ text: `Lagt til ${dayLong(added.date)}.`, week: added.week });
+  }
 
   constructor() {
     const title = inject(Title);

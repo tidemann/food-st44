@@ -113,7 +113,7 @@ describe('Sign-in state (M2)', () => {
 
     it('shows the initial, the name, "Logg ut" and "Ny oppskrift"', async () => {
       const el = await render('/', { me });
-      expect(navLinks(el)).toEqual(['Oppskrifter', 'Ny oppskrift', 'Logg ut']);
+      expect(navLinks(el)).toEqual(['Oppskrifter', 'Ny oppskrift', 'Ukeplan', 'Logg ut']);
       expect(text(el.querySelector('.who .initial'))).toBe('S');
       expect(who(el)).toBe('S Stig Logg ut');
     });

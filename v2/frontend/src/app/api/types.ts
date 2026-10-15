@@ -37,3 +37,11 @@ export type ApiKeyCreated = components['schemas']['ApiKeyCreatedOut'];
  * fields its form posts to the authorization endpoint.
  */
 export type OAuthApproval = components['schemas']['ApprovalOut'];
+/** `GET /api/plan?week=2026-W43` (ST-1231): one week of the plan, Monday to Sunday. */
+export type PlanWeek = components['schemas']['PlanWeekOut'];
+/** A day of the plan: a recipe, a short text, or empty (both `title` and `text` blank). */
+export type PlanDay = components['schemas']['PlanDayOut'];
+/** `PUT /api/plan/{day}`: a recipe (`recipe_id`, `portions`) or a short `text`. */
+export type DinnerInput = components['schemas']['DinnerIn'];
+/** `POST /api/plan/{day}/move`: the two days after a move or a swap. */
+export type PlanMove = components['schemas']['MoveOut'];

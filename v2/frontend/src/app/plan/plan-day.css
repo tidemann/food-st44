@@ -1,0 +1,281 @@
+/* ============================================================================
+   food.st44.no — UKEPLAN, the day page (ST-1231, ST-1213 pictures 03a–04a): add, change,
+   move, remove. On top of ukeplan.css, which it shares with the week and the day picker;
+   apart only to keep each sheet under the component style budget.
+   ========================================================================== */
+
+.dayhead {
+  padding: 34px 0 0;
+}
+
+.dayhead h1 {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  margin: 0 0 6px;
+}
+
+.dayhead .plan-when {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  color: var(--soft);
+}
+
+.sect {
+  padding: 30px 0 0;
+}
+
+.sect:last-of-type {
+  padding-bottom: 80px;
+}
+
+.sect h2 {
+  font-family: var(--disp);
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--ink);
+}
+
+.sect .sect-hint {
+  margin: -6px 0 14px;
+  font-size: 13px;
+  color: var(--soft);
+}
+
+/* the search for a recipe: the masthead's ruled line, label above */
+.pick label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--soft);
+  margin-bottom: 5px;
+}
+
+.pick input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1.5px solid var(--ink);
+  background: transparent;
+  border-radius: 0;
+  font-family: var(--disp);
+  font-size: 20px;
+  font-style: italic;
+  color: var(--ink);
+  padding: 4px 2px 7px;
+  min-height: var(--tap);
+}
+
+.pick input::placeholder {
+  color: var(--soft);
+  font-style: italic;
+  opacity: 1;
+}
+
+/* the hits: the register, dotted leaders, one ruled line each */
+.hits {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.hits li {
+  border-bottom: 1px solid var(--rule);
+}
+
+.hits a,
+.hits button {
+  display: flex;
+  align-items: baseline;
+  min-height: 52px;
+  padding: 6px 0;
+  text-decoration: none;
+}
+
+.hits .t {
+  font-family: var(--disp);
+  font-size: 19px;
+  font-weight: 400;
+}
+
+.hits .lead {
+  flex: 1;
+  border-bottom: 1px dotted var(--rule);
+  margin: 0 10px;
+  transform: translateY(-5px);
+}
+
+.hits .m {
+  font-size: 12.5px;
+  color: var(--soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hits-more {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--soft);
+}
+
+/* the other way in: a short text instead of a recipe */
+.alt {
+  margin: 26px 0 0;
+  padding: 18px 20px 20px;
+  background: var(--tint);
+  border: 1px solid var(--rule);
+}
+
+.alt h3 {
+  font-family: var(--disp);
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.alt .field {
+  margin-bottom: 0;
+}
+
+.alt input {
+  background: var(--paper);
+}
+
+/* the chosen dinner, before it is saved */
+.chosen {
+  margin: 0;
+  padding: 20px 22px 22px;
+  background: var(--tint);
+  border-left: 3px solid var(--red);
+}
+
+.chosen .k {
+  margin: 0 0 2px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--soft);
+}
+
+.chosen h2 {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+  margin: 0 0 4px;
+  border: 0;
+  padding: 0;
+}
+
+.chosen .m {
+  margin: 0;
+  font-size: 13px;
+  color: var(--soft);
+}
+
+.chosen .swap {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 2px;
+}
+
+/* Picking a recipe or another dinner is an action, not a page: buttons that look like the
+   register's lines and the text links. */
+.hits button,
+.chosen button.swap {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chosen button.swap {
+  width: auto;
+  padding: 0 0 2px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.dayhead .plan-when .now {
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* remove: clearly destructive, deliberately small, and last */
+.danger {
+  margin: 34px 0 0;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--rule);
+}
+
+.danger p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--soft);
+  max-width: 44ch;
+}
+
+/* small in weight, not in hit box: the type and the padding stay tight, the
+   target keeps the house rule's 44 px */
+.danger .btn {
+  min-height: var(--tap);
+  padding: 7px 16px;
+  font-size: 12px;
+}
+
+.day-col {
+  grid-column: 1/8;
+}
+
+/* the day's facts, right column of the day page: the padding lands the 3 px rule on the
+   section heading's own rule, the way the week's facts line up with the register */
+.day-side {
+  grid-column: 9/13;
+  padding-top: 53px;
+}
+
+/* the portions field under the chosen dinner */
+.chosen + .field {
+  margin-top: 26px;
+}
+
+.hits button:hover .t {
+  color: var(--red);
+}
+
+@media (width <= 760px) {
+  .dayhead {
+    padding: 22px 0 0;
+  }
+
+  .dayhead h1 {
+    font-size: 34px;
+  }
+
+  .day-col,
+  .day-side {
+    grid-column: auto;
+    padding-top: 0;
+  }
+
+  .sect:last-of-type {
+    padding-bottom: 56px;
+  }
+
+  /* the facts are a desktop column; on a phone the register is the page */
+  .day-side {
+    display: none;
+  }
+}

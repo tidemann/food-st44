@@ -246,7 +246,10 @@ a {
   color: var(--red);
 }
 
-/* form fields: the recipe form and its photo field */
+/* form fields: every form on the site — the recipe form, the week plan's day page,
+   "Legg til i ukeplan". The label, the hint and the error line have always been here;
+   the control itself stood in recipe-form.css, where Angular scopes it to that one
+   component, so a second form got the browser's own field. ST-1213 moves it here. */
 .field {
   margin-bottom: 26px;
 }
@@ -271,6 +274,48 @@ a {
   font-size: 13.5px;
   font-weight: 600;
   color: var(--red);
+}
+
+/* A link from the error summary must land the field with its label, not with the label
+   cropped off the top or hidden by the sticky phone nav. So the margin clears the bar
+   plus whatever stands between the control and its label: a hint line on the fields
+   that have one. */
+.field input,
+.field textarea {
+  scroll-margin-top: 96px;
+  width: 100%;
+  font-family: var(--ui);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--tint);
+  border: 1px solid var(--rule);
+  border-bottom: 1.5px solid var(--ink);
+  border-radius: 0;
+  padding: 11px 13px;
+}
+
+.field-hint + input,
+.field-hint + textarea {
+  scroll-margin-top: 124px;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 7em;
+}
+
+.field-invalid input,
+.field-invalid textarea {
+  border-color: var(--red);
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 34px;
 }
 
 /* buttons */

@@ -1,0 +1,123 @@
+@switch (state()) {
+  @case ('not-found') {
+    <app-not-found />
+  }
+  @case ('error') {
+    <app-server-error />
+  }
+  @case ('ready') {
+    @if (view(); as v) {
+      @if (notice) {
+        <div class="wrap">
+          <p class="flash" role="status">{{ notice }}</p>
+        </div>
+      }
+      <section class="plan-head">
+        <div class="wrap">
+          <div class="plan-head-rule"></div>
+          <h1>Ukeplan</h1>
+          <p class="plan-when">{{ v.when }}</p>
+          <nav class="weeknav" aria-label="Bytt uke">
+            <a routerLink="/ukeplan" [queryParams]="{ uke: v.week.previous }">Forrige uke</a>
+            <a routerLink="/ukeplan" [queryParams]="{ uke: v.week.next }">Neste uke</a>
+          </nav>
+        </div>
+      </section>
+
+      @if (v.planned === 0) {
+        <div class="wrap">
+          <div class="empty-note">
+            <h2>Ingen middager i uke {{ v.week.number }} ennå</h2>
+            <p>
+              Velg en dag og hent en middag fra oppskriftene, eller skriv en kort tekst — «Rester»,
+              «Ute og spiser». Planen er felles for husstanden, og den kan endres hele uken.
+            </p>
+          </div>
+        </div>
+      }
+
+      <section class="plan-body">
+        <div class="wrap grid">
+          <div class="plan-main">
+            <ol class="week">
+              @for (day of v.days; track day.date) {
+                <li class="day" [class.day-today]="day.today">
+                  <h2 class="day-label">
+                    <span
+                      >{{ day.label }}
+                      @if (day.today) {
+                        <span class="now">· I dag</span>
+                      }
+                      @if (day.recipe_deleted) {
+                        <span class="gone">· oppskriften er slettet</span>
+                      }
+                    </span>
+                    @if (day.portions) {
+                      <span class="lead" aria-hidden="true"></span>
+                      <span class="portions">{{ day.portions }}</span>
+                    }
+                  </h2>
+                  <div class="day-dish">
+                    @if (day.empty) {
+                      <p>
+                        <a class="day-add" [routerLink]="['/ukeplan', day.date]"
+                          >Legg til middag<span class="visually-hidden"> {{ day.long }}</span></a
+                        >
+                      </p>
+                    } @else {
+                      @if (day.recipe_id !== null) {
+                        <p>
+                          <a class="dish" [routerLink]="['/recipes', day.recipe_id]">{{
+                            day.title
+                          }}</a>
+                        </p>
+                      } @else if (day.title) {
+                        <p>{{ day.title }}</p>
+                      } @else {
+                        <p class="free">{{ day.text }}</p>
+                      }
+                      <a class="day-edit" [routerLink]="['/ukeplan', day.date]"
+                        >Endre<span class="visually-hidden"
+                          >{{ day.text ? '' : ' middagen' }} {{ day.long }}</span
+                        ></a
+                      >
+                    }
+                  </div>
+                </li>
+              }
+            </ol>
+          </div>
+          <aside class="plan-side">
+            <div class="plan-facts">
+              <dl>
+                <div>
+                  <dt>Uke</dt>
+                  <dd>{{ v.week.number }}</dd>
+                </div>
+                <div>
+                  <dt>Planlagt</dt>
+                  <dd>{{ v.planned }} av 7 dager</dd>
+                </div>
+                @if (v.emptyDays) {
+                  <div>
+                    <dt>Tomme dager</dt>
+                    <dd>{{ v.emptyDays }}</dd>
+                  </div>
+                }
+                @if (v.changed) {
+                  <div>
+                    <dt>Sist endret</dt>
+                    <dd>{{ v.changed }}</dd>
+                  </div>
+                }
+              </dl>
+              <p class="note">
+                Planen er felles for husstanden. Alle som kan redigere oppskrifter, kan endre uken.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </section>
+    }
+  }
+}

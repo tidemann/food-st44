@@ -76,7 +76,7 @@ describe('Koble til en assistent (ST-833)', () => {
       expect(text(el.querySelector('.addr code'))).toBe(`${location.origin}/api/mcp`);
       expect(text(el.querySelector('.addr button'))).toBe('Kopier adressen');
       const headings = [...el.querySelectorAll('.how h2')].map((h) => text(h));
-      expect(headings).toEqual(['I Claude-appen']);
+      expect(headings).toEqual(['I Claude-appen', 'Spør om ukeplanen']);
       expect(el.querySelectorAll('.how .step')).toHaveLength(4);
       const facts = [...el.querySelectorAll('.facts dl > div')].map((row) => [
         text(row.querySelector('dt')),
@@ -85,6 +85,7 @@ describe('Koble til en assistent (ST-833)', () => {
       expect(facts).toEqual([
         ['Søke og lese', 'Alle'],
         ['Legge inn og endre', 'Redaktører'],
+        ['Ukeplanen', 'Redaktører'],
         ['Slette', 'Ingen'],
       ]);
       expect(el.querySelector('a[href="/assistent/nokler"]')).toBeNull();
@@ -98,7 +99,11 @@ describe('Koble til en assistent (ST-833)', () => {
     it('shows editors the key steps, with the way to the key page', async () => {
       const el = await open('/assistent', { me: EDITOR });
       const headings = [...el.querySelectorAll('.how h2')].map((h) => text(h));
-      expect(headings).toEqual(['I Claude-appen', 'Nøkkel til andre assistenter']);
+      expect(headings).toEqual([
+        'I Claude-appen',
+        'Spør om ukeplanen',
+        'Nøkkel til andre assistenter',
+      ]);
       expect(text(el.querySelector('.keys-how a[href="/assistent/nokler"]'))).toBe('Nøkler');
     });
 

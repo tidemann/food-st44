@@ -13,6 +13,11 @@
             <a href="#ingredients" (click)="jump($event, ingredientsField)">{{ error }}</a>
           </li>
         }
+        @if (shown().servings; as error) {
+          <li>
+            <a href="#servings" (click)="jump($event, servingsField)">{{ error }}</a>
+          </li>
+        }
         @if (shown().photo; as error) {
           <li>
             <a href="#photo" (click)="jump($event, photoField)">{{ error }}</a>
@@ -40,6 +45,30 @@
   </div>
 
   <app-tag-field [value]="draft().tags ?? []" (valueChange)="tagsChanged($event)" />
+
+  <div class="field num" [class.field-invalid]="shown().servings">
+    <label for="servings">Porsjoner (valgfritt)</label>
+    <p class="field-hint" id="servings-hint">
+      Hvor mange porsjoner ingrediensene nedenfor gir. Brukes som standard når oppskriften settes på
+      ukeplanen.
+    </p>
+    <input
+      #servingsField
+      type="number"
+      id="servings"
+      name="servings"
+      min="1"
+      max="99"
+      inputmode="numeric"
+      [value]="draft().servings ?? ''"
+      (input)="servingsChanged(servingsField.value)"
+      [attr.aria-invalid]="shown().servings ? 'true' : null"
+      [attr.aria-describedby]="shown().servings ? 'servings-hint servings-error' : 'servings-hint'"
+    />
+    @if (shown().servings; as error) {
+      <p class="field-error" id="servings-error">{{ error }}</p>
+    }
+  </div>
 
   <div class="field" [class.field-invalid]="shown().ingredients">
     <label for="ingredients">Ingredienser</label>

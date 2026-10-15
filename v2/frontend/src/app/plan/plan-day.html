@@ -1,0 +1,343 @@
+@switch (state()) {
+  @case ('not-found') {
+    <app-not-found />
+  }
+  @case ('error') {
+    <app-server-error />
+  }
+  @case ('ready') {
+    @if (view(); as v) {
+      <section class="dayhead">
+        <div class="wrap">
+          <p class="crumb">
+            <a routerLink="/ukeplan" [queryParams]="{ uke: v.week.week }">Ukeplan</a>
+            &nbsp;/&nbsp; {{ v.heading }}
+          </p>
+          <h1>{{ v.heading }}</h1>
+          <p class="plan-when">
+            Uke {{ v.week.number }}
+            @if (v.today) {
+              · <span class="now">I dag</span>
+            }
+            @if (v.state) {
+              · {{ v.state }}
+            }
+          </p>
+        </div>
+      </section>
+
+      @if (errors().form; as error) {
+        <div class="wrap">
+          <div class="alert" role="alert">
+            <p class="alert-title">{{ error }}</p>
+          </div>
+        </div>
+      }
+
+      @switch (mode()) {
+        @case ('pick') {
+          <section class="sect">
+            <div class="wrap grid">
+              <div class="day-col">
+                <h2>Velg en oppskrift</h2>
+                <p class="sect-hint">
+                  @if (q().trim()) {
+                    Trykk på en oppskrift for å velge den.
+                  } @else {
+                    Hele samlingen, i alfabetisk rekkefølge. Trykk på en oppskrift for å velge den.
+                  }
+                </p>
+                <div class="pick">
+                  <label for="plan-sok">Søk i oppskriftene</label>
+                  <input
+                    #searchField
+                    type="search"
+                    id="plan-sok"
+                    name="q"
+                    placeholder="fårikål, torsk, kjøtt …"
+                    [value]="q()"
+                    (input)="search(searchField.value)"
+                  />
+                </div>
+                @if (q().trim()) {
+                  <p class="hits-more" role="status">
+                    {{ hits().length || 'Ingen' }} treff på «{{ q().trim() }}»
+                  </p>
+                }
+                <ul class="hits">
+                  @for (recipe of hits(); track recipe.id) {
+                    <li>
+                      <button type="button" (click)="choose(recipe)">
+                        <span class="t">{{ recipe.title }}</span>
+                        <span class="lead" aria-hidden="true"></span>
+                        <span class="m">{{ countOf(recipe) }}</span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+                <form class="alt" novalidate (submit)="saveText($event)">
+                  <h3>Eller skriv en kort tekst</h3>
+                  <div class="field" [class.field-invalid]="errors().text">
+                    <label for="fritekst">Kort tekst</label>
+                    <p class="field-hint" id="fritekst-hint">
+                      Høyst 80 tegn. For eksempel «Rester», «Ute og spiser» eller «Pizza».
+                    </p>
+                    <input
+                      #textField
+                      type="text"
+                      id="fritekst"
+                      name="fritekst"
+                      maxlength="80"
+                      [value]="text()"
+                      (input)="text.set(textField.value)"
+                      [attr.aria-invalid]="errors().text ? 'true' : null"
+                      [attr.aria-describedby]="
+                        errors().text ? 'fritekst-hint fritekst-error' : 'fritekst-hint'
+                      "
+                    />
+                    @if (errors().text; as error) {
+                      <p class="field-error" id="fritekst-error">{{ error }}</p>
+                    }
+                  </div>
+                  <div class="form-actions">
+                    <button class="btn" type="submit" [disabled]="busy()">Legg til teksten</button>
+                    @if (!v.empty) {
+                      <button class="btn" type="button" (click)="mode.set('current')">
+                        Avbryt
+                      </button>
+                    }
+                  </div>
+                </form>
+              </div>
+              <aside class="day-side">
+                <div class="plan-facts">
+                  <dl>
+                    <div>
+                      <dt>Dag</dt>
+                      <dd>{{ v.short }}</dd>
+                    </div>
+                    <div>
+                      <dt>Uke</dt>
+                      <dd>{{ v.week.number }}</dd>
+                    </div>
+                    <div>
+                      <dt>Middag nå</dt>
+                      <dd>{{ v.empty ? 'Ingen' : v.day.title || v.day.text }}</dd>
+                    </div>
+                    <div>
+                      <dt>I samlingen</dt>
+                      <dd>{{ collectionSize() }}</dd>
+                    </div>
+                  </dl>
+                  <p class="note">
+                    Velger du en oppskrift, foreslår vi porsjonene som står i den. En kort tekst
+                    trenger ingen oppskrift.
+                  </p>
+                </div>
+              </aside>
+            </div>
+          </section>
+        }
+
+        @case ('chosen') {
+          @if (chosen(); as recipe) {
+            <section class="sect">
+              <div class="wrap grid">
+                <form class="day-col" novalidate (submit)="saveRecipe($event)">
+                  <h2>Middag {{ v.day.weekday }}</h2>
+                  <div class="chosen">
+                    <p class="k">Valgt oppskrift</p>
+                    <h2>{{ recipe.title }}</h2>
+                    <p class="m">{{ countOf(recipe) }} · {{ servingsOf(recipe.servings) }}</p>
+                    <button class="swap" type="button" (click)="pick()">Velg en annen</button>
+                  </div>
+                  <ng-container [ngTemplateOutlet]="portionsField" />
+                  <div class="form-actions">
+                    <button class="btn btn-primary btn-lg" type="submit" [disabled]="busy()">
+                      {{ v.empty ? 'Legg til middag' : 'Lagre endringer' }}
+                    </button>
+                    <a class="btn btn-lg" routerLink="/ukeplan" [queryParams]="{ uke: v.week.week }"
+                      >Avbryt</a
+                    >
+                  </div>
+                </form>
+              </div>
+            </section>
+          }
+        }
+
+        @case ('current') {
+          <section class="sect">
+            <div class="wrap grid">
+              <form class="day-col" novalidate (submit)="saveRecipe($event)">
+                <h2>Middagen nå</h2>
+                <div class="chosen">
+                  @if (v.day.recipe_id !== null) {
+                    <p class="k">Fra oppskriftene</p>
+                    <h2>{{ v.day.title }}</h2>
+                    <p class="m">
+                      @if (current(); as recipe) {
+                        {{ countOf(recipe) }} ·
+                      }
+                      {{ servingsOf(v.day.servings) }}
+                    </p>
+                    <a class="swap" [routerLink]="['/recipes', v.day.recipe_id]">Se oppskriften</a>
+                  } @else if (v.day.recipe_deleted) {
+                    <p class="k">Oppskriften er slettet</p>
+                    <h2>{{ v.day.title }}</h2>
+                    <p class="m">
+                      Navnet står igjen på planen. Velg en annen oppskrift om dere vil.
+                    </p>
+                  } @else {
+                    <p class="k">Kort tekst</p>
+                    <h2>{{ v.day.text }}</h2>
+                  }
+                </div>
+                @if (v.day.recipe_id !== null) {
+                  <ng-container [ngTemplateOutlet]="portionsField" />
+                  <div class="form-actions">
+                    <button class="btn btn-primary btn-lg" type="submit" [disabled]="busy()">
+                      Lagre endringer
+                    </button>
+                    <a class="btn btn-lg" routerLink="/ukeplan" [queryParams]="{ uke: v.week.week }"
+                      >Avbryt</a
+                    >
+                  </div>
+                }
+              </form>
+              <aside class="day-side">
+                <div class="plan-facts">
+                  <dl>
+                    <div>
+                      <dt>Dag</dt>
+                      <dd>{{ v.short }}</dd>
+                    </div>
+                    <div>
+                      <dt>Uke</dt>
+                      <dd>{{ v.week.number }}</dd>
+                    </div>
+                    <div>
+                      <dt>Middag nå</dt>
+                      <dd>{{ v.day.title || v.day.text }}</dd>
+                    </div>
+                    @if (v.day.portions) {
+                      <div>
+                        <dt>Porsjoner</dt>
+                        <dd>{{ v.day.portions }}</dd>
+                      </div>
+                    }
+                    @if (v.setBy) {
+                      <div>
+                        <dt>Satt av</dt>
+                        <dd>{{ v.setBy }}</dd>
+                      </div>
+                    }
+                  </dl>
+                  <p class="note">Planen er felles for husstanden. Endringen gjelder for alle.</p>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <section class="sect">
+            <div class="wrap grid">
+              <div class="day-col">
+                <h2>Bytt middag</h2>
+                <ul class="moves">
+                  <li>
+                    <button type="button" (click)="pick()">
+                      <span class="d">Velg en annen oppskrift</span>
+                      <span class="lead" aria-hidden="true"></span>
+                      <span class="s">Søk i samlingen</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" (click)="pick(true)">
+                      <span class="d">{{
+                        v.day.text ? 'Skriv en annen tekst' : 'Skriv en kort tekst i stedet'
+                      }}</span>
+                      <span class="lead" aria-hidden="true"></span>
+                      <span class="s">«Rester», «Pizza»</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="sect">
+            <div class="wrap grid">
+              <div class="day-col">
+                <h2>Flytt til en annen dag</h2>
+                <p class="sect-hint">Står det en middag der fra før, bytter de to plass.</p>
+                <ul class="moves">
+                  @for (other of v.others; track other.date) {
+                    <li [class.taken]="other.dinner">
+                      <button type="button" [disabled]="busy()" (click)="move(other)">
+                        <span class="d"
+                          >{{ other.label }}
+                          @if (other.today) {
+                            <span class="now">· I dag</span>
+                          }
+                        </span>
+                        <span class="lead" aria-hidden="true"></span>
+                        <span class="s">
+                          @if (other.dinner) {
+                            Har <b>{{ other.dinner }}</b>
+                          } @else {
+                            <span class="here">Tom</span>
+                          }
+                        </span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+                <div class="danger">
+                  <p>
+                    Fjerner du middagen, blir {{ v.day.weekday }} tom. Dere kan legge til en ny når
+                    som helst.
+                  </p>
+                  <button
+                    class="btn btn-danger-ghost"
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="remove()"
+                  >
+                    Fjern middagen
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        }
+      }
+    }
+  }
+}
+
+<ng-template #portionsField>
+  <div class="field num" [class.field-invalid]="errors().portions">
+    <label for="porsjoner">Porsjoner</label>
+    <p class="field-hint" id="porsjoner-hint">
+      {{ portionsHint() }}
+    </p>
+    <input
+      #portionsInput
+      type="number"
+      id="porsjoner"
+      name="porsjoner"
+      min="1"
+      max="99"
+      inputmode="numeric"
+      [value]="portions() ?? ''"
+      (input)="setPortions(portionsInput.value)"
+      [attr.aria-invalid]="errors().portions ? 'true' : null"
+      [attr.aria-describedby]="
+        errors().portions ? 'porsjoner-hint porsjoner-error' : 'porsjoner-hint'
+      "
+    />
+    @if (errors().portions; as error) {
+      <p class="field-error" id="porsjoner-error">{{ error }}</p>
+    }
+  </div>
+</ng-template>
