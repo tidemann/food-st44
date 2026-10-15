@@ -126,6 +126,7 @@ describe('TagField (ST-784)', () => {
       ingredients: '400 g torsk',
       instructions: '',
       tags: ['fisk', 'rask mat'],
+      servings: null,
     });
     request.flush({}, { status: 500, statusText: 'Error' });
   });

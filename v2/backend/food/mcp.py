@@ -13,10 +13,12 @@ Reads are open to anyone, as on the site. The write tools need `Authorization: B
 (food.keys) or, from the Claude app, an OAuth access token granted `write` (food.oauth, ST-834).
 An app token that is expired, revoked or unknown gets HTTP 401 with a WWW-Authenticate
 challenge, so the app refreshes it or signs in again. There is no delete tool.
+The week plan's tools (ST-1231) need an editor even to read, and are not listed for anyone else.
 Every write is logged in McpChange. The tools call food.services and food.importer, the same
 code the site's API uses.
 """
 
+import datetime as dt
 import json
 import logging
 from collections.abc import Callable
@@ -30,7 +32,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from food import importer, oauth, services
+from food import importer, oauth, plan, services
 from food.auth import is_editor
 from food.keys import KEY_START, editor_for
 from food.models import McpChange, Recipe
@@ -51,7 +53,9 @@ INSTRUCTIONS = (
     "The household's recipe collection at food.st44.no, in Norwegian. Search and read freely. "
     "Adding, importing and editing need an editor: an editor's key, or the Claude app signed "
     "in with an editor's Google account. Recipes cannot be deleted from here. "
-    "Ingredients are one per line; instructions are paragraphs, one step each."
+    "Ingredients are one per line; instructions are paragraphs, one step each. "
+    "Editors also have the household's week plan (ukeplan): one dinner a day, a recipe or a "
+    "short text, read with get_meal_plan and changed with set_dinner and clear_dinner."
 )
 
 # JSON-RPC 2.0 error codes.
@@ -75,6 +79,11 @@ APP_READ_ONLY = (
     "til på nytt for å kunne legge inn og endre oppskrifter."
 )
 NOT_FOUND = "Fant ingen oppskrift med id {id}."
+NO_PLAN = (
+    "Ukeplanen er privat for husstanden: den krever en nøkkel fra en redaktør, eller Claude-appen "
+    "logget inn med en redaktørs Google-konto. Nøkler lages på "
+    "https://food.st44.no/assistent/nokler."
+)
 UNREADABLE = "Fant ingen oppskrift på siden. Skriv den inn med create_recipe i stedet."
 
 # The names of the recipe's fields in the change log.
@@ -83,7 +92,9 @@ FIELD_NAMES = {
     "ingredients": "ingredienser",
     "instructions": "fremgangsmåte",
     "tags": "emneord",
+    "servings": "porsjoner",
 }
+SERVINGS = "How many portions the ingredients make (1 to 99). The week plan defaults to it."
 
 
 class ToolError(Exception):
@@ -164,6 +175,7 @@ class CreateArgs(_Args):
     tags: list[str] = Field(
         default_factory=list, description="Tags (emneord), lower case, e.g. [«middag», «fisk»]."
     )
+    servings: int | None = Field(None, description=SERVINGS + " Leave out if unknown.")
 
 
 class UpdateArgs(_Args):
@@ -180,6 +192,33 @@ class UpdateArgs(_Args):
         description="The whole tag list, replacing it: to add one, send the current tags and "
         "the new one. Leave out to keep the tags.",
     )
+    servings: int | None = Field(
+        None, description=SERVINGS + " Leave out to keep it; 0 removes it."
+    )
+
+
+class MealPlanArgs(_Args):
+    start: dt.date | None = Field(
+        None, description="The first day, YYYY-MM-DD. Leave out for this week's Monday."
+    )
+    days: int = Field(7, ge=1, le=31, description="How many days from start (1 to 31).")
+
+
+class SetDinnerArgs(_Args):
+    date: dt.date = Field(description="The day, YYYY-MM-DD.")
+    recipe_id: int | None = Field(
+        None, description="The recipe's id, from search_recipes. Give this or text, not both."
+    )
+    text: str | None = Field(
+        None, description="A short text instead of a recipe (at most 80 characters): «Rester»."
+    )
+    portions: int | None = Field(
+        None, description="Portions (1 to 99). Leave out to use the recipe's own (servings)."
+    )
+
+
+class DayArgs(_Args):
+    date: dt.date = Field(description="The day, YYYY-MM-DD.")
 
 
 # --- what the tools answer
@@ -203,6 +242,7 @@ def _full(recipe: Recipe) -> dict[str, Any]:
         **_summary(recipe),
         "ingredients": recipe.ingredients,
         "instructions": recipe.instructions,
+        "servings": recipe.servings,
         "created_at": recipe.created_at.isoformat(),
     }
 
@@ -229,7 +269,7 @@ def _messages(exc: ValidationError) -> str:
     )
 
 
-def _log(writer: Writer, tool: str, recipe_id: int, summary: str) -> None:
+def _log(writer: Writer, tool: str, recipe_id: int | None, summary: str) -> None:
     McpChange.objects.create(
         user=writer.user, via=writer.via, tool=tool, recipe_id=recipe_id, summary=summary[:200]
     )
@@ -269,8 +309,11 @@ def update_recipe(args: UpdateArgs, caller: Caller) -> dict[str, Any]:
         "ingredients": recipe.ingredients,
         "instructions": recipe.instructions,
         "tags": services.tag_names(recipe),
+        "servings": recipe.servings,
     }
     given = args.model_dump(exclude={"id"}, exclude_none=True)
+    if given.get("servings") == 0:
+        given["servings"] = None
     valid = _validated(**{**before, **given}).model_dump()
     after = {**valid, "tags": sort_names(valid["tags"])}
     changed = [name for name in FIELD_NAMES if after[name] != before[name]]
@@ -302,6 +345,65 @@ def import_recipe_from_link(args: ImportArgs, caller: Caller) -> dict[str, Any]:
     return _full(recipe)
 
 
+# --- the week plan (food.plan, ST-1231): editors only, reads included
+
+
+def _plan_day(day: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "date": day["date"].isoformat(),
+        "weekday": day["weekday"],
+        "recipe_id": day["recipe_id"],
+        "title": day["title"],
+        "text": day["text"],
+        "portions": day["portions"],
+        "servings": day["servings"],
+        "recipe_deleted": day["recipe_deleted"],
+        "link": _link(day["recipe_id"]) if day["recipe_id"] else None,
+    }
+
+
+def get_meal_plan(args: MealPlanArgs, caller: Caller) -> dict[str, Any]:
+    caller.editor()
+    start = args.start or plan.monday_of(plan.today())
+    days = plan.read_days(start, args.days)
+    return {
+        "start": start.isoformat(),
+        "end": days[-1]["date"].isoformat(),
+        "days": [_plan_day(day) for day in days],
+        "link": f"{settings.FOOD_SITE_URL}/ukeplan?uke={plan.week_name(plan.monday_of(start))}",
+    }
+
+
+def _what(day: dict[str, Any]) -> str:
+    what: str = day["title"] or day["text"]
+    if day["portions"]:
+        what += f" ({day['portions']} porsjoner)"
+    return what
+
+
+def set_dinner(args: SetDinnerArgs, caller: Caller) -> dict[str, Any]:
+    writer = caller.editor()
+    try:
+        dinner = plan.check(recipe_id=args.recipe_id, text=args.text, portions=args.portions)
+    except plan.PlanError as exc:
+        raise ToolError(f"{exc.field}: {exc.message}") from exc
+    with transaction.atomic():
+        day = plan.set_dinner(args.date, dinner, writer.user)
+        _log(writer, "set_dinner", day["recipe_id"], f"{args.date.isoformat()}: {_what(day)}")
+    return _plan_day(day)
+
+
+def clear_dinner(args: DayArgs, caller: Caller) -> dict[str, Any]:
+    writer = caller.editor()
+    before = plan.get_day(args.date)
+    with transaction.atomic():
+        cleared = plan.clear_dinner(args.date)
+        if cleared:
+            summary = f"{args.date.isoformat()}: fjernet {before['title'] or before['text']}"
+            _log(writer, "clear_dinner", before["recipe_id"], summary)
+    return {**_plan_day(plan.get_day(args.date)), "cleared": cleared}
+
+
 @dataclass(frozen=True)
 class Tool:
     name: str
@@ -311,6 +413,8 @@ class Tool:
     run: Callable[[Any, Caller], dict[str, Any]]
     writes: bool = False
     open_world: bool = False
+    # Listed and run only for an editor: the week plan is private (ST-1231).
+    editors_only: bool = False
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -382,6 +486,36 @@ TOOLS = {
             update_recipe,
             writes=True,
         ),
+        Tool(
+            "get_meal_plan",
+            "Les ukeplanen",
+            "The household's dinner plan: each day with date, weekday, the recipe (id, title, "
+            "link) or a short text, portions, and the recipe's servings. Empty days have "
+            "neither. Defaults to this week, Monday to Sunday. Needs an editor.",
+            MealPlanArgs,
+            get_meal_plan,
+            editors_only=True,
+        ),
+        Tool(
+            "set_dinner",
+            "Sett middag",
+            "Put a dinner on a day of the week plan: a recipe (recipe_id, from search_recipes) "
+            "or a short text, replacing what the day had. Portions default to the recipe's "
+            "servings. Needs an editor.",
+            SetDinnerArgs,
+            set_dinner,
+            writes=True,
+            editors_only=True,
+        ),
+        Tool(
+            "clear_dinner",
+            "Fjern middag",
+            "Empty a day of the week plan. The recipe itself stays. Needs an editor.",
+            DayArgs,
+            clear_dinner,
+            writes=True,
+            editors_only=True,
+        ),
     )
 }
 
@@ -408,7 +542,10 @@ def _initialize(params: dict[str, Any], caller: Caller) -> dict[str, Any]:
 
 
 def _tools_list(params: dict[str, Any], caller: Caller) -> dict[str, Any]:
-    return {"tools": [tool.describe() for tool in TOOLS.values()]}
+    tools = list(TOOLS.values())
+    if caller.writer is None:
+        tools = [tool for tool in tools if not tool.editors_only]
+    return {"tools": [tool.describe() for tool in tools]}
 
 
 def _tools_call(params: dict[str, Any], caller: Caller) -> dict[str, Any]:
@@ -419,6 +556,9 @@ def _tools_call(params: dict[str, Any], caller: Caller) -> dict[str, Any]:
     arguments = params.get("arguments") or {}
     if not isinstance(arguments, dict):
         raise RpcError(INVALID_PARAMS, "arguments must be an object")
+    if tool.editors_only and caller.writer is None:
+        # Not listed for this caller, but named: say why rather than "unknown tool".
+        return _tool_error(NO_PLAN if caller.refusal == NO_KEY else caller.refusal)
     try:
         result = tool.run(tool.args.model_validate(arguments), caller)
     except ValidationError as exc:

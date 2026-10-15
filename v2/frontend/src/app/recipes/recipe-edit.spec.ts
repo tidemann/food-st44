@@ -59,6 +59,7 @@ describe('RecipeEdit', () => {
         ingredients: '  ',
         instructions: kjottkaker.instructions,
         tags: ['kjøtt', 'middag'],
+        servings: 4,
       });
       reject(request, {
         title: 'Tittelen må fylles ut.',

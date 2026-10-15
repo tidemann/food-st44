@@ -60,6 +60,18 @@ import { copier, mcpAddress } from './copy';
               </div>
             </section>
 
+            <!-- ST-1231: the week plan through an assistant, for the household's editors. -->
+            <section class="how plan-how">
+              <h2>Spør om ukeplanen</h2>
+              <p class="sub">
+                Er du redaktør, kan assistenten også lese og endre ukeplanen. Spør for eksempel:
+              </p>
+              <ul class="asks">
+                <li>«Hva er til middag på torsdag?»</li>
+                <li>«Sett taco på fredag.»</li>
+              </ul>
+            </section>
+
             @if (auth.isEditor()) {
               <section class="how keys-how">
                 <h2>Nøkkel til andre assistenter</h2>
@@ -99,6 +111,10 @@ import { copier, mcpAddress } from './copy';
                 </div>
                 <div>
                   <dt>Legge inn og endre</dt>
+                  <dd>Redaktører</dd>
+                </div>
+                <div>
+                  <dt>Ukeplanen</dt>
                   <dd>Redaktører</dd>
                 </div>
                 <div>

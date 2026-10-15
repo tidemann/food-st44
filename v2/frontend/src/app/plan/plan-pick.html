@@ -1,0 +1,107 @@
+<div class="plan-pick">
+  <h2>Hvilken dag?</h2>
+  @if (failed()) {
+    <p class="sect-hint" role="alert">Ukeplanen kunne ikke hentes. Prøv igjen.</p>
+  } @else if (columns(); as columns) {
+    @if (confirming(); as c) {
+      <div class="plan-weeks">
+        <div class="wkcol">
+          <p class="wk">{{ c.column.heading }}</p>
+          <ul class="moves">
+            @for (day of confirmDays(); track day.date) {
+              <li [class.taken]="day.dinner">
+                <button type="button" [disabled]="busy()" (click)="choose(day, c.column)">
+                  <span class="d"
+                    >{{ day.label }}
+                    @if (day.today) {
+                      <span class="now">· I dag</span>
+                    }
+                  </span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <span class="s">
+                    @if (day.dinner) {
+                      Har <b>{{ day.dinner }}</b>
+                    } @else {
+                      <span class="here">Tom</span>
+                    }
+                  </span>
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+        <div class="wkcol">
+          <div class="confirm" role="alertdialog" aria-labelledby="bytt-tittel">
+            <h3 id="bytt-tittel">{{ question(c.day) }}</h3>
+            <p>{{ replaces(c.day) }}</p>
+            @if (error(); as message) {
+              <p class="field-error">{{ message }}</p>
+            }
+            <div class="form-actions">
+              <button
+                class="btn btn-primary"
+                type="button"
+                [disabled]="busy()"
+                (click)="save(c.day.date, c.column.week)"
+              >
+                Bytt til {{ recipe().title }}
+              </button>
+              <button class="btn" type="button" (click)="confirming.set(null)">Avbryt</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    } @else {
+      <p class="sect-hint">Står det en middag der fra før, spør vi før vi bytter.</p>
+      <div class="plan-weeks">
+        @for (column of columns; track column.week) {
+          <div class="wkcol">
+            <p class="wk">{{ column.heading }}</p>
+            <ul class="moves">
+              @for (day of column.days; track day.date) {
+                <li [class.taken]="day.dinner">
+                  <button type="button" [disabled]="busy()" (click)="choose(day, column)">
+                    <span class="d"
+                      >{{ day.label }}
+                      @if (day.today) {
+                        <span class="now">· I dag</span>
+                      }
+                    </span>
+                    <span class="lead" aria-hidden="true"></span>
+                    <span class="s">
+                      @if (day.dinner) {
+                        Har <b>{{ day.dinner }}</b>
+                      } @else {
+                        <span class="here">Tom</span>
+                      }
+                    </span>
+                  </button>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+      <div class="field num" [class.field-invalid]="error()">
+        <label for="porsjoner">Porsjoner</label>
+        <p class="field-hint" id="porsjoner-hint">{{ portionsHint() }}</p>
+        <input
+          #portionsInput
+          type="number"
+          id="porsjoner"
+          name="porsjoner"
+          min="1"
+          max="99"
+          inputmode="numeric"
+          [value]="portions() ?? ''"
+          (input)="setPortions(portionsInput.value)"
+          [attr.aria-invalid]="error() ? 'true' : null"
+          [attr.aria-describedby]="error() ? 'porsjoner-hint porsjoner-error' : 'porsjoner-hint'"
+        />
+        @if (error(); as message) {
+          <p class="field-error" id="porsjoner-error">{{ message }}</p>
+        }
+      </div>
+    }
+  }
+</div>

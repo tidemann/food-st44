@@ -191,6 +191,23 @@
   overflow-wrap: anywhere;
 }
 
+/* what to ask about the week plan (ST-1231): the request as said, Bodoni italic, one ruled line
+   each, like the steps above */
+.asks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.asks li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--disp);
+  font-style: italic;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
 /* ---------- the facts table ---------- */
 .facts {
   padding-top: 12px;

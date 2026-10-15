@@ -5,6 +5,7 @@ from ninja.errors import ValidationError
 from food.auth import router as auth_router
 from food.keys import router as keys_router
 from food.oauth import router as oauth_router
+from food.plan import router as plan_router
 from food.recipes import router as recipes_router
 from food.recipes import tags_router
 
@@ -23,6 +24,8 @@ api.add_router("/api/tags", tags_router)
 api.add_router("/api/keys", keys_router)
 # The Claude app's approval page (ST-834); the OAuth endpoints themselves are food.oauth views.
 api.add_router("/api/oauth", oauth_router)
+# The week plan (ST-1231): editors only, reads included.
+api.add_router("/api/plan", plan_router)
 
 
 @api.exception_handler(ValidationError)
