@@ -14,7 +14,7 @@ import { Auth } from '../auth';
 import { Flash } from '../pages/flash';
 import { NotFound } from '../pages/not-found';
 import { ServerError } from '../pages/server-error';
-import { dayLong } from '../plan/plan';
+import { dayLong, portionsLabel } from '../plan/plan';
 import { type Added, PlanPick } from '../plan/plan-pick';
 import { formatLong, ingredientsFor, stepsFor } from './format';
 import { carry, loadRecipe } from './load';
@@ -63,6 +63,7 @@ export class RecipeDetail {
       steps: stepsFor(recipe.instructions),
       added: formatLong(recipe.created_at),
       tags: recipe.tags.map((name) => ({ name, label: tagLabel(name) })),
+      servings: recipe.servings ? portionsLabel(recipe.servings) : '',
     };
   });
 
