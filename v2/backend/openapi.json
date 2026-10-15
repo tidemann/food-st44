@@ -1013,6 +1013,239 @@
           "oauth"
         ]
       }
+    },
+    "/api/plan": {
+      "get": {
+        "operationId": "get_plan_week",
+        "summary": "One week of the plan, Monday to Sunday; `week` is 2026-W43 or a date in it",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "week",
+            "schema": {
+              "default": "",
+              "title": "Week",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanWeekOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "plan"
+        ],
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
+    },
+    "/api/plan/{day}": {
+      "put": {
+        "operationId": "set_plan_day",
+        "summary": "Set a day's dinner: a recipe (`recipe_id`, `portions`) or a short `text`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDayOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "plan"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DinnerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "clear_plan_day",
+        "summary": "Clear a day (no error if it is empty)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "plan"
+        ],
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
+    },
+    "/api/plan/{day}/move": {
+      "post": {
+        "operationId": "move_plan_day",
+        "summary": "Move a day's dinner to another day; if that day has one, the two swap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoveOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "plan"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1096,6 +1329,17 @@
             "title": "Tags",
             "type": "array"
           },
+          "servings": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1111,6 +1355,7 @@
           "created_at",
           "photo_url",
           "tags",
+          "servings",
           "title",
           "ingredients"
         ],
@@ -1156,6 +1401,17 @@
             },
             "title": "Tags",
             "type": "array"
+          },
+          "servings": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings"
           }
         },
         "required": [
@@ -1443,6 +1699,239 @@
           "fields"
         ],
         "title": "ApprovalOut",
+        "type": "object"
+      },
+      "PlanDayOut": {
+        "description": "A day of the plan. An empty day has no recipe, an empty title and an empty text.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "weekday": {
+            "title": "Weekday",
+            "type": "string"
+          },
+          "recipe_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipe Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "portions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portions"
+          },
+          "servings": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings"
+          },
+          "recipe_deleted": {
+            "title": "Recipe Deleted",
+            "type": "boolean"
+          },
+          "set_by": {
+            "title": "Set By",
+            "type": "string"
+          },
+          "set_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set At"
+          }
+        },
+        "required": [
+          "date",
+          "weekday",
+          "recipe_id",
+          "title",
+          "text",
+          "portions",
+          "servings",
+          "recipe_deleted",
+          "set_by",
+          "set_at"
+        ],
+        "title": "PlanDayOut",
+        "type": "object"
+      },
+      "PlanWeekOut": {
+        "description": "One ISO week, Monday to Sunday.",
+        "properties": {
+          "week": {
+            "title": "Week",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "previous": {
+            "title": "Previous",
+            "type": "string"
+          },
+          "next": {
+            "title": "Next",
+            "type": "string"
+          },
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/PlanDayOut"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "last_change_by": {
+            "title": "Last Change By",
+            "type": "string"
+          },
+          "last_change_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Change At"
+          }
+        },
+        "required": [
+          "week",
+          "number",
+          "start",
+          "end",
+          "previous",
+          "next",
+          "today",
+          "days",
+          "last_change_by",
+          "last_change_at"
+        ],
+        "title": "PlanWeekOut",
+        "type": "object"
+      },
+      "DinnerIn": {
+        "description": "One day's dinner: a recipe or a short text, not both. Replaces what the day had.",
+        "properties": {
+          "recipe_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipe Id"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "portions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portions"
+          }
+        },
+        "title": "DinnerIn",
+        "type": "object"
+      },
+      "MoveOut": {
+        "description": "The two days after a move: the day it left (now empty, or the swapped dinner) and the day\nit went to.",
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/PlanDayOut"
+            },
+            "title": "Days",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days"
+        ],
+        "title": "MoveOut",
+        "type": "object"
+      },
+      "MoveIn": {
+        "properties": {
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to"
+        ],
+        "title": "MoveIn",
         "type": "object"
       }
     },

@@ -23,12 +23,50 @@ class Recipe(models.Model):
     # The file name of the recipe's one photo in settings.PHOTOS_DIR; "" when it has none.
     photo = models.CharField(max_length=100, blank=True, default="")
     tags = models.ManyToManyField(Tag, blank=True, related_name="recipes")
+    # "Porsjoner" (ST-1231): how many portions the ingredients make; null when not given. A day
+    # on the week plan defaults to it.
+    servings = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ("-created_at", "-id")
 
     def __str__(self) -> str:
         return self.title
+
+
+class PlannedDinner(models.Model):
+    """One day's dinner on the household's week plan (ST-1231): a recipe or a short text, never
+    both. One per date. A deleted recipe leaves the day standing with its title kept as
+    `recipe_title`, so the plan still says what was planned."""
+
+    date = models.DateField(unique=True)
+    recipe = models.ForeignKey(
+        Recipe, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    # The recipe's title, kept in step with it (food.services), and all that is left of it once
+    # the recipe is deleted. "" for a text day.
+    recipe_title = models.TextField(blank=True, default="")
+    # "Rester", "Ute og spiser": a day without a recipe. "" for a recipe day.
+    text = models.CharField(max_length=80, blank=True, default="")
+    # Null: the recipe as written (or a text day).
+    portions = models.PositiveSmallIntegerField(null=True, blank=True)
+    set_by = models.ForeignKey(
+        "auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    set_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ("date",)
+        constraints = (
+            models.CheckConstraint(
+                name="dinner_is_a_recipe_or_a_text",
+                condition=(models.Q(text="") & ~models.Q(recipe_title=""))
+                | (~models.Q(text="") & models.Q(recipe_title="") & models.Q(recipe__isnull=True)),
+            ),
+        )
+
+    def __str__(self) -> str:
+        return f"{self.date}: {self.recipe_title or self.text}"
 
 
 class Editor(models.Model):
@@ -111,8 +149,9 @@ class ApiKey(models.Model):
 
 
 class McpChange(models.Model):
-    """One recipe an assistant created or changed through /api/mcp (ST-833): who, through which
-    key (or "Claude app"), which tool, which recipe, when, and which fields. Read in the admin."""
+    """One recipe an assistant created or changed through /api/mcp (ST-833), or one day of the
+    week plan it set or cleared (ST-1231): who, through which key (or "Claude app"), which tool,
+    which recipe, when, and what. Read in the admin."""
 
     at = models.DateTimeField(default=timezone.now, verbose_name="tidspunkt")
     user = models.ForeignKey(
@@ -121,8 +160,9 @@ class McpChange(models.Model):
     # The key's name, or "Claude app" for the app's sign-in (part 2).
     via = models.CharField(max_length=40, verbose_name="via")
     tool = models.CharField(max_length=40, verbose_name="verktøy")
-    # Not a foreign key: the row outlives a recipe deleted on the site.
-    recipe_id = models.IntegerField(verbose_name="oppskrift")
+    # Not a foreign key: the row outlives a recipe deleted on the site. Null for a plan change
+    # without a recipe (a text day, a cleared day).
+    recipe_id = models.IntegerField(null=True, blank=True, verbose_name="oppskrift")
     summary = models.CharField(max_length=200, verbose_name="endret")
 
     class Meta:

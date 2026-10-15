@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models import Count
 
 from food import photos
-from food.models import Recipe, Tag
+from food.models import PlannedDinner, Recipe, Tag
 from food.tags import normalise, normalise_one, sort_names
 
 
@@ -44,9 +44,16 @@ def _drop_unused_tags() -> None:
 
 @transaction.atomic
 def create_recipe(
-    *, title: str, ingredients: str, instructions: str, tags: list[str] | None = None
+    *,
+    title: str,
+    ingredients: str,
+    instructions: str,
+    tags: list[str] | None = None,
+    servings: int | None = None,
 ) -> Recipe:
-    recipe = Recipe.objects.create(title=title, ingredients=ingredients, instructions=instructions)
+    recipe = Recipe.objects.create(
+        title=title, ingredients=ingredients, instructions=instructions, servings=servings
+    )
     _set_tags(recipe, tags or [])
     return recipe
 
@@ -59,14 +66,18 @@ def update_recipe(
     ingredients: str,
     instructions: str,
     tags: list[str] | None = None,
+    servings: int | None = None,
 ) -> Recipe:
-    """An edit replaces the text and the tags; `created_at` stays as it was."""
+    """An edit replaces the text, the portions and the tags; `created_at` stays as it was. The
+    week plan keeps the new title for the days that carry the recipe."""
     recipe.title = title
     recipe.ingredients = ingredients
     recipe.instructions = instructions
-    recipe.save(update_fields=["title", "ingredients", "instructions"])
+    recipe.servings = servings
+    recipe.save(update_fields=["title", "ingredients", "instructions", "servings"])
     _set_tags(recipe, tags or [])
     _drop_unused_tags()
+    PlannedDinner.objects.filter(recipe=recipe).update(recipe_title=title)
     return recipe
 
 

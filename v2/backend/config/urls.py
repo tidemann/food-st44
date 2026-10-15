@@ -41,6 +41,10 @@ urlpatterns: list[URLPattern | URLResolver] = [
     re_path(r"^assistent/nokler/\d+/slett/?$", spa),
     # The Claude app's approval step (ST-834); food.oauth sends the browser here.
     re_path(r"^assistent/godkjenn/?$", spa),
+    # The week plan (ST-1231) and one day of it. The SPA shows "Ingen tilgang" to non-editors;
+    # the plan itself only comes from /api/plan, which refuses them.
+    re_path(r"^ukeplan/?$", spa),
+    re_path(r"^ukeplan/\d{4}-\d{2}-\d{2}/?$", spa),
     # Recipe photos (food.photos), stored next to the database rather than built into the image.
     path("photos/<str:name>", photo),
     # Anything else that is not API or a static file is the SPA's "page not found".
