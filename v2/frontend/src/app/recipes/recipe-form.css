@@ -61,12 +61,12 @@
 
 .preview {
   border: 1px solid var(--rule);
-  padding: 22px 26px;
+  padding: 24px 28px;
 }
 
 @media (width <= 760px) {
   .preview {
-    padding: 16px 18px;
+    padding: 18px 20px;
   }
 }
 
