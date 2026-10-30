@@ -178,6 +178,7 @@ def test_search_recipes_is_the_sites_search(client: Client, recipes: list[Recipe
         {
             "id": recipes[0].id,
             "title": "Kjøttkaker",
+            "description": "",
             "tags": ["middag"],
             "link": f"https://food.st44.no/recipes/{recipes[0].id}",
         }

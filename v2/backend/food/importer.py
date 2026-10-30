@@ -18,13 +18,14 @@ import ssl
 import time
 import zlib
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from html.parser import HTMLParser
 from http.client import HTTPConnection, HTTPException, HTTPResponse
 from urllib.parse import SplitResult, urljoin, urlsplit
 
 from django.conf import settings
 
+from food import description
 from food.reader import UNREADABLE, Draft
 
 BAD_URL = "Skriv inn hele lenken til oppskriften, for eksempel https://www.matprat.no/…"
@@ -247,12 +248,21 @@ def import_link(url: str) -> Draft:
 
 
 class _JsonLdScripts(HTMLParser):
+    """The page's JSON-LD blocks, and its <meta> description for when the recipe has none."""
+
     def __init__(self) -> None:
         super().__init__()
         self.blocks: list[str] = []
+        self.meta_description = ""
         self._current: list[str] | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "meta":
+            meta = dict(attrs)
+            name = (meta.get("name") or meta.get("property") or "").strip().lower()
+            if name in ("description", "og:description") and not self.meta_description:
+                self.meta_description = meta.get("content") or ""
+            return
         if tag != "script":
             return
         kind = dict(attrs).get("type") or ""
@@ -339,15 +349,43 @@ def _without_promotion(steps: list[str]) -> list[str]:
     return [step for step in steps if not _PROMOTION.search(step)]
 
 
+_SENTENCE_END = re.compile(r"[.!?…](?=\s|$)")
+
+
+def _intro(value: object) -> str:
+    """A page's intro as the recipe's description (ST-1937): its formatting kept where
+    food.description allows it, the rest removed. One that is too long loses its formatting
+    and is cut after the last whole sentence that fits; "" when not even one fits."""
+    if not isinstance(value, str):
+        return ""
+    # Some sites send their HTML escaped ("&lt;p&gt;"); the cleaner sees real tags either way.
+    cleaned = description.clean(html.unescape(value))
+    plain = description.text(cleaned)
+    if len(plain) <= description.MAX_CHARS:
+        return cleaned
+    ends = [end.end() for end in _SENTENCE_END.finditer(plain, 0, description.MAX_CHARS)]
+    return html.escape(plain[: ends[-1]], quote=False) if ends else ""
+
+
 def from_html(page: str) -> Draft:
     """The first schema.org Recipe in the page's JSON-LD that has ingredients or steps. When
     there is none, the recipe is read from the page's visible text (`from_page_text`), titled
-    with the JSON-LD name if there was one. UNREADABLE when neither has ingredients or steps."""
+    with the JSON-LD name if there was one. UNREADABLE when neither has ingredients or steps.
+
+    The description is the recipe's own, or else the page's <meta> description."""
     parser = _JsonLdScripts()
     parser.feed(page)
     parser.close()
+    draft = _read(page, parser.blocks)
+    if not draft.readable:
+        return draft
+    intro = _intro(draft.description) or _intro(parser.meta_description)
+    return replace(draft, description=intro)
+
+
+def _read(page: str, blocks: list[str]) -> Draft:
     title = ""
-    for block in parser.blocks:
+    for block in blocks:
         try:
             # strict=False: raw newlines inside strings are common and harmless.
             data = json.loads(block, strict=False)
@@ -355,12 +393,14 @@ def from_html(page: str) -> Draft:
             continue
         for recipe in _recipes(data):
             ingredients = recipe.get("recipeIngredient", recipe.get("ingredients"))
+            intro = recipe.get("description")
             draft = Draft(
                 title=_one_line(recipe.get("name")),
                 ingredients="\n".join(_ingredients(ingredients)),
                 instructions="\n".join(
                     _without_promotion(_steps(recipe.get("recipeInstructions")))
                 ),
+                description=intro if isinstance(intro, str) else "",
             )
             if draft.ingredients or draft.instructions:
                 return draft

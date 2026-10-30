@@ -171,6 +171,7 @@ def test_fake_fills_the_draft_and_saves_nothing_but_the_count(
         "title": "Sveler",
         "ingredients": reader.FakeReader.DRAFT.ingredients,
         "instructions": reader.FakeReader.DRAFT.instructions,
+        "description": "",
     }
     assert "2 egg" in draft["ingredients"].splitlines()
     assert not Recipe.objects.exists()
@@ -209,6 +210,7 @@ def test_a_photo_with_nothing_on_it_could_not_be_read(
         "title": "",
         "ingredients": "",
         "instructions": "",
+        "description": "",
     }
     assert PhotoRead.objects.get().outcome == PhotoRead.Outcome.UNREADABLE
 
@@ -262,6 +264,7 @@ def test_openai_compatible_sends_the_photo_and_returns_the_draft(
         "title": "Mormors kjøttkaker",
         "ingredients": "600 g kjøttdeig\n1 ts salt\n1 egg",
         "instructions": "Bland alt.\nForm kakene og stek dem.",
+        "description": "",
     }
     assert provider.request is not None
     assert provider.request.full_url == BASE_URL + "/chat/completions"
@@ -457,6 +460,7 @@ def test_anthropic_sends_the_photo_as_an_image_block_and_returns_the_draft(
         "title": "Fiskeboller i hvit saus",
         "ingredients": "1 boks fiskeboller\n2 ss smør\n2 ss hvetemel",
         "instructions": "Lag sausen.\nVarm fiskebollene i sausen.",
+        "description": "",
     }
     # One try within the timeout: the SDK's own retries would take the editor past 30 s.
     assert claude.options == {"api_key": "sk-ant-test", "timeout": 25.0, "max_retries": 0}
@@ -554,7 +558,12 @@ def test_an_anthropic_answer_cut_short_is_a_provider_error(
 TEXT_URL = "/api/recipes/import-text"
 PASTED = "Vafler\n\nIngredienser\n4 egg\n5 dl melk\n\nSlik gjør du\nStek dem gylne."
 # What food.importer.split_text makes of PASTED: the fallback.
-SPLIT = {"title": "Vafler", "ingredients": "4 egg\n5 dl melk", "instructions": "Stek dem gylne."}
+SPLIT = {
+    "title": "Vafler",
+    "ingredients": "4 egg\n5 dl melk",
+    "instructions": "Stek dem gylne.",
+    "description": "",
+}
 
 
 def read_text(client: Client, text: str = PASTED) -> "Response":
@@ -575,6 +584,7 @@ def test_text_through_the_fake_provider_is_read_by_ai_and_counted(
         "title": draft.title,
         "ingredients": draft.ingredients,
         "instructions": draft.instructions,
+        "description": "",
         "read_by": "ai",
         "notice": "",
     }

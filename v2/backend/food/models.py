@@ -26,6 +26,9 @@ class Recipe(models.Model):
     # "Porsjoner" (ST-1231): how many portions the ingredients make; null when not given. A day
     # on the week plan defaults to it.
     servings = models.PositiveSmallIntegerField(null=True, blank=True)
+    # "Beskrivelse" (ST-1937): a few sentences under the title, as HTML that food.description
+    # has cleaned. "" when the recipe has none.
+    description = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ("-created_at", "-id")
