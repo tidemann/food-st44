@@ -28,7 +28,8 @@ class Recipe(models.Model):
     servings = models.PositiveSmallIntegerField(null=True, blank=True)
     # "Beskrivelse" (ST-1937): a few sentences under the title, as HTML that food.description
     # has cleaned. "" when the recipe has none.
-    description = models.TextField(blank=True, default="")
+    # db_default: a rollback to code without the field can still add recipes.
+    description = models.TextField(blank=True, default="", db_default="")
 
     class Meta:
         ordering = ("-created_at", "-id")

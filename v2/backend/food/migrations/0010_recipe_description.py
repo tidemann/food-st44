@@ -10,6 +10,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="recipe",
             name="description",
-            field=models.TextField(blank=True, default=""),
+            field=models.TextField(blank=True, db_default="", default=""),
         ),
     )
