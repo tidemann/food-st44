@@ -27,6 +27,7 @@
   display: inline-block;
   font-family: var(--ui);
   font-size: 13px;
+  line-height: 19px;
   color: var(--ink);
   background: var(--tint);
   border: 1px solid var(--rule);

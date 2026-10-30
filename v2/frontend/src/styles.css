@@ -254,15 +254,20 @@ a {
   font-family: var(--disp);
   font-style: italic;
   font-size: 20px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--ink);
-  max-width: 26.5em;
+}
+
+/* The measure sits on the blocks, not the container: the form's preview box carries this class
+   and stays as wide as the textarea above it. */
+.recipe-description > * {
+  max-width: 26em;
 }
 
 .recipe-description p,
 .recipe-description ul,
 .recipe-description ol {
-  margin: 0 0 0.75em;
+  margin: 0 0 1em;
 }
 
 .recipe-description > :last-child {
@@ -293,16 +298,18 @@ a {
 
 .recipe-description li {
   position: relative;
-  padding-left: 1.2em;
-  margin: 0 0 0.3em;
+  padding-left: 1.4em;
+  margin: 0 0 0.2em;
 }
 
+/* Bodoni's en dash is a hairline at this size; the marker is a drawn bar instead. */
 .recipe-description ul > li::before {
-  content: '–';
+  content: '';
   position: absolute;
   left: 0;
-  color: var(--soft);
-  font-style: normal;
+  top: 0.85em;
+  width: 0.6em;
+  border-top: 1px solid var(--soft);
 }
 
 .recipe-description ol {
@@ -317,7 +324,7 @@ a {
   color: var(--soft);
   font-style: normal;
   font-size: 0.85em;
-  line-height: 1.75;
+  line-height: 1.88;
 }
 
 .recipe-description a {
@@ -329,7 +336,7 @@ a {
 
 @media (width <= 760px) {
   .recipe-description {
-    font-size: 18px;
+    font-size: 17px;
   }
 }
 
