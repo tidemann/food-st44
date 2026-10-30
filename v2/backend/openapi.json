@@ -128,7 +128,7 @@
     "/api/recipes": {
       "get": {
         "operationId": "list_recipes",
-        "summary": "The collection, newest first; `q` searches the titles, `tag` keeps one emneord",
+        "summary": "The collection, newest first; `q` searches titles and descriptions, `tag` keeps one emneord",
         "parameters": [
           {
             "in": "query",
@@ -1340,6 +1340,14 @@
             ],
             "title": "Servings"
           },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "description_text": {
+            "title": "Description Text",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1356,6 +1364,8 @@
           "photo_url",
           "tags",
           "servings",
+          "description",
+          "description_text",
           "title",
           "ingredients"
         ],
@@ -1412,6 +1422,11 @@
               }
             ],
             "title": "Servings"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
           }
         },
         "required": [
@@ -1452,13 +1467,18 @@
           "instructions": {
             "title": "Instructions",
             "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
           }
         },
         "required": [
           "readable",
           "title",
           "ingredients",
-          "instructions"
+          "instructions",
+          "description"
         ],
         "title": "RecipeDraftOut",
         "type": "object"
@@ -1495,6 +1515,10 @@
             "title": "Instructions",
             "type": "string"
           },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
           "read_by": {
             "enum": [
               "ai",
@@ -1513,6 +1537,7 @@
           "title",
           "ingredients",
           "instructions",
+          "description",
           "read_by",
           "notice"
         ],

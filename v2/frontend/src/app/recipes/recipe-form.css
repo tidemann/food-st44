@@ -13,6 +13,63 @@
   }
 }
 
+/* Beskrivelse (ST-1937): the tags it may use as small tinted chips, a counter, a preview. */
+.allowed {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.allowed code {
+  display: inline-block;
+  font-family: var(--ui);
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--ink);
+  background: var(--tint);
+  border: 1px solid var(--rule);
+  padding: 3px 9px;
+}
+
+/* The chips stand between the hint and the field: the error summary's jump must clear them. */
+.allowed + textarea {
+  scroll-margin-top: 170px;
+}
+
+.count {
+  margin: 7px 0 0;
+  font-size: 12px;
+  color: var(--soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.count.over {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.preview-label {
+  margin: 22px 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.preview {
+  border: 1px solid var(--rule);
+  padding: 24px 28px;
+}
+
+@media (width <= 760px) {
+  .preview {
+    padding: 18px 20px;
+  }
+}
+
 /* Porsjoner (ST-1231): a short number field, as on the week plan's day page. Two classes, so the
    narrow width beats the full-width .field input in styles.css. */
 .field.num input {

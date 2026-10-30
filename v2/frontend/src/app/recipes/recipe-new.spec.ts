@@ -26,6 +26,7 @@ describe('RecipeNew', () => {
       );
       expect([...el.querySelectorAll('label')].map(text)).toEqual([
         'Tittel',
+        'Beskrivelse (valgfritt)',
         'Emneord (valgfritt)',
         'Porsjoner (valgfritt)',
         'Ingredienser',
@@ -87,6 +88,7 @@ describe('RecipeNew', () => {
         instructions: '',
         tags: [],
         servings: null,
+        description: '',
       });
       reject(request, { title: TITLE_ERROR });
       await harness.fixture.whenStable();
@@ -153,6 +155,8 @@ describe('RecipeNew', () => {
         instructions: '',
         created_at: '2026-10-04T10:00:00Z',
         photo_url: null,
+        description: '',
+        description_text: '',
         tags: [],
         servings: null,
       };

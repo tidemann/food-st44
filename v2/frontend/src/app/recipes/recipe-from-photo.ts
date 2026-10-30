@@ -186,14 +186,14 @@ export class RecipeFromPhoto {
     const body = new FormData();
     body.append('photo', file);
     this.reading = this.http.post<RecipeDraft>(READING_URL, body).subscribe({
-      next: ({ readable, title, ingredients, instructions }) => {
+      next: ({ readable, title, ingredients, instructions, description }) => {
         this.reading = null;
         this.step.set(
           readable
             ? {
                 kind: 'check',
                 file,
-                draft: { title, ingredients, instructions },
+                draft: { title, ingredients, instructions, description },
                 read: formatLong(new Date().toISOString()),
               }
             : { kind: 'unreadable', file },

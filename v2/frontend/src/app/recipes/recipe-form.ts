@@ -13,21 +13,32 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Recipe, RecipeInput, ValidationErrors } from '../api/types';
+import { ALLOWED, cleanDescription, descriptionText, MAX_CHARS } from './description';
 import { type Carried, failureOf } from './load';
 import { PHOTO_NOT_SAVED, type PhotoChange, PhotoStepError, TOO_LARGE } from './photo';
 import { PhotoField, type Rejected } from './photo-field';
 import { TagField } from './tag-field';
 
-/** The API's message per field (§3.2): title and ingredients, the photo (M3), porsjoner. */
+/**
+ * The API's message per field (§3.2): title and ingredients, the photo (M3), porsjoner, the
+ * description (ST-1937).
+ */
 export interface FieldErrors {
   title?: string;
+  description?: string;
   ingredients?: string;
   servings?: string;
   photo?: string;
 }
 
 export function hasErrors(errors: FieldErrors): boolean {
-  return !!(errors.title ?? errors.ingredients ?? errors.servings ?? errors.photo);
+  return !!(
+    errors.title ??
+    errors.description ??
+    errors.ingredients ??
+    errors.servings ??
+    errors.photo
+  );
 }
 
 /** What "Lagre" asks the page to save. */
@@ -42,6 +53,7 @@ export const EMPTY: RecipeInput = {
   instructions: '',
   tags: [],
   servings: null,
+  description: '',
 };
 
 /**
@@ -60,6 +72,7 @@ export function saveFailure(error: unknown): FieldErrors | 'not-found' | 'error'
     const errors = typeof body === 'object' ? (body?.errors ?? {}) : {};
     const found: FieldErrors = {};
     if (errors['title']) found.title = errors['title'];
+    if (errors['description']) found.description = errors['description'];
     if (errors['ingredients']) found.ingredients = errors['ingredients'];
     if (errors['servings']) found.servings = errors['servings'];
     if (errors['photo']) found.photo = errors['photo'];
@@ -100,9 +113,26 @@ export class RecipeForm {
 
   /** Only the fields the API takes, even when `initial` is a whole stored recipe. */
   protected readonly draft = linkedSignal<RecipeInput>(() => {
-    const { title, ingredients, instructions, tags = [], servings = null } = this.initial();
-    return { title, ingredients, instructions, tags, servings };
+    const {
+      title,
+      ingredients,
+      instructions,
+      tags = [],
+      servings = null,
+      description,
+    } = this.initial();
+    return { title, ingredients, instructions, tags, servings, description };
   });
+
+  /** Beskrivelse (ST-1937): the tags it may use, its text length, and the preview. */
+  protected readonly allowed = ALLOWED;
+  protected readonly maxChars = MAX_CHARS;
+  protected readonly descriptionLength = computed(
+    () => descriptionText(this.draft().description).length,
+  );
+  protected readonly over = computed(() => this.descriptionLength() > MAX_CHARS);
+  /** Cleaned as the server will clean it; Angular sanitises it once more when it is shown. */
+  protected readonly preview = computed(() => cleanDescription(this.draft().description));
   protected readonly currentPhoto = computed(() => {
     const initial = this.initial();
     return 'photo_url' in initial ? initial.photo_url : null;
@@ -116,7 +146,11 @@ export class RecipeForm {
   /** Saves refused because a refused file was showing. */
   private readonly refused = signal(0);
   protected readonly summaryTitle = computed(() =>
-    this.photoOnly() && !this.shown().title && !this.shown().ingredients && !this.shown().servings
+    this.photoOnly() &&
+    !this.shown().title &&
+    !this.shown().description &&
+    !this.shown().ingredients &&
+    !this.shown().servings
       ? 'Oppskriften er lagret, men ikke bildet'
       : 'Oppskriften ble ikke lagret',
   );
@@ -135,7 +169,10 @@ export class RecipeForm {
     });
   }
 
-  protected edit(field: 'title' | 'ingredients' | 'instructions', value: string): void {
+  protected edit(
+    field: 'title' | 'description' | 'ingredients' | 'instructions',
+    value: string,
+  ): void {
     this.draft.update((draft) => ({ ...draft, [field]: value }));
   }
 

@@ -32,7 +32,10 @@ tags_router = Router(tags=["tags"])
     "",
     response=list[RecipeOut],
     operation_id="list_recipes",
-    summary="The collection, newest first; `q` searches the titles, `tag` keeps one emneord",
+    summary=(
+        "The collection, newest first; `q` searches titles and descriptions, `tag` keeps one "
+        "emneord"
+    ),
 )
 def list_recipes(request: HttpRequest, q: str = "", tag: str = "") -> list[Recipe]:
     return services.search_recipes(q, tag)

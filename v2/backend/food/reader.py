@@ -78,6 +78,8 @@ class Draft:
     title: str = ""
     ingredients: str = ""  # newline-separated, like Recipe.ingredients
     instructions: str = ""
+    # Only an import from a link fills it in (food.importer): the page's short intro.
+    description: str = ""
 
     @property
     def readable(self) -> bool:

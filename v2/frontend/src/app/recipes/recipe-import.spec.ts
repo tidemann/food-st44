@@ -22,14 +22,22 @@ const DRAFT: RecipeDraft = {
   title: 'Aspargessuppe',
   ingredients: '500 g frisk grønn asparges\n1 stk. løk\n2 dl matfløte',
   instructions: 'Skrell aspargesen.\nKok suppen.',
+  description: '<p>En grønn <strong>vårsuppe</strong>.</p>',
 };
-const UNREADABLE: RecipeDraft = { readable: false, title: '', ingredients: '', instructions: '' };
+const UNREADABLE: RecipeDraft = {
+  readable: false,
+  title: '',
+  ingredients: '',
+  instructions: '',
+  description: '',
+};
 const PASTED = 'Aspargessuppe\n\nIngredienser\n500 g asparges\n\nFremgangsmåte\nKok suppen.';
 const FROM_TEXT: TextDraft = {
   readable: true,
   title: 'Aspargessuppe',
   ingredients: '500 g asparges',
   instructions: 'Kok suppen.',
+  description: '',
   read_by: 'ai',
   notice: '',
 };
@@ -175,6 +183,7 @@ describe('RecipeImport', () => {
         instructions: DRAFT.instructions,
         tags: [],
         servings: null,
+        description: DRAFT.description,
       });
       const created: Recipe = {
         id: 10,
@@ -183,6 +192,8 @@ describe('RecipeImport', () => {
         instructions: DRAFT.instructions,
         created_at: '2026-10-05T10:00:00Z',
         photo_url: null,
+        description: '',
+        description_text: '',
         tags: [],
         servings: null,
       };

@@ -5,7 +5,7 @@ from ninja import ModelSchema, Schema
 from pydantic import Field, field_validator
 from pydantic_core import PydanticCustomError
 
-from food import importer, photos, services
+from food import description, importer, photos, services
 from food.models import Recipe
 from food.tags import normalise as normalise_tags
 
@@ -29,6 +29,9 @@ class RecipeIn(Schema):
     tags: list[str] = Field(default_factory=list)
     # Porsjoner (ST-1231): how many portions the ingredients make. Optional.
     servings: int | None = None
+    # Beskrivelse (ST-1937): optional, a few allowed HTML tags (food.description). Stored as
+    # food.description.clean leaves it; at most 500 characters of text, tags not counted.
+    description: str = ""
 
     @field_validator("title")
     @classmethod
@@ -55,6 +58,15 @@ class RecipeIn(Schema):
     def _servings(cls, value: int | None) -> int | None:
         return _portions(value)
 
+    @field_validator("description")
+    @classmethod
+    def _description(cls, value: str) -> str:
+        value = description.clean(value)
+        over = len(description.text(value)) - description.MAX_CHARS
+        if over > 0:
+            raise PydanticCustomError("too_long", description.too_long(over))
+        return value
+
 
 # Porsjoner, on a recipe and on a day of the week plan: a whole number the form's field allows.
 MAX_PORTIONS = 99
@@ -79,10 +91,18 @@ class RecipeOut(ModelSchema):
     tags: list[str]
     # Porsjoner, or null when the recipe does not say.
     servings: int | None
+    # The description as cleaned HTML (only food.description.TAGS), "" when there is none.
+    description: str
+    # The same as plain text, for the list and the search results.
+    description_text: str
 
     class Meta:
         model = Recipe
         fields = ("id", "title", "ingredients", "instructions", "created_at")
+
+    @staticmethod
+    def resolve_description_text(obj: Recipe) -> str:
+        return description.text(obj.description)
 
     @staticmethod
     def resolve_photo_url(obj: Recipe) -> str | None:
@@ -140,6 +160,8 @@ class RecipeDraftOut(Schema):
     title: str
     ingredients: str  # newline-separated, like RecipeIn
     instructions: str
+    # From a link: the page's own short intro, cleaned like any description. "" otherwise.
+    description: str
 
 
 class ErrorOut(Schema):

@@ -93,8 +93,14 @@ FIELD_NAMES = {
     "instructions": "fremgangsmåte",
     "tags": "emneord",
     "servings": "porsjoner",
+    "description": "beskrivelse",
 }
 SERVINGS = "How many portions the ingredients make (1 to 99). The week plan defaults to it."
+DESCRIPTION = (
+    "A short intro to the recipe, shown under its title: one to three sentences, at most 500 "
+    "characters of text (tags not counted). May use <b>, <strong>, <i>, <em>, <u>, <br>, <p>, "
+    '<ul>, <ol>, <li> and <a href="https://…">; other tags and attributes are removed.'
+)
 
 
 class ToolError(Exception):
@@ -152,7 +158,9 @@ class _Args(BaseModel):
 
 
 class SearchArgs(_Args):
-    query: str = Field("", description="Words in the recipe's title, e.g. «kjøttkaker».")
+    query: str = Field(
+        "", description="Words in the recipe's title or description, e.g. «kjøttkaker»."
+    )
     tag: str = Field("", description="Keep only recipes with this tag (emneord), e.g. «middag».")
 
 
@@ -176,6 +184,7 @@ class CreateArgs(_Args):
         default_factory=list, description="Tags (emneord), lower case, e.g. [«middag», «fisk»]."
     )
     servings: int | None = Field(None, description=SERVINGS + " Leave out if unknown.")
+    description: str = Field("", description=DESCRIPTION)
 
 
 class UpdateArgs(_Args):
@@ -194,6 +203,9 @@ class UpdateArgs(_Args):
     )
     servings: int | None = Field(
         None, description=SERVINGS + " Leave out to keep it; 0 removes it."
+    )
+    description: str | None = Field(
+        None, description=DESCRIPTION + ' Leave out to keep it; "" removes it.'
     )
 
 
@@ -232,6 +244,7 @@ def _summary(recipe: Recipe) -> dict[str, Any]:
     return {
         "id": recipe.id,
         "title": recipe.title,
+        "description": recipe.description,
         "tags": services.tag_names(recipe),
         "link": _link(recipe.id),
     }
@@ -310,6 +323,7 @@ def update_recipe(args: UpdateArgs, caller: Caller) -> dict[str, Any]:
         "instructions": recipe.instructions,
         "tags": services.tag_names(recipe),
         "servings": recipe.servings,
+        "description": recipe.description,
     }
     given = args.model_dump(exclude={"id"}, exclude_none=True)
     if given.get("servings") == 0:
@@ -337,7 +351,10 @@ def import_recipe_from_link(args: ImportArgs, caller: Caller) -> dict[str, Any]:
     if not draft.readable:
         raise ToolError(UNREADABLE)
     valid = _validated(
-        title=draft.title, ingredients=draft.ingredients, instructions=draft.instructions
+        title=draft.title,
+        ingredients=draft.ingredients,
+        instructions=draft.instructions,
+        description=draft.description,
     )
     with transaction.atomic():
         recipe = services.create_recipe(**valid.model_dump())
@@ -440,15 +457,17 @@ TOOLS = {
         Tool(
             "search_recipes",
             "Søk i oppskriftene",
-            "Search the recipes, newest first: by words in the title, by tag, or both. With "
-            "neither, every recipe. Answers ids, titles, tags and links.",
+            "Search the recipes, newest first: by words in the title or description, by tag, or "
+            "both. With neither, every recipe. Answers ids, titles, descriptions, tags and "
+            "links.",
             SearchArgs,
             search_recipes,
         ),
         Tool(
             "get_recipe",
             "Les en oppskrift",
-            "One whole recipe: title, ingredients (one per line), instructions, tags, link.",
+            "One whole recipe: title, description (a little HTML), ingredients (one per line), "
+            "instructions, tags, link.",
             RecipeIdArgs,
             get_recipe,
         ),

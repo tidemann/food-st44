@@ -44,6 +44,10 @@
   margin: 0;
 }
 
+.lede {
+  margin-top: 18px;
+}
+
 .rmeta {
   grid-column: 10/13;
   padding: 36px 0 10px;

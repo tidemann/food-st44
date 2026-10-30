@@ -2,16 +2,19 @@ from django.db import transaction
 from django.db.models import Count
 
 from food import photos
+from food.description import text
 from food.models import PlannedDinner, Recipe, Tag
 from food.tags import normalise, normalise_one, sort_names
 
 
 def search_recipes(q: str = "", tag: str = "") -> list[Recipe]:
-    """Newest first. A non-blank `q` keeps recipes whose title contains it, ignoring case; a
-    non-blank `tag` keeps the ones that carry it. Given both, a recipe must match both.
+    """Newest first. A non-blank `q` keeps recipes whose title or description contains it,
+    ignoring case; a non-blank `tag` keeps the ones that carry it. Given both, a recipe must
+    match both.
 
-    Title only, as on the live site (inventory §3.1). Filtered in Python rather than with
-    `icontains`, because SQLite's LIKE only folds ASCII case and "KJØTT" must find "Kjøttkaker".
+    The description is searched as text (ST-1937), so "strong" does not find every recipe with
+    a bold word. Filtered in Python rather than with `icontains`, because SQLite's LIKE only
+    folds ASCII case and "KJØTT" must find "Kjøttkaker".
     """
     recipes = Recipe.objects.prefetch_related("tags")
     if tag.strip():
@@ -19,7 +22,11 @@ def search_recipes(q: str = "", tag: str = "") -> list[Recipe]:
     needle = q.strip().lower()
     if not needle:
         return list(recipes)
-    return [recipe for recipe in recipes if needle in recipe.title.lower()]
+    return [
+        recipe
+        for recipe in recipes
+        if needle in recipe.title.lower() or needle in text(recipe.description).lower()
+    ]
 
 
 def tags_in_use() -> list[dict[str, object]]:
@@ -50,9 +57,14 @@ def create_recipe(
     instructions: str,
     tags: list[str] | None = None,
     servings: int | None = None,
+    description: str = "",
 ) -> Recipe:
     recipe = Recipe.objects.create(
-        title=title, ingredients=ingredients, instructions=instructions, servings=servings
+        title=title,
+        ingredients=ingredients,
+        instructions=instructions,
+        servings=servings,
+        description=description,
     )
     _set_tags(recipe, tags or [])
     return recipe
@@ -67,6 +79,7 @@ def update_recipe(
     instructions: str,
     tags: list[str] | None = None,
     servings: int | None = None,
+    description: str = "",
 ) -> Recipe:
     """An edit replaces the text, the portions and the tags; `created_at` stays as it was. The
     week plan keeps the new title for the days that carry the recipe."""
@@ -74,7 +87,8 @@ def update_recipe(
     recipe.ingredients = ingredients
     recipe.instructions = instructions
     recipe.servings = servings
-    recipe.save(update_fields=["title", "ingredients", "instructions", "servings"])
+    recipe.description = description
+    recipe.save(update_fields=["title", "ingredients", "instructions", "servings", "description"])
     _set_tags(recipe, tags or [])
     _drop_unused_tags()
     PlannedDinner.objects.filter(recipe=recipe).update(recipe_title=title)

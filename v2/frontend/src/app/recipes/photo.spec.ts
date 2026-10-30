@@ -33,6 +33,8 @@ const lapskaus: Recipe = {
   instructions: '',
   created_at: '2026-10-04T10:00:00Z',
   photo_url: null,
+  description: '',
+  description_text: '',
   servings: null,
   tags: [],
 };

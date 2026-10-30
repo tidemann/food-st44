@@ -8,6 +8,11 @@
             <a href="#title" (click)="jump($event, titleField)">{{ error }}</a>
           </li>
         }
+        @if (shown().description; as error) {
+          <li>
+            <a href="#description" (click)="jump($event, descriptionField)">{{ error }}</a>
+          </li>
+        }
         @if (shown().ingredients; as error) {
           <li>
             <a href="#ingredients" (click)="jump($event, ingredientsField)">{{ error }}</a>
@@ -41,6 +46,50 @@
     />
     @if (shown().title; as error) {
       <p class="field-error" id="title-error">{{ error }}</p>
+    }
+  </div>
+
+  <div class="field" [class.field-invalid]="shown().description">
+    <label for="description">Beskrivelse (valgfritt)</label>
+    <p class="field-hint" id="description-hint">
+      Én til tre setninger om retten. Vises under tittelen og i listene. Du kan formatere teksten
+      med disse:
+    </p>
+    <ul class="allowed" aria-label="Formatering du kan bruke">
+      @for (tag of allowed; track tag) {
+        <li>
+          <code>{{ tag }}</code>
+        </li>
+      }
+    </ul>
+    <textarea
+      #descriptionField
+      id="description"
+      name="description"
+      rows="10"
+      [value]="draft().description"
+      (input)="edit('description', descriptionField.value)"
+      [attr.aria-invalid]="shown().description ? 'true' : null"
+      [attr.aria-describedby]="
+        shown().description
+          ? 'description-hint description-error description-count'
+          : 'description-hint description-count'
+      "
+    ></textarea>
+    @if (shown().description; as error) {
+      <p class="field-error" id="description-error">{{ error }}</p>
+    }
+    <p class="count" id="description-count" [class.over]="over()">
+      {{ descriptionLength() }} av {{ maxChars }} tegn
+    </p>
+    @if (preview(); as html) {
+      <p class="preview-label" id="description-preview-label">Forhåndsvisning</p>
+      <div
+        class="preview recipe-description"
+        role="region"
+        aria-labelledby="description-preview-label"
+        [innerHTML]="html"
+      ></div>
     }
   </div>
 

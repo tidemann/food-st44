@@ -576,6 +576,7 @@ def test_a_page_without_recipe_data_is_not_readable(
         "title": "",
         "ingredients": "",
         "instructions": "",
+        "description": "",
     }
 
 
@@ -745,6 +746,7 @@ def test_the_api_splits_text_by_rules_when_reading_is_off_and_saves_nothing(
         "title": "Vafler",
         "ingredients": "4 egg",
         "instructions": "Stek.",
+        "description": "",
         "read_by": "rules",
         "notice": importer.RULES_READER_OFF,
     }

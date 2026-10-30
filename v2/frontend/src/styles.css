@@ -246,6 +246,100 @@ a {
   color: var(--red);
 }
 
+/* The recipe's description (ST-1937): the lead paragraph under the title on the recipe page,
+   and the form's preview of it. Its HTML is set with [innerHTML], which a component sheet does
+   not reach, so it is styled here. Bodoni italic; bold and emphasis stand upright, since the
+   font has no bold italic. Lists hang on a dash, links are crimson like the breadcrumb's. */
+.recipe-description {
+  font-family: var(--disp);
+  font-style: italic;
+  font-size: 20px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+/* The measure sits on the blocks, not the container: the form's preview box carries this class
+   and stays as wide as the textarea above it. */
+.recipe-description > * {
+  max-width: 26em;
+}
+
+.recipe-description p,
+.recipe-description ul,
+.recipe-description ol {
+  margin: 0 0 20px;
+}
+
+.recipe-description > :last-child {
+  margin-bottom: 0;
+}
+
+.recipe-description b,
+.recipe-description strong {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.recipe-description i,
+.recipe-description em {
+  font-style: normal;
+}
+
+.recipe-description u {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.recipe-description ul,
+.recipe-description ol {
+  padding: 0;
+  list-style: none;
+}
+
+.recipe-description li {
+  position: relative;
+  padding-left: 28px;
+  margin: 0 0 0.2em;
+}
+
+/* Bodoni's en dash is a hairline at this size; the marker is a drawn bar instead. */
+.recipe-description ul > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.8em;
+  width: 12px;
+  border-top: 1px solid var(--soft);
+}
+
+.recipe-description ol {
+  counter-reset: step;
+}
+
+.recipe-description ol > li::before {
+  counter-increment: step;
+  content: counter(step) '.';
+  position: absolute;
+  left: 0;
+  color: var(--soft);
+  font-style: normal;
+  font-size: 0.85em;
+  line-height: 1.88;
+}
+
+.recipe-description a {
+  color: var(--red);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.16em;
+}
+
+@media (width <= 760px) {
+  .recipe-description {
+    font-size: 17px;
+  }
+}
+
 /* form fields: every form on the site — the recipe form, the week plan's day page,
    "Legg til i ukeplan". The label, the hint and the error line have always been here;
    the control itself stood in recipe-form.css, where Angular scopes it to that one
