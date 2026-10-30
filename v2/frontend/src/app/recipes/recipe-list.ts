@@ -7,6 +7,7 @@ import type { Recipe } from '../api/types';
 import { Auth } from '../auth';
 import { Flash } from '../pages/flash';
 import { Site } from '../site';
+import { markTerm } from './description';
 import { pluralise, toCard, toIndex } from './format';
 import { TagLine } from './tag-line';
 import { tagLabel, tagParam } from './tags';
@@ -121,9 +122,15 @@ export class RecipeList {
   protected readonly rest = computed(() => this.cards().slice(4));
   protected readonly restCols = computed(() => Math.min(this.rest().length, 4));
 
-  protected readonly hitCards = computed(() =>
-    this.hits.hasValue() ? this.hits.value().map(toCard) : [],
-  );
+  /** Each hit, with the search term marked in its description (ST-1937). */
+  protected readonly hitCards = computed(() => {
+    if (!this.hits.hasValue()) return [];
+    const term = this.term();
+    return this.hits.value().map((recipe) => {
+      const card = toCard(recipe);
+      return { ...card, marked: markTerm(card.blurb, term) };
+    });
+  });
   protected readonly retryHref = computed(() => {
     const params = new URLSearchParams(this.carried()).toString();
     return params ? `/?${params}` : '/';

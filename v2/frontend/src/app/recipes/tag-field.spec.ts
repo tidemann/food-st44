@@ -127,6 +127,7 @@ describe('TagField (ST-784)', () => {
       instructions: '',
       tags: ['fisk', 'rask mat'],
       servings: null,
+      description: '',
     });
     request.flush({}, { status: 500, statusText: 'Error' });
   });

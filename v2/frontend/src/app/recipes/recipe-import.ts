@@ -186,12 +186,17 @@ export class RecipeImport {
     this.request = this.http.post<RecipeDraft | TextDraft>(url, body).subscribe({
       next: (answer) => {
         this.request = null;
-        const { readable, title, ingredients, instructions } = answer;
+        const { readable, title, ingredients, instructions, description } = answer;
         const readBy = 'read_by' in answer ? answer.read_by : null;
         const notice = 'notice' in answer ? answer.notice : '';
         this.step.set(
           readable
-            ? { kind: 'check', draft: { title, ingredients, instructions }, readBy, notice }
+            ? {
+                kind: 'check',
+                draft: { title, ingredients, instructions, description },
+                readBy,
+                notice,
+              }
             : { kind: 'failed', ...this.words().none },
         );
       },

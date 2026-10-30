@@ -100,7 +100,7 @@ These substitutions were accepted when Søndag was built and still stand:
 | In the picture | On the site | Why |
 |---|---|---|
 | `Kjøtt · 1 t 30 min · Lagt inn av Bestemor Åse` | `15 ingredienser · 18. sep` | No category, time or cook exists. Both of these are true and still scannable. |
-| A written description under the lead dish | One Bodoni italic line: `6 ingredienser, lagt inn 21. september 2026.` | No description field; the line keeps the editorial weight without inventing prose. |
+| A written description under the lead dish | The recipe's own description (ST-1937) as plain text, with `6 ingredienser, lagt inn 21. september 2026.` in small grey type under it. A recipe without one keeps that line alone, in Bodoni italic. | The description is optional; the line keeps the editorial weight without inventing prose. On the recipe page the description is the Bodoni italic lead paragraph (bold and emphasis upright, lists on a dash, links crimson); in the lists and search it is 2–3 lines of plain text, a search hit marked with weight and `--tint`, not crimson. |
 | Five-row facts table on the recipe page | Three rows: ingredients, steps, date added | Only three of the five are knowable. |
 | Ingredients grouped under `Kjøttkaker` / `Brun saus` | One flat list, the amount split into its own column | Groups would be a new feature. The amount column is parsed from the line. |
 | `Høstens rett` kicker | `Sist lagt inn` | Seasonal editing is a person's job; this one is true and explains why that dish is there. |

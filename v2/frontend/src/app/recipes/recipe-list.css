@@ -119,6 +119,48 @@
   color: var(--soft);
 }
 
+/* The description as plain text (ST-1937): two lines in the register and the hits, three under
+   a card, cut off with an ellipsis. */
+.blurb {
+  margin: 0 0 7px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.blurb-3 {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  margin-bottom: 12px;
+}
+
+/* A search hit in the description: weight and a light tint, not crimson. */
+.blurb mark {
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--tint);
+  padding: 0 1px;
+}
+
+.lead-blurb {
+  margin: 0 0 12px;
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 44ch;
+}
+
+.lead-dek.lead-dek-small {
+  font-family: var(--ui);
+  font-style: normal;
+  font-size: 12.5px;
+  color: var(--soft);
+}
+
 /* the alphabetical register with dotted leaders */
 .index {
   margin-top: 34px;
@@ -469,4 +511,8 @@
   .tagband ul {
     gap: 0 22px;
   }
+}
+
+.hits .blurb {
+  font-size: 15px;
 }

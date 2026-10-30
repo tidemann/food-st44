@@ -118,6 +118,8 @@ export interface Card {
   tags: string[];
   /** The dish's photo, or null: the plate stands in for it. */
   photo: string | null;
+  /** Its description as plain text (ST-1937), cut to a few lines by CSS. '' when none. */
+  blurb: string;
 }
 
 export function toCard(recipe: Recipe): Card {
@@ -133,6 +135,7 @@ export function toCard(recipe: Recipe): Card {
     added: formatLong(recipe.created_at),
     photo: recipe.photo_url,
     tags: recipe.tags,
+    blurb: recipe.description_text,
   };
 }
 

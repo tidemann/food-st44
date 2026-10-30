@@ -47,6 +47,10 @@
           <div class="grid">
             <div class="rt">
               <h1>{{ v.recipe.title }}</h1>
+              <!-- ST-1937: cleaned by the server; Angular sanitises it once more. -->
+              @if (v.recipe.description) {
+                <div class="recipe-description lede" [innerHTML]="v.recipe.description"></div>
+              }
             </div>
             <div class="rmeta">
               <dl>

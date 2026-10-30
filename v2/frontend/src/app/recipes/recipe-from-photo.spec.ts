@@ -25,8 +25,15 @@ const DRAFT: RecipeDraft = {
   title: 'Kjøttkaker i brun saus',
   ingredients: '600 g kjøttdeig\n1 dl melk\n2 ss potetmel',
   instructions: 'Bland kjøttdeigen med salt.\n\nForm kaker og brun dem.',
+  description: '',
 };
-const UNREADABLE: RecipeDraft = { readable: false, title: '', ingredients: '', instructions: '' };
+const UNREADABLE: RecipeDraft = {
+  readable: false,
+  title: '',
+  ingredients: '',
+  instructions: '',
+  description: '',
+};
 const TIMED_OUT =
   'Det tok for lang tid å lese bildet. Prøv igjen, eller skriv inn oppskriften selv.';
 const TIPS = [
@@ -253,6 +260,7 @@ describe('RecipeFromPhoto', () => {
         instructions: DRAFT.instructions,
         tags: [],
         servings: null,
+        description: '',
       });
       const created: Recipe = {
         id: 10,
@@ -261,6 +269,8 @@ describe('RecipeFromPhoto', () => {
         instructions: DRAFT.instructions,
         created_at: '2026-10-05T10:00:00Z',
         photo_url: null,
+        description: '',
+        description_text: '',
         tags: [],
         servings: null,
       };
