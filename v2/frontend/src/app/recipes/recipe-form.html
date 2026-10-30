@@ -66,7 +66,7 @@
       #descriptionField
       id="description"
       name="description"
-      rows="7"
+      rows="10"
       [value]="draft().description"
       (input)="edit('description', descriptionField.value)"
       [attr.aria-invalid]="shown().description ? 'true' : null"
