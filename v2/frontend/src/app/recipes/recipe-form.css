@@ -20,17 +20,17 @@
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
 }
 
 .allowed code {
   display: inline-block;
   font-family: var(--ui);
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--ink);
   background: var(--tint);
   border: 1px solid var(--rule);
-  padding: 2px 8px;
+  padding: 3px 9px;
 }
 
 /* The chips stand between the hint and the field: the error summary's jump must clear them. */
@@ -61,14 +61,11 @@
 .preview {
   border: 1px solid var(--rule);
   padding: 22px 26px;
-  max-width: none;
-  font-size: 20px;
 }
 
 @media (width <= 760px) {
   .preview {
     padding: 16px 18px;
-    font-size: 18px;
   }
 }
 

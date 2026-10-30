@@ -253,10 +253,10 @@ a {
 .recipe-description {
   font-family: var(--disp);
   font-style: italic;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.5;
   color: var(--ink);
-  max-width: 34em;
+  max-width: 26.5em;
 }
 
 .recipe-description p,
@@ -329,7 +329,7 @@ a {
 
 @media (width <= 760px) {
   .recipe-description {
-    font-size: 19px;
+    font-size: 18px;
   }
 }
 
