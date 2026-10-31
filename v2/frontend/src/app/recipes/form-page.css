@@ -19,6 +19,13 @@
   color: var(--soft);
 }
 
+/* S-EDIT's "Tilbake til oppskriften" is alone in its paragraph, so WCAG 2.5.8 wants a 24 px
+   target (ST-1984): 14 px of text + 5 + 5. Padding on the inline box widens the hit area
+   without growing the line box, as on the error-summary links (ST-1967). */
+.form-head p a {
+  padding: 5px 0;
+}
+
 .form-head-rule {
   height: 0;
   border-top: 3px solid var(--red);
