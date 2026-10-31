@@ -462,6 +462,14 @@ a {
   margin-top: 14px;
 }
 
+/* each error-summary link is alone on its row, so WCAG 2.5.8 wants a 24 px target (ST-1967):
+   16 px of text + 4 + 4. Padding on the inline box widens the hit area without growing the
+   line box, so the rows keep their pitch; inline-block would push each row down 8 px. It
+   stands here, not with the .alert rules above, because it outranks .recipe-description a. */
+.alert li a {
+  padding: 4px 0;
+}
+
 @media (width <= 760px) {
   .wrap {
     padding: 0 20px;
