@@ -202,7 +202,8 @@
   max-width: 62ch;
 }
 
-.steps-none a {
+.steps-none a,
+.phase-none a {
   color: var(--red);
 }
 
@@ -291,5 +292,138 @@
 
   .step p {
     font-size: 15.5px;
+  }
+}
+
+/* ---------------------------------------------------------------- page ---
+   Method phases.
+   New: the picture has no phases. Built from parts the picture already uses —
+   a small Bodoni italic sub-head on a hairline, and label left / value right
+   on that rule exactly as the facts table and the "Hele samlingen" register.
+
+   The sub-head is drawn as the picture draws a sub-head inside a recipe
+   section: small Bodoni italic, weight 400, on a hairline. The group heading
+   in the tinted panel is the same thing one column over, so the two match;
+   the only difference between them is the colour, and that difference is the
+   picture's. Crimson belongs to the tinted panel, where the picture puts it.
+   In this column crimson is the step numerals — a crimson phase title would
+   stand directly above a crimson 30 px numeral in the same column and read as
+   part of the row of numbers, so the phase title is ink.
+
+   Size: the cap height lands within ~1 px of the group heading's, so one
+   level of the page is drawn one way. 18 px italic gives a 14 px cap against
+   the group heading's 13 px, and both sit well under "Fremgangsmåte" (20 px).
+   The optional time is small Archivo in --soft, right on the same hairline.
+   The step numerals run on through the whole recipe, so "16 steg" in the
+   facts table and step 11 on the page mean the same thing.
+   ------------------------------------------------------------------------ */
+
+.phase + .phase {
+  margin-top: 36px;
+}
+
+.phase-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 24px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.phase-head h3 {
+  font-family: var(--disp);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.25;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A long time wraps to its own line under the title, left-aligned; it never
+   squeezes the title into one word per line. */
+.phase-time {
+  margin: 0;
+  font-size: 12.5px;
+  letter-spacing: 0.05em;
+  color: var(--soft);
+}
+
+/* A phase whose steps have not been written yet. The head alone reads as a
+   page that failed to load, so the phase says so — the idiom the page already
+   uses when the whole method is empty (.steps-none in recipe-detail.css). */
+.phase-none {
+  margin: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 16px;
+  line-height: 1.68;
+  color: var(--soft);
+}
+
+/* ---------------------------------------------------------------- page ---
+   Ingredient groups.
+   The signed-off picture already draws these: a crimson Bodoni italic title on
+   a hairline inside the tinted panel — "Kjøttkaker", "Brun saus",
+   "Til servering". Nothing here is invented; it is the picture restored.
+   An untitled single group renders no <h3> at all, so a simple recipe is
+   byte-for-byte the page it is today.
+   ------------------------------------------------------------------------ */
+
+/* Measured off the signed-off picture at 1280 px, from a local datum (the top
+   of the tinted panel, then group heading to group heading): the heading is
+   17 px — "Kjøttkaker" is 76 px wide in the picture — and the gap from the
+   previous group's last hairline to the next heading is 32 px. */
+.ing-group h3 {
+  font-family: var(--disp);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.25;
+  color: var(--red);
+  margin: 32px 0 0;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--rule);
+
+  /* a pasted title with no spaces must break rather than widen the panel */
+  overflow-wrap: anywhere;
+}
+
+/* The first group sits under the "Ingredienser" heading, not under a list. */
+.ing-group:first-of-type h3 {
+  margin-top: 18px;
+}
+
+/* An untitled group between titled ones is an editor's slip the form stops on
+   save, but the API and the Claude app can still write one. Without the
+   crimson title the list would join the group above with nothing to see, so
+   the group takes an ink hairline where the title would have been. */
+.ing-group + .ing-group:not(:has(h3)) {
+  margin-top: 32px;
+}
+
+.ing-group + .ing-group:not(:has(h3)) > ul {
+  border-top: 1px solid var(--ink);
+}
+
+@media (width <= 760px) {
+  .phase + .phase {
+    margin-top: 28px;
+  }
+
+  /* 17 px italic gives a 13 px cap against the group heading's 12 px here. */
+  .phase-head h3 {
+    font-size: 17px;
+  }
+
+  .ing-group h3 {
+    font-size: 16px;
+    margin-top: 28px;
+  }
+
+  .ing-group:first-of-type h3 {
+    margin-top: 16px;
   }
 }

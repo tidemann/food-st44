@@ -58,7 +58,7 @@ def list_tags(request: HttpRequest) -> list[dict[str, object]]:
     operation_id="create_recipe",
 )
 def create_recipe(request: HttpRequest, payload: RecipeIn) -> Status[Recipe]:
-    return Status(201, services.create_recipe(**payload.model_dump()))
+    return Status(201, services.create_recipe(**payload.to_recipe()))
 
 
 # --- reading a recipe from a photo (food.reader) ---
@@ -190,7 +190,7 @@ def get_recipe(request: HttpRequest, recipe_id: int) -> Recipe:
 )
 def update_recipe(request: HttpRequest, recipe_id: int, payload: RecipeIn) -> Recipe:
     recipe = get_object_or_404(Recipe, pk=recipe_id)
-    return services.update_recipe(recipe, **payload.model_dump())
+    return services.update_recipe(recipe, **payload.to_recipe())
 
 
 @router.delete(

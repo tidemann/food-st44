@@ -138,32 +138,78 @@
         <div class="wrap grid">
           <aside class="ing">
             <h2>Ingredienser</h2>
-            <ul>
-              @for (item of v.ingredients; track $index) {
-                <li [class.li-plain]="!item.amount">
-                  @if (item.amount) {
-                    <b>{{ item.amount }}</b>
+            @if (v.plain) {
+              <ul>
+                @for (item of v.ingredients; track $index) {
+                  <li [class.li-plain]="!item.amount">
+                    @if (item.amount) {
+                      <b>{{ item.amount }}</b>
+                    }
+                    <span>{{ item.name }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <!-- ST-1962: titled groups, as the signed-off Søndag picture drew them. -->
+              @for (group of v.groups; track $index) {
+                <div class="ing-group">
+                  @if (group.title) {
+                    <h3>{{ group.title }}</h3>
                   }
-                  <span>{{ item.name }}</span>
-                </li>
+                  <ul>
+                    @for (item of group.items; track $index) {
+                      <li [class.li-plain]="!item.amount">
+                        @if (item.amount) {
+                          <b>{{ item.amount }}</b>
+                        }
+                        <span>{{ item.name }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
               }
-            </ul>
+            }
           </aside>
 
           <div class="steps">
             <h2>Fremgangsmåte</h2>
-            @for (step of v.steps; track $index) {
-              <div class="step">
-                <span class="n">{{ $index + 1 }}</span>
-                <p>{{ step }}</p>
+            <!-- ST-1962: the steps are numbered through the whole recipe, not per phase. -->
+            @for (phase of v.phases; track $index) {
+              <div class="phase">
+                <div class="phase-head">
+                  <h3>{{ phase.title }}</h3>
+                  @if (phase.time) {
+                    <p class="phase-time">{{ phase.time }}</p>
+                  }
+                </div>
+                @for (step of phase.steps; track $index) {
+                  <div class="step">
+                    <span class="n">{{ phase.start + $index + 1 }}</span>
+                    <p>{{ step }}</p>
+                  </div>
+                } @empty {
+                  <p class="phase-none">
+                    Ingen steg i denne fasen ennå.
+                    @if (editor()) {
+                      <a [routerLink]="['/recipes', v.recipe.id, 'edit']">Skriv dem inn</a>.
+                    }
+                  </p>
+                }
               </div>
             } @empty {
-              <p class="steps-none">
-                Ingen fremgangsmåte er skrevet inn ennå.
-                @if (editor()) {
-                  <a [routerLink]="['/recipes', v.recipe.id, 'edit']">Skriv den inn</a>.
-                }
-              </p>
+              @for (step of v.steps; track $index) {
+                <div class="step">
+                  <span class="n">{{ $index + 1 }}</span>
+                  <p>{{ step }}</p>
+                </div>
+              } @empty {
+                <p class="steps-none">
+                  Ingen fremgangsmåte er skrevet inn ennå.
+                  @if (editor()) {
+                    <a [routerLink]="['/recipes', v.recipe.id, 'edit']">Skriv den inn</a>.
+                  }
+                </p>
+              }
             }
           </div>
         </div>

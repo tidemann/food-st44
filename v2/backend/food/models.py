@@ -30,6 +30,13 @@ class Recipe(models.Model):
     # has cleaned. "" when the recipe has none.
     # db_default: a rollback to code without the field can still add recipes.
     description = models.TextField(blank=True, default="", db_default="")
+    # Ingredient groups and method phases (ST-1962): how `ingredients` and `instructions` are
+    # split, as food.structure writes them. [{"title", "ingredients"}], one untitled group for a
+    # plain list; [{"title", "time", "instructions"}], empty for a method without phases. The
+    # flat fields stay the whole text, so everything that reads them is unchanged. When they no
+    # longer match the flat text (a rollback edited the recipe), food.structure ignores them.
+    ingredient_groups = models.JSONField(default=list, blank=True, db_default=[])
+    phases = models.JSONField(default=list, blank=True, db_default=[])
 
     class Meta:
         ordering = ("-created_at", "-id")

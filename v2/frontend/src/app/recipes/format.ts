@@ -63,7 +63,7 @@ export interface Ingredient {
 }
 
 const UNITS =
-  'g|kg|hg|dl|cl|ml|l|ts|ss|stk|pk|pakke|boks|bokser|glass|pose|poser|neve|never|cm|mm|porsjon|porsjoner';
+  'g|kg|hg|dl|cl|ml|l|ts|ss|stk|pk|pakke|boks|bokser|glass|pose|poser|neve|never|fedd|cm|mm|porsjon|porsjoner';
 const NUMBER = '(?:\\d+(?:[.,]\\d+)?|[¼½¾⅓⅔⅛])';
 // "600 g kjøttdeig av storfe" → amount "600 g", name "kjøttdeig av storfe".
 // "1 liten løk, finrevet" → amount "1". "salt og pepper" → no amount.
@@ -101,6 +101,49 @@ export function stepsFor(instructions: string): string[] {
       .filter(Boolean);
   }
   return parts.map((part) => part.replace(/^\(?\d+[.):]\s+/, '').replace(/\s*\n\s*/g, ' '));
+}
+
+/**
+ * Every step of the recipe, in order (ST-1962): each phase's steps, or the plain method's. The
+ * numbers run through the whole recipe, so "16 steg", step 11 on the page and step 11 in cook
+ * mode are the same step.
+ */
+export function recipeSteps(recipe: Pick<Recipe, 'instructions' | 'phases'>): string[] {
+  return recipe.phases.length
+    ? recipe.phases.flatMap((phase) => stepsFor(phase.instructions))
+    : stepsFor(recipe.instructions);
+}
+
+export interface GroupView {
+  title: string;
+  items: Ingredient[];
+}
+
+export interface PhaseView {
+  title: string;
+  time: string;
+  steps: string[];
+  /** How many steps come before this phase: its first step is number `start + 1`. */
+  start: number;
+}
+
+/** The ingredient groups as the page lists them. */
+export function groupsFor(recipe: Pick<Recipe, 'ingredient_groups'>): GroupView[] {
+  return recipe.ingredient_groups.map((group) => ({
+    title: group.title,
+    items: ingredientsFor(group.ingredients),
+  }));
+}
+
+/** The phases as the page shows them, each knowing where its numbering starts. */
+export function phasesFor(recipe: Pick<Recipe, 'phases'>): PhaseView[] {
+  let start = 0;
+  return recipe.phases.map((phase) => {
+    const steps = stepsFor(phase.instructions);
+    const view = { title: phase.title, time: phase.time, steps, start };
+    start += steps.length;
+    return view;
+  });
 }
 
 /** Everything a card, a register row or the lead needs. */

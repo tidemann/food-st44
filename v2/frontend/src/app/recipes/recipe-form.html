@@ -15,7 +15,12 @@
         }
         @if (shown().ingredients; as error) {
           <li>
-            <a href="#ingredients" (click)="jump($event, ingredientsField)">{{ error }}</a>
+            <a href="#ingredients" (click)="jumpTo($event, 'ingredients')">{{ error }}</a>
+          </li>
+        }
+        @for (error of blockErrors(); track error.id) {
+          <li>
+            <a [href]="'#' + error.id" (click)="jumpTo($event, error.id)">{{ error.text }}</a>
           </li>
         }
         @if (shown().servings; as error) {
@@ -119,43 +124,283 @@
     }
   </div>
 
-  <div class="field" [class.field-invalid]="shown().ingredients">
-    <label for="ingredients">Ingredienser</label>
-    <p class="field-hint" id="ingredients-hint">
-      Én ingrediens per linje. Mengden først: «600 g kjøttdeig».
-    </p>
-    <textarea
-      #ingredientsField
-      id="ingredients"
-      name="ingredients"
-      rows="10"
-      [value]="draft().ingredients"
-      (input)="edit('ingredients', ingredientsField.value)"
-      [attr.aria-invalid]="shown().ingredients ? 'true' : null"
-      [attr.aria-describedby]="
-        shown().ingredients ? 'ingredients-hint ingredients-error' : 'ingredients-hint'
-      "
-    ></textarea>
-    @if (shown().ingredients; as error) {
-      <p class="field-error" id="ingredients-error">{{ error }}</p>
-    }
-  </div>
+  <!-- ST-1962: one list until the editor splits it; then titled groups (ST-1966 §2). -->
+  @if (groups(); as groups) {
+    <section class="blocks" aria-labelledby="groups-heading">
+      <h2 id="groups-heading">Ingredienser</h2>
+      <p class="field-hint">
+        Én ingrediens per linje. Mengden først: «2 ss soyasaus». Linjer uten mengde havner i
+        navnekolonnen.
+      </p>
+      @for (group of groups; track group.key; let i = $index, count = $count) {
+        @let titleError = blockError('group', i, 'title');
+        @let linesError = blockError('group', i, 'ingredients');
+        @let name = groupName(group, i);
+        <div class="block" role="group" [attr.aria-labelledby]="'group-' + i + '-n'">
+          <div class="block-head">
+            <p class="block-n" [id]="'group-' + i + '-n'">Gruppe {{ i + 1 }} av {{ count }}</p>
+            <p class="block-acts">
+              <button
+                class="mini"
+                type="button"
+                [id]="'group-' + i + '-opp'"
+                [attr.aria-disabled]="$first ? 'true' : null"
+                [attr.aria-label]="'Flytt ' + name + ' opp'"
+                (click)="move('group', i, -1)"
+              >
+                Flytt opp
+              </button>
+              <button
+                class="mini"
+                type="button"
+                [id]="'group-' + i + '-ned'"
+                [attr.aria-disabled]="$last ? 'true' : null"
+                [attr.aria-label]="'Flytt ' + name + ' ned'"
+                (click)="move('group', i, 1)"
+              >
+                Flytt ned
+              </button>
+              <button
+                class="mini mini-danger"
+                type="button"
+                [attr.aria-label]="'Fjern ' + name"
+                (click)="remove('group', i)"
+              >
+                Fjern
+              </button>
+            </p>
+          </div>
+          <div class="field" [class.field-invalid]="titleError">
+            <label [for]="'group-' + i + '-title'">Tittel på gruppen</label>
+            <input
+              #groupTitle
+              type="text"
+              [id]="'group-' + i + '-title'"
+              [value]="group.title"
+              (input)="editGroup(i, 'title', groupTitle.value)"
+              [attr.aria-invalid]="titleError ? 'true' : null"
+              [attr.aria-describedby]="titleError ? 'group-' + i + '-title-error' : null"
+            />
+            @if (titleError) {
+              <p class="field-error" [id]="'group-' + i + '-title-error'">{{ titleError }}</p>
+            }
+          </div>
+          <div class="field" [class.field-invalid]="linesError">
+            <label [for]="'group-' + i + '-ingredients'">Ingredienser</label>
+            <textarea
+              #groupLines
+              [id]="'group-' + i + '-ingredients'"
+              [rows]="rowsFor(group.ingredients)"
+              [value]="group.ingredients"
+              (input)="editGroup(i, 'ingredients', groupLines.value)"
+              [attr.aria-invalid]="linesError ? 'true' : null"
+              [attr.aria-describedby]="linesError ? 'group-' + i + '-ingredients-error' : null"
+            ></textarea>
+            @if (linesError) {
+              <p class="field-error" [id]="'group-' + i + '-ingredients-error'">
+                {{ linesError }}
+              </p>
+            }
+          </div>
+        </div>
+      }
+      <div class="blocks-add">
+        <button class="btn" type="button" id="group-add" (click)="add('group')">
+          Legg til gruppe
+        </button>
+      </div>
+      @if (merging() === 'group') {
+        <div class="split-confirm">
+          <span>Titlene på gruppene forsvinner når listene slås sammen.</span>
+          <button class="mini" type="button" id="group-merge-yes" (click)="merge('group')">
+            Slå sammen
+          </button>
+          <button class="mini" type="button" (click)="cancelMerge('group')">Avbryt</button>
+        </div>
+      } @else {
+        <p class="split">
+          <button class="mini" type="button" id="group-merge" (click)="askMerge('group')">
+            Slå sammen til én liste
+          </button>
+          <span class="split-why">Oppskriften får én ingrediensliste uten titler.</span>
+        </p>
+      }
+    </section>
+  } @else {
+    <div class="field" [class.field-invalid]="shown().ingredients">
+      <label for="ingredients">Ingredienser</label>
+      <p class="field-hint" id="ingredients-hint">
+        Én ingrediens per linje. Mengden først: «2 ss soyasaus». Linjer uten mengde havner i
+        navnekolonnen.
+      </p>
+      <textarea
+        #ingredientsField
+        id="ingredients"
+        name="ingredients"
+        rows="10"
+        [value]="draft().ingredients"
+        (input)="edit('ingredients', ingredientsField.value)"
+        [attr.aria-invalid]="shown().ingredients ? 'true' : null"
+        [attr.aria-describedby]="
+          shown().ingredients ? 'ingredients-hint ingredients-error' : 'ingredients-hint'
+        "
+      ></textarea>
+      @if (shown().ingredients; as error) {
+        <p class="field-error" id="ingredients-error">{{ error }}</p>
+      }
+      <p class="split">
+        <button class="mini" type="button" id="group-split" (click)="split('group')">
+          Del opp i grupper
+        </button>
+        <span class="split-why"
+          >Hvis oppskriften har flere lister, for eksempel «Rub» og «Glaze».</span
+        >
+      </p>
+    </div>
+  }
 
-  <div class="field">
-    <label for="instructions">Fremgangsmåte (valgfritt)</label>
-    <p class="field-hint" id="instructions-hint">
-      Ett steg per avsnitt. Stegene nummereres når oppskriften vises.
-    </p>
-    <textarea
-      #instructionsField
-      id="instructions"
-      name="instructions"
-      rows="12"
-      aria-describedby="instructions-hint"
-      [value]="draft().instructions"
-      (input)="edit('instructions', instructionsField.value)"
-    ></textarea>
-  </div>
+  <!-- ST-1962: one method until the editor splits it; then phases with an optional time. -->
+  @if (phases(); as phases) {
+    <section class="blocks" aria-labelledby="phases-heading">
+      <h2 id="phases-heading">Fremgangsmåte</h2>
+      <p class="field-hint">
+        Ett steg per avsnitt. Stegene nummereres fortløpende gjennom hele oppskriften, så steg 11 er
+        det ellevte steget uansett hvilken fase det står i. Tiden er valgfri og står ved siden av
+        fasetittelen, for eksempel «3 timer på 110–120 °C».
+      </p>
+      @for (phase of phases; track phase.key; let i = $index, count = $count) {
+        @let titleError = blockError('phase', i, 'title');
+        @let stepsError = blockError('phase', i, 'instructions');
+        @let name = phaseName(phase, i);
+        <div class="block" role="group" [attr.aria-labelledby]="'phase-' + i + '-n'">
+          <div class="block-head">
+            <p class="block-n" [id]="'phase-' + i + '-n'">Fase {{ i + 1 }} av {{ count }}</p>
+            <p class="block-acts">
+              <button
+                class="mini"
+                type="button"
+                [id]="'phase-' + i + '-opp'"
+                [attr.aria-disabled]="$first ? 'true' : null"
+                [attr.aria-label]="'Flytt ' + name + ' opp'"
+                (click)="move('phase', i, -1)"
+              >
+                Flytt opp
+              </button>
+              <button
+                class="mini"
+                type="button"
+                [id]="'phase-' + i + '-ned'"
+                [attr.aria-disabled]="$last ? 'true' : null"
+                [attr.aria-label]="'Flytt ' + name + ' ned'"
+                (click)="move('phase', i, 1)"
+              >
+                Flytt ned
+              </button>
+              <button
+                class="mini mini-danger"
+                type="button"
+                [attr.aria-label]="'Fjern ' + name"
+                (click)="remove('phase', i)"
+              >
+                Fjern
+              </button>
+            </p>
+          </div>
+          <div class="pair">
+            <div class="field" [class.field-invalid]="titleError">
+              <label [for]="'phase-' + i + '-title'">Tittel på fasen</label>
+              <input
+                #phaseTitle
+                type="text"
+                [id]="'phase-' + i + '-title'"
+                [value]="phase.title"
+                (input)="editPhase(i, 'title', phaseTitle.value)"
+                [attr.aria-invalid]="titleError ? 'true' : null"
+                [attr.aria-describedby]="titleError ? 'phase-' + i + '-title-error' : null"
+              />
+              @if (titleError) {
+                <p class="field-error" [id]="'phase-' + i + '-title-error'">{{ titleError }}</p>
+              }
+            </div>
+            <div class="field">
+              <label [for]="'phase-' + i + '-time'">Tid (valgfritt)</label>
+              <input
+                #phaseTime
+                type="text"
+                [id]="'phase-' + i + '-time'"
+                [value]="phase.time"
+                (input)="editPhase(i, 'time', phaseTime.value)"
+              />
+            </div>
+          </div>
+          <div class="field" [class.field-invalid]="stepsError">
+            <label [for]="'phase-' + i + '-instructions'">Steg</label>
+            <textarea
+              #phaseSteps
+              [id]="'phase-' + i + '-instructions'"
+              [rows]="rowsFor(phase.instructions)"
+              [value]="phase.instructions"
+              (input)="editPhase(i, 'instructions', phaseSteps.value)"
+              [attr.aria-invalid]="stepsError ? 'true' : null"
+              [attr.aria-describedby]="stepsError ? 'phase-' + i + '-instructions-error' : null"
+            ></textarea>
+            @if (stepsError) {
+              <p class="field-error" [id]="'phase-' + i + '-instructions-error'">
+                {{ stepsError }}
+              </p>
+            }
+          </div>
+        </div>
+      }
+      <div class="blocks-add">
+        <button class="btn" type="button" id="phase-add" (click)="add('phase')">
+          Legg til fase
+        </button>
+      </div>
+      @if (merging() === 'phase') {
+        <div class="split-confirm">
+          <span>Titlene og tidene på fasene forsvinner når fasene slås sammen.</span>
+          <button class="mini" type="button" id="phase-merge-yes" (click)="merge('phase')">
+            Slå sammen
+          </button>
+          <button class="mini" type="button" (click)="cancelMerge('phase')">Avbryt</button>
+        </div>
+      } @else {
+        <p class="split">
+          <button class="mini" type="button" id="phase-merge" (click)="askMerge('phase')">
+            Slå sammen til én liste
+          </button>
+          <span class="split-why">Fremgangsmåten blir én liste med steg uten faser.</span>
+        </p>
+      }
+    </section>
+  } @else {
+    <div class="field">
+      <label for="instructions">Fremgangsmåte (valgfritt)</label>
+      <p class="field-hint" id="instructions-hint">
+        Ett steg per avsnitt. Stegene nummereres når oppskriften vises.
+      </p>
+      <textarea
+        #instructionsField
+        id="instructions"
+        name="instructions"
+        rows="12"
+        aria-describedby="instructions-hint"
+        [value]="draft().instructions"
+        (input)="edit('instructions', instructionsField.value)"
+      ></textarea>
+      <p class="split">
+        <button class="mini" type="button" id="phase-split" (click)="split('phase')">
+          Del opp i faser
+        </button>
+        <span class="split-why"
+          >Hvis fremgangsmåten går i etapper, for eksempel «Røyk» og «Glazing».</span
+        >
+      </p>
+    </div>
+  }
+
+  <p class="visually-hidden" id="blocks-status" role="status">{{ status() }}</p>
 
   <app-photo-field
     #photoField

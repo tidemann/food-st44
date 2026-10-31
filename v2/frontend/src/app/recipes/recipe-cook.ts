@@ -19,7 +19,7 @@ import { ServerError } from '../pages/server-error';
 import { Site } from '../site';
 import { stepFrom, Ticks, Timers, type TimerView } from './cook-state';
 import { formatClock, formatSpoken, readTimes, stepParts } from './cook-time';
-import { ingredientsFor, stepsFor } from './format';
+import { ingredientsFor, recipeSteps } from './format';
 import { loadRecipe, parseId } from './load';
 
 /** How far a finger has to travel sideways before it counts as a swipe. */
@@ -62,7 +62,7 @@ export class RecipeCook {
     return {
       recipe,
       ingredients: ingredientsFor(recipe.ingredients),
-      steps: stepsFor(recipe.instructions).map((text) => {
+      steps: recipeSteps(recipe).map((text) => {
         const times = readTimes(text);
         return { text, times, parts: stepParts(text, times) };
       }),

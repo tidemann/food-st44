@@ -32,7 +32,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from food import importer, oauth, plan, services
+from food import importer, oauth, plan, services, structure
 from food.auth import is_editor
 from food.keys import KEY_START, editor_for
 from food.models import McpChange, Recipe
@@ -53,7 +53,11 @@ INSTRUCTIONS = (
     "The household's recipe collection at food.st44.no, in Norwegian. Search and read freely. "
     "Adding, importing and editing need an editor: an editor's key, or the Claude app signed "
     "in with an editor's Google account. Recipes cannot be deleted from here. "
-    "Ingredients are one per line; instructions are paragraphs, one step each. "
+    "Ingredients are one per line; instructions are paragraphs, one step each. A recipe may "
+    "split its ingredients into titled groups (ingredient_groups: «Rub», «Glaze») and its "
+    "method into phases with a title and an optional time (phases: «Røyk», «3 timer på "
+    "110-120 °C»); steps are numbered through the whole recipe. `ingredients` is always "
+    "every line of every group, in order: use it for a shopping list. "
     "Editors also have the household's week plan (ukeplan): one dinner a day, a recipe or a "
     "short text, read with get_meal_plan and changed with set_dinner and clear_dinner."
 )
@@ -176,10 +180,39 @@ class ImportArgs(_Args):
     url: str = Field(description="The web page with the recipe, e.g. https://www.matprat.no/…")
 
 
+class GroupArg(_Args):
+    title: str = Field(
+        "", description="The group's title, e.g. «Glaze». Needed when there are several."
+    )
+    ingredients: str = Field(description="One ingredient per line, amount first.")
+
+
+class PhaseArg(_Args):
+    title: str = Field(description="The phase's title, e.g. «Røyk».")
+    time: str = Field("", description="Optional: how long, e.g. «3 timer på 110-120 °C».")
+    instructions: str = Field(description="The phase's steps, one paragraph per step.")
+
+
+GROUPS = (
+    "The ingredients in titled groups, in order, e.g. [{title: «Rub», ingredients: …}, "
+    "{title: «Glaze», …}]. Instead of ingredients; with several groups each needs a title."
+)
+PHASES = (
+    "The method in phases, in order, each with a title, an optional time and its steps. "
+    "Instead of instructions. Steps are numbered through the whole recipe."
+)
+
+
 class CreateArgs(_Args):
     title: str = Field(description="The recipe's name.")
-    ingredients: str = Field(description="One ingredient per line, amount first: «2 dl melk».")
+    ingredients: str = Field(
+        "",
+        description="One ingredient per line, amount first: «2 dl melk». Or give "
+        "ingredient_groups.",
+    )
+    ingredient_groups: list[GroupArg] | None = Field(None, description=GROUPS)
     instructions: str = Field("", description="The steps, one paragraph per step.")
+    phases: list[PhaseArg] | None = Field(None, description=PHASES)
     tags: list[str] = Field(
         default_factory=list, description="Tags (emneord), lower case, e.g. [«middag», «fisk»]."
     )
@@ -191,10 +224,19 @@ class UpdateArgs(_Args):
     id: int = Field(description="The recipe's id, from search_recipes.")
     title: str | None = Field(None, description="New name. Leave out to keep it.")
     ingredients: str | None = Field(
-        None, description="All ingredients, one per line, replacing the list. Leave out to keep."
+        None,
+        description="All ingredients, one per line, replacing the list and any groups with "
+        "one plain list. Leave out to keep.",
+    )
+    ingredient_groups: list[GroupArg] | None = Field(
+        None, description=GROUPS + " Replaces all the ingredients. Leave out to keep."
     )
     instructions: str | None = Field(
-        None, description="All the steps, replacing them. Leave out to keep them."
+        None,
+        description="All the steps, replacing them and any phases. Leave out to keep them.",
+    )
+    phases: list[PhaseArg] | None = Field(
+        None, description=PHASES + " Replaces the whole method. Leave out to keep it."
     )
     tags: list[str] | None = Field(
         None,
@@ -254,7 +296,9 @@ def _full(recipe: Recipe) -> dict[str, Any]:
     return {
         **_summary(recipe),
         "ingredients": recipe.ingredients,
+        "ingredient_groups": structure.groups_of(recipe),
         "instructions": recipe.instructions,
+        "phases": structure.phases_of(recipe),
         "servings": recipe.servings,
         "created_at": recipe.created_at.isoformat(),
     }
@@ -308,28 +352,45 @@ def create_recipe(args: CreateArgs, caller: Caller) -> dict[str, Any]:
     writer = caller.editor()
     valid = _validated(**args.model_dump())
     with transaction.atomic():
-        recipe = services.create_recipe(**valid.model_dump())
+        recipe = services.create_recipe(**valid.to_recipe())
         _log(writer, "create_recipe", recipe.id, f"ny oppskrift: {recipe.title}")
     return _full(recipe)
 
 
+def _compared(fields: dict[str, Any]) -> dict[str, Any]:
+    """The fields as the change log names them: a regrouping changes "ingredienser"."""
+    return {
+        **fields,
+        "ingredients": (fields["ingredients"], fields["ingredient_groups"]),
+        "instructions": (fields["instructions"], fields["phases"]),
+    }
+
+
 def update_recipe(args: UpdateArgs, caller: Caller) -> dict[str, Any]:
-    """Changes only the fields given: the rest are read back from the recipe first."""
+    """Changes only the fields given: the rest are read back from the recipe first. A plain
+    `ingredients` or `instructions` replaces the groups or the phases as well."""
     writer = caller.editor()
     recipe = _recipe(args.id)
-    before = {
+    current: dict[str, Any] = {
         "title": recipe.title,
         "ingredients": recipe.ingredients,
+        "ingredient_groups": structure.groups_of(recipe),
         "instructions": recipe.instructions,
+        "phases": structure.phases_of(recipe),
         "tags": services.tag_names(recipe),
         "servings": recipe.servings,
         "description": recipe.description,
     }
+    before = _compared(current)
     given = args.model_dump(exclude={"id"}, exclude_none=True)
     if given.get("servings") == 0:
         given["servings"] = None
-    valid = _validated(**{**before, **given}).model_dump()
-    after = {**valid, "tags": sort_names(valid["tags"])}
+    if "ingredients" in given:
+        current["ingredient_groups"] = None
+    if "instructions" in given:
+        current["phases"] = None
+    valid = _validated(**{**current, **given}).to_recipe()
+    after = _compared({**valid, "tags": sort_names(valid["tags"])})
     changed = [name for name in FIELD_NAMES if after[name] != before[name]]
     if changed:
         summary = "endret: " + ", ".join(FIELD_NAMES[name] for name in changed)
@@ -357,7 +418,7 @@ def import_recipe_from_link(args: ImportArgs, caller: Caller) -> dict[str, Any]:
         description=draft.description,
     )
     with transaction.atomic():
-        recipe = services.create_recipe(**valid.model_dump())
+        recipe = services.create_recipe(**valid.to_recipe())
         _log(writer, "import_recipe_from_link", recipe.id, f"hentet fra {url}")
     return _full(recipe)
 
@@ -466,8 +527,8 @@ TOOLS = {
         Tool(
             "get_recipe",
             "Les en oppskrift",
-            "One whole recipe: title, description (a little HTML), ingredients (one per line), "
-            "instructions, tags, link.",
+            "One whole recipe: title, description (a little HTML), ingredients (one per line, "
+            "every group), ingredient_groups, instructions, phases, servings, tags, link.",
             RecipeIdArgs,
             get_recipe,
         ),

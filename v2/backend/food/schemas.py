@@ -1,11 +1,17 @@
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal, Self
 
 from ninja import ModelSchema, Schema
-from pydantic import Field, field_validator
-from pydantic_core import PydanticCustomError
+from pydantic import (
+    Field,
+    ModelWrapValidatorHandler,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+from pydantic_core import InitErrorDetails, PydanticCustomError
 
-from food import description, importer, photos, services
+from food import description, importer, photos, services, structure
 from food.models import Recipe
 from food.tags import normalise as normalise_tags
 
@@ -18,12 +24,95 @@ def _required(value: str, message: str) -> str:
     return value
 
 
-class RecipeIn(Schema):
-    """Create and edit share one rule set (inventory §3.2). Values are stored trimmed."""
+class GroupIn(Schema):
+    """One ingredient group (ST-1962). The title may be empty only when it is the only group."""
+
+    title: str = ""
+    ingredients: str = ""  # one per line
+
+    @field_validator("title", "ingredients")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return value.strip()
+
+
+class PhaseIn(Schema):
+    """One phase of the method (ST-1962): a title, an optional time, at least one step."""
+
+    title: str = ""
+    time: str = ""  # «3 timer på 110-120 °C»; optional
+    instructions: str = ""  # one paragraph per step
+
+    @field_validator("title", "time", "instructions")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return value.strip()
+
+
+class RecipeStructure(Schema):
+    """The ingredients as one list (`ingredients`) or as groups (`ingredient_groups`, which then
+    win), and the method as one text (`instructions`) or as `phases` (ST-1962)."""
+
+    ingredients: str = ""
+    # ST-1962: null or [] for one plain list.
+    ingredient_groups: list[GroupIn] | None = None
+    instructions: str = ""
+    # ST-1962: null or [] for a method without phases.
+    phases: list[PhaseIn] | None = None
+
+    @field_validator("ingredients", "instructions")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return value.strip()
+
+    def groups(self) -> list[structure.Group] | None:
+        if self.ingredient_groups is None:
+            return None
+        return [
+            structure.Group(title=group.title, ingredients=group.ingredients)
+            for group in self.ingredient_groups
+        ]
+
+    def phase_list(self) -> list[structure.Phase] | None:
+        if self.phases is None:
+            return None
+        return [
+            structure.Phase(title=phase.title, time=phase.time, instructions=phase.instructions)
+            for phase in self.phases
+        ]
+
+    def structure_errors(self) -> dict[str, str]:
+        return structure.errors(
+            ingredients=self.ingredients,
+            ingredient_groups=self.groups(),
+            phases=self.phase_list(),
+        )
+
+
+def _error(loc: tuple[str | int, ...], message: str, kind: str) -> InitErrorDetails:
+    return {"type": PydanticCustomError(kind, message), "loc": loc, "input": None}
+
+
+def _loc(key: str) -> tuple[str | int, ...]:
+    """ "phases.1.instructions" -> ("phases", 1, "instructions")."""
+    return tuple(int(part) if part.isdigit() else part for part in key.split("."))
+
+
+def _structure_errors(recipe: RecipeStructure) -> list[InitErrorDetails]:
+    return [
+        _error(_loc(key), message, "structure")
+        for key, message in recipe.structure_errors().items()
+    ]
+
+
+class RecipeIn(RecipeStructure):
+    """Create and edit share one rule set (inventory §3.2). Values are stored trimmed.
+
+    The rules that span fields (food.structure.errors: a plain list or every group needs
+    ingredients, several groups need titles, a phase needs a title and a step) are checked
+    with the others, so one 422 answers them all: a blank title does not hide a group's."""
 
     title: str
-    ingredients: str
-    instructions: str = ""
     # Emneord (ST-784): the whole list, replacing the stored one. Stored as food.tags.normalise
     # leaves it, so "Middag " and "middag" are one tag.
     tags: list[str] = Field(default_factory=list)
@@ -33,20 +122,28 @@ class RecipeIn(Schema):
     # food.description.clean leaves it; at most 500 characters of text, tags not counted.
     description: str = ""
 
+    @model_validator(mode="wrap")
+    @classmethod
+    def _structure(cls, data: object, handler: ModelWrapValidatorHandler[Self]) -> Self:
+        try:
+            recipe = handler(data)
+        except ValidationError as exc:
+            found = [_error(error["loc"], error["msg"], error["type"]) for error in exc.errors()]
+            try:
+                part = RecipeStructure.model_validate(data)
+            except ValidationError:
+                pass  # its own type errors are in `found` already
+            else:
+                found += _structure_errors(part)
+            raise ValidationError.from_exception_data(cls.__name__, found) from None
+        if found := _structure_errors(recipe):
+            raise ValidationError.from_exception_data(cls.__name__, found)
+        return recipe
+
     @field_validator("title")
     @classmethod
     def _title(cls, value: str) -> str:
         return _required(value, "Tittelen må fylles ut.")
-
-    @field_validator("ingredients")
-    @classmethod
-    def _ingredients(cls, value: str) -> str:
-        return _required(value, "Skriv inn minst én ingrediens.")
-
-    @field_validator("instructions")
-    @classmethod
-    def _instructions(cls, value: str) -> str:
-        return value.strip()
 
     @field_validator("tags")
     @classmethod
@@ -67,6 +164,21 @@ class RecipeIn(Schema):
             raise PydanticCustomError("too_long", description.too_long(over))
         return value
 
+    def to_recipe(self) -> dict[str, Any]:
+        """The recipe to save, as food.services takes it: the flat text and its structure."""
+        return {
+            "title": self.title,
+            "tags": self.tags,
+            "servings": self.servings,
+            "description": self.description,
+            **structure.stored(
+                ingredients=self.ingredients,
+                instructions=self.instructions,
+                ingredient_groups=self.groups(),
+                phases=self.phase_list(),
+            ),
+        }
+
 
 # Porsjoner, on a recipe and on a day of the week plan: a whole number the form's field allows.
 MAX_PORTIONS = 99
@@ -77,6 +189,17 @@ def _portions(value: int | None) -> int | None:
     if value is not None and not 1 <= value <= MAX_PORTIONS:
         raise PydanticCustomError("portions", PORTIONS_RANGE)
     return value
+
+
+class GroupOut(Schema):
+    title: str  # "" for the untitled group of a plain list
+    ingredients: str  # one per line
+
+
+class PhaseOut(Schema):
+    title: str
+    time: str  # "" when not given
+    instructions: str  # one paragraph per step
 
 
 class RecipeOut(ModelSchema):
@@ -95,10 +218,23 @@ class RecipeOut(ModelSchema):
     description: str
     # The same as plain text, for the list and the search results.
     description_text: str
+    # ST-1962: the ingredients in groups, at least one; a plain list is one untitled group.
+    # `ingredients` stays every line of every group, in order.
+    ingredient_groups: list[GroupOut]
+    # The method's phases, [] when it has none. `instructions` stays the whole method.
+    phases: list[PhaseOut]
 
     class Meta:
         model = Recipe
         fields = ("id", "title", "ingredients", "instructions", "created_at")
+
+    @staticmethod
+    def resolve_ingredient_groups(obj: Recipe) -> list[structure.Group]:
+        return structure.groups_of(obj)
+
+    @staticmethod
+    def resolve_phases(obj: Recipe) -> list[structure.Phase]:
+        return structure.phases_of(obj)
 
     @staticmethod
     def resolve_description_text(obj: Recipe) -> str:

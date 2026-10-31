@@ -15,6 +15,15 @@ export const READING = '/api/recipes/read-photo';
 
 const at = (day: string): string => `2026-${day}T10:00:00Z`;
 
+/** A plain recipe as the API returns it (ST-1962): its list as one untitled group, no phases. */
+export function plain(recipe: Omit<Recipe, 'ingredient_groups' | 'phases'>): Recipe {
+  return {
+    ...recipe,
+    ingredient_groups: [{ title: '', ingredients: recipe.ingredients }],
+    phases: [],
+  };
+}
+
 /** Newest first, as the API returns them. */
 export const SEED: Recipe[] = [
   {
@@ -89,7 +98,7 @@ export const SEED: Recipe[] = [
     tags: ['kjøtt', 'middag', 'suppe'],
     servings: null,
   },
-];
+].map(plain);
 
 /** The tags SEED carries, as GET /api/tags answers: in Norwegian order, with counts. */
 export const TAGS: Tag[] = [
