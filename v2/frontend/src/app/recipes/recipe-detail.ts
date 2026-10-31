@@ -16,7 +16,7 @@ import { NotFound } from '../pages/not-found';
 import { ServerError } from '../pages/server-error';
 import { dayLong, portionsLabel } from '../plan/plan';
 import { type Added, PlanPick } from '../plan/plan-pick';
-import { formatLong, ingredientsFor, stepsFor } from './format';
+import { formatLong, groupsFor, ingredientsFor, phasesFor, recipeSteps } from './format';
 import { carry, loadRecipe } from './load';
 import { tagLabel } from './tags';
 
@@ -60,7 +60,11 @@ export class RecipeDetail {
     return {
       recipe,
       ingredients: ingredientsFor(recipe.ingredients),
-      steps: stepsFor(recipe.instructions),
+      steps: recipeSteps(recipe),
+      // ST-1962: one untitled group is the plain list, drawn exactly as before groups existed.
+      groups: groupsFor(recipe),
+      plain: recipe.ingredient_groups.length === 1 && !recipe.ingredient_groups[0]?.title,
+      phases: phasesFor(recipe),
       added: formatLong(recipe.created_at),
       tags: recipe.tags.map((name) => ({ name, label: tagLabel(name) })),
       servings: recipe.servings ? portionsLabel(recipe.servings) : '',

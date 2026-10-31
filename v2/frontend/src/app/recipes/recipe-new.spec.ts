@@ -2,7 +2,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import type { Recipe } from '../api/types';
-import { answer, open, openHarness, page, setUp, text, title } from '../../testing/app';
+import { plain, answer, open, openHarness, page, setUp, text, title } from '../../testing/app';
 import { field, fill, navigation, reject, submit, submitButton } from '../../testing/form';
 
 const TITLE_ERROR = 'Tittelen må fylles ut.';
@@ -148,7 +148,7 @@ describe('RecipeNew', () => {
       const el = page(harness);
       fill(el, 'title', 'Lapskaus');
       fill(el, 'ingredients', '500 g storfekjøtt');
-      const created: Recipe = {
+      const created: Recipe = plain({
         id: 10,
         title: 'Lapskaus',
         ingredients: '500 g storfekjøtt',
@@ -159,7 +159,7 @@ describe('RecipeNew', () => {
         description_text: '',
         tags: [],
         servings: null,
-      };
+      });
       const navigated = navigation();
       submit(el, 'POST', '/api/recipes').flush(created, { status: 201, statusText: 'Created' });
       expect((await navigated).url).toBe('/recipes/10?flash=created');

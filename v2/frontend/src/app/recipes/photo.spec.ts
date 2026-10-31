@@ -2,6 +2,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { Recipe } from '../api/types';
 import {
+  plain,
   answer,
   open,
   openHarness,
@@ -26,7 +27,7 @@ import { formatSize, NOT_AN_IMAGE, PHOTO_NOT_SAVED, photoProblem, TOO_LARGE } fr
 const PHOTO_URL = '/photos/10-abc.webp';
 const SERVER_NOT_AN_IMAGE = 'Filen er ikke et bilde. Velg et JPEG-, PNG- eller WEBP-bilde.';
 
-const lapskaus: Recipe = {
+const lapskaus: Recipe = plain({
   id: 10,
   title: 'Lapskaus',
   ingredients: '500 g storfekjøtt',
@@ -37,7 +38,7 @@ const lapskaus: Recipe = {
   description_text: '',
   servings: null,
   tags: [],
-};
+});
 const withPhoto = (recipe: Recipe, photo_url: string | null = PHOTO_URL): Recipe => ({
   ...recipe,
   photo_url,

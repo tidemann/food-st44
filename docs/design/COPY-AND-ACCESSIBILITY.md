@@ -97,7 +97,7 @@ purpose; the built string wins, because it is what a reader sees:
 | Back to list: `← Oppskrifter` | breadcrumb `Oppskrifter / «Tittel»`, no arrow | Søndag's recipe page is an article with a breadcrumb, not a page with a back button. The link is crimson (guide §1). |
 | Add: `+ Ny oppskrift` | `Ny oppskrift`, no plus | Plain text links in the nav rule; no icons or glyphs in Søndag's chrome. |
 | Add, from empty state: `+ Legg til den første oppskriften` | `Legg til den første oppskriften`, no plus | Same reason. |
-| Ingredients hint: `Én ingrediens per linje.` | `Én ingrediens per linje. Mengden først: «600 g kjøttdeig».` | The amount is parsed into its own column (guide §2), so the form has to ask for it in that order. |
+| Ingredients hint: `Én ingrediens per linje.` | `Én ingrediens per linje. Mengden først: «2 ss soyasaus». Linjer uten mengde havner i navnekolonnen.` | The amount is parsed into its own column (guide §2), so the form has to ask for it in that order (wording from ST-1966). |
 | `<title>`: `Oppskrifter — food.st44.no` | front page `food.st44.no — familiens oppskrifter`; search `Søk: «term» — food.st44.no`; recipe `«Tittel» — food.st44.no`; delete `Slett «Tittel»? — food.st44.no`; 500 `Noe gikk galt — food.st44.no` | The MVP never had search or a delete page as their own routes. |
 
 **Screens built after ST-233 are not covered by the table.** Sign-in (`Logg inn`, `Logg ut`,
@@ -107,6 +107,33 @@ import from a link, recipe from a photo) carry their own Norwegian copy in their
 holds to the same rules — bokmål, informal `dere`, no exclamation marks, no English — but it has
 not been through a copy review as one set. If you touch those screens, read the template; if you
 add a label that other screens will want, add it here.
+
+### 1.2 Ingredient groups and method phases (ST-1962)
+
+The texts the ST-1966 design set for groups and phases, on the recipe page and the form. The
+summary lines name the block, because «Tittel på gruppen» is on every group; the line under the
+field is the API's message.
+
+| Place | Text |
+|---|---|
+| Ingredients hint (plain list and groups) | Én ingrediens per linje. Mengden først: «2 ss soyasaus». Linjer uten mengde havner i navnekolonnen. |
+| Method hint, with phases | Ett steg per avsnitt. Stegene nummereres fortløpende gjennom hele oppskriften, så steg 11 er det ellevte steget uansett hvilken fase det står i. Tiden er valgfri og står ved siden av fasetittelen, for eksempel «3 timer på 110–120 °C». |
+| Block ordinal | `Gruppe 2 av 4` · `Fase 3 av 6` |
+| Fields | `Tittel på gruppen` · `Ingredienser` · `Tittel på fasen` · `Tid (valgfritt)` · `Steg` |
+| Actions | `Flytt opp` · `Flytt ned` · `Fjern`, each labelled with its block: `Flytt gruppen «Glaze» opp`, `Fjern fase 2` while it has no title |
+| Add | `Legg til gruppe` · `Legg til fase` |
+| Split (plain recipe) | `Del opp i grupper` — Hvis oppskriften har flere lister, for eksempel «Rub» og «Glaze». · `Del opp i faser` — Hvis fremgangsmåten går i etapper, for eksempel «Røyk» og «Glazing». |
+| Merge | `Slå sammen til én liste` — Oppskriften får én ingrediensliste uten titler. / Fremgangsmåten blir én liste med steg uten faser. |
+| Merge, confirm | Titlene på gruppene forsvinner når listene slås sammen. / Titlene og tidene på fasene forsvinner når fasene slås sammen. — `Slå sammen` · `Avbryt` |
+| Status line (screen readers) | `Gruppen «Glaze» er flyttet opp, til nummer 2.` · `Gruppe 3 er lagt til.` · `Fasen «Røyk» er fjernet.` · `Gruppene er slått sammen til én liste.` |
+| Empty phase on the page | Ingen steg i denne fasen ennå. Skriv dem inn. |
+| Error, group title | Under the field: Gruppen må ha en tittel når oppskriften har flere grupper. Summary: Gruppe 2 må ha en tittel når oppskriften har flere grupper. |
+| Error, phase without steps | Under the field: Skriv inn minst ett steg, eller fjern fasen. Summary: Fase 2 «Røyk» må ha minst ett steg. |
+| Error, group without ingredients | Under the field: Skriv inn minst én ingrediens, eller fjern gruppen. Summary: Gruppe 2 «Glaze» må ha minst én ingrediens. |
+| Error, phase without a title | Under the field: Fasen må ha en tittel. Summary: Fase 2 må ha en tittel. |
+
+The last two errors and the phases' merge confirmation are not in the ST-1966 text table: they
+follow its two errors and the groups' confirmation.
 
 ---
 

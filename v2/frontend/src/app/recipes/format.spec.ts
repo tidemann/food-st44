@@ -1,4 +1,5 @@
 import type { Recipe } from '../api/types';
+import { plain } from '../../testing/app';
 import {
   formatLong,
   formatMastheadDate,
@@ -59,7 +60,7 @@ describe('format', () => {
   });
 
   it('builds a card and sorts the register with Æ Ø Å last', () => {
-    const recipe: Recipe = {
+    const recipe: Recipe = plain({
       id: 9,
       title: 'Kjøttkaker',
       ingredients: '1 egg\n2 dl melk',
@@ -70,7 +71,7 @@ describe('format', () => {
       description_text: '',
       servings: null,
       tags: [],
-    };
+    });
     const card = toCard(recipe);
     expect(card.meta).toBe('2 ingredienser · 2. okt');
     expect(card.added).toBe('2. oktober 2026');

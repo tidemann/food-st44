@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import type { RouterTestingHarness } from '@angular/router/testing';
 import type { Recipe, RecipeDraft, TextDraft } from '../api/types';
 import {
+  plain,
   answer,
   open,
   openHarness,
@@ -185,7 +186,7 @@ describe('RecipeImport', () => {
         servings: null,
         description: DRAFT.description,
       });
-      const created: Recipe = {
+      const created: Recipe = plain({
         id: 10,
         title: 'Aspargessuppe med urter',
         ingredients: DRAFT.ingredients,
@@ -196,7 +197,7 @@ describe('RecipeImport', () => {
         description_text: '',
         tags: [],
         servings: null,
-      };
+      });
       const navigated = navigation();
       request.flush(created, { status: 201, statusText: 'Created' });
       expect((await navigated).url).toBe('/recipes/10?flash=created');

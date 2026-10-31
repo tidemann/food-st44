@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import type { Me, Recipe, RecipeDraft } from '../api/types';
 import {
+  plain,
   answer,
   EDITOR,
   open,
@@ -262,7 +263,7 @@ describe('RecipeFromPhoto', () => {
         servings: null,
         description: '',
       });
-      const created: Recipe = {
+      const created: Recipe = plain({
         id: 10,
         title: 'Kjøttkaker i brun saus (mormor)',
         ingredients: '600 g kjøttdeig\n1 dl melk\n3 ss potetmel',
@@ -273,7 +274,7 @@ describe('RecipeFromPhoto', () => {
         description_text: '',
         tags: [],
         servings: null,
-      };
+      });
       const navigated = navigation();
       request.flush(created, { status: 201, statusText: 'Created' });
       // No photo request follows: the form's own photo field was left empty.

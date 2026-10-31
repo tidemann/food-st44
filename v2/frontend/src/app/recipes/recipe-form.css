@@ -77,3 +77,188 @@
   font-variant-numeric: tabular-nums;
   min-height: var(--tap);
 }
+
+/* ---------------------------------------------------------------- form ---
+   A group or a phase on the edit form is a block on the paper, not a card:
+   one hairline over it, the ordinal and its three actions on that line.
+   role="group" + aria-labelledby rather than fieldset/legend, so the ordinal
+   and the actions can share a line without floating a <legend>.
+   ------------------------------------------------------------------------ */
+
+.blocks {
+  margin-bottom: 26px;
+}
+
+.blocks > h2 {
+  font-family: var(--disp);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+.block {
+  padding: 16px 0 2px;
+  border-top: 1px solid var(--rule);
+}
+
+.block:first-of-type {
+  border-top-width: 3px;
+  border-top-color: var(--ink);
+}
+
+.block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 24px;
+  margin-bottom: 16px;
+}
+
+.block-n {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.block-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+}
+
+/* Inside a block the fields stand closer: they are one group, not a form. */
+.block .field {
+  margin-bottom: 18px;
+}
+
+/* A phase's title and its time are one thought, so they share a line and the
+   time field is short — a full-width field would promise a paragraph. On a
+   phone they stack, title first. */
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 26px;
+}
+
+.pair > .field {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.pair > .field + .field {
+  flex: 0 1 17rem;
+}
+
+/* ---------------------------------------------------------------- form ---
+   .mini — a text action on a rule, the nav band's idiom (app.css .who-link),
+   not a button with a border. Used for move / remove / split / merge.
+   The 44 px target grows where it cannot be seen, exactly as in the nav band
+   (guide §5): a transparent --tap-tall ::after, out of flow, centred on the
+   label. The type and the rule stay where they are. It grows 6 px each side
+   and the gaps are 20 px, so two neighbours can never take each other's taps.
+   ------------------------------------------------------------------------ */
+
+.mini {
+  position: relative;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 0 0 3px;
+  margin: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mini::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: calc(50% - var(--tap) / 2);
+  height: var(--tap);
+}
+
+.mini:hover {
+  border-bottom-color: var(--ink);
+}
+
+/* Removing is the one dangerous action here, so it is outlined in crimson —
+   the "Slett" idiom of the recipe page, in this smaller type. */
+.mini-danger,
+.mini-danger:hover {
+  color: var(--red);
+  border-bottom-color: var(--red);
+}
+
+/* First and last: the move stays in the row so the row does not jump and the
+   other two actions do not move under the reader's finger. It is disabled and
+   reads as unavailable by more than colour — the rule is gone and
+   aria-disabled is set. --soft on --paper is 7.1:1. It keeps its 44 px band,
+   so the hit geometry of the row is the same whatever position a block is in.
+   aria-disabled, not [disabled]: the button stays in the tab order, so a
+   keyboard reader still meets it and hears that it is unavailable. */
+.mini[aria-disabled='true'] {
+  color: var(--soft);
+  border-bottom-color: transparent;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------- form ---
+   Splitting and merging. A recipe is one list and one method until the editor
+   says otherwise, so the new machinery is not in the way of Fårikål
+   (progressive disclosure). Merging is the undo, and it asks first, because
+   the group titles do not come back.
+   ------------------------------------------------------------------------ */
+
+.split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  margin: 18px 0 0;
+}
+
+.split-why {
+  font-size: 12.5px;
+  color: var(--soft);
+}
+
+.split-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 18px;
+  margin: 12px 0 0;
+  padding: 12px 18px;
+  background: var(--tint);
+  border-left: 3px solid var(--red);
+  font-size: 13px;
+}
+
+.blocks-add {
+  margin-top: 18px;
+}
+
+@media (width <= 760px) {
+  .blocks > h2 {
+    font-size: 22px;
+  }
+
+  /* The row of actions keeps its 44 px bands clear of each other when it wraps. */
+  .block-acts {
+    gap: 14px 20px;
+  }
+}

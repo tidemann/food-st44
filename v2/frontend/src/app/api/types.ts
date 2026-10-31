@@ -45,3 +45,11 @@ export type PlanDay = components['schemas']['PlanDayOut'];
 export type DinnerInput = components['schemas']['DinnerIn'];
 /** `POST /api/plan/{day}/move`: the two days after a move or a swap. */
 export type PlanMove = components['schemas']['MoveOut'];
+/** ST-1962: an ingredient group as read; a plain list is one group with an empty title. */
+export type IngredientGroup = components['schemas']['GroupOut'];
+/** ST-1962: a phase of the method as read: title, optional time (''), its steps. */
+export type Phase = components['schemas']['PhaseOut'];
+/** ST-1962: a group as the form sends it. The title may be empty only for a single group. */
+export type IngredientGroupInput = components['schemas']['GroupIn'];
+/** ST-1962: a phase as the form sends it. */
+export type PhaseInput = components['schemas']['PhaseIn'];
