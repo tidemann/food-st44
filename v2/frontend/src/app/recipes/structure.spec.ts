@@ -270,7 +270,7 @@ describe('ingredient groups and phases (ST-1962)', () => {
 
     it('sizes a field to its text', () => {
       expect(rowsFor('')).toBe(3);
-      expect(rowsFor('a\nb\nc\nd')).toBe(5);
+      expect(rowsFor('a\nb\nc\nd')).toBe(4);
     });
 
     it('names an untitled block by its number', () => {

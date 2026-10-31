@@ -25,6 +25,10 @@ describe('format', () => {
     expect(splitIngredient('1,5 dl melk')).toEqual({ amount: '1,5 dl', name: 'melk' });
     expect(splitIngredient('½ ts pepper')).toEqual({ amount: '½ ts', name: 'pepper' });
     expect(splitIngredient('1 ½ dl makaroni')).toEqual({ amount: '1 ½ dl', name: 'makaroni' });
+    expect(splitIngredient('1 fedd hvitløk, finrevet')).toEqual({
+      amount: '1 fedd',
+      name: 'hvitløk, finrevet',
+    });
     expect(splitIngredient('2–3 SS. smør')).toEqual({ amount: '2–3 SS', name: 'smør' });
     expect(splitIngredient('salt og pepper')).toEqual({ amount: '', name: 'salt og pepper' });
   });

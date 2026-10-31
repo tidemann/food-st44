@@ -138,6 +138,13 @@
   margin-bottom: 18px;
 }
 
+/* A group's or a phase's text field is as tall as its text (never under the 7em of every
+   textarea), as in ST-1966 picture 4: a short group is not a tall empty box. Where
+   field-sizing is not supported, `rows` (one per line) does nearly the same. */
+.block textarea {
+  field-sizing: content;
+}
+
 /* A phase's title and its time are one thought, so they share a line and the
    time field is short — a full-width field would promise a paragraph. On a
    phone they stack, title first. */

@@ -65,9 +65,12 @@ export function mergePhases(phases: readonly PhaseBlock[]): string {
     .join('\n\n');
 }
 
-/** A field's height follows its text, so a short group is not a tall empty box. */
+/**
+ * One row per line: the fallback where CSS field-sizing does not size the field to its text
+ * (ST-1966 picture 4).
+ */
 export function rowsFor(text: string, min = 3): number {
-  return Math.max(min, text.split('\n').length + 1);
+  return Math.max(min, text.split('\n').length);
 }
 
 /** «gruppen «Glaze»», or «gruppe 2» while it has no title: for labels and the status line. */

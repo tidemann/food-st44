@@ -63,7 +63,7 @@ export interface Ingredient {
 }
 
 const UNITS =
-  'g|kg|hg|dl|cl|ml|l|ts|ss|stk|pk|pakke|boks|bokser|glass|pose|poser|neve|never|cm|mm|porsjon|porsjoner';
+  'g|kg|hg|dl|cl|ml|l|ts|ss|stk|pk|pakke|boks|bokser|glass|pose|poser|neve|never|fedd|cm|mm|porsjon|porsjoner';
 const NUMBER = '(?:\\d+(?:[.,]\\d+)?|[¼½¾⅓⅔⅛])';
 // "600 g kjøttdeig av storfe" → amount "600 g", name "kjøttdeig av storfe".
 // "1 liten løk, finrevet" → amount "1". "salt og pepper" → no amount.
