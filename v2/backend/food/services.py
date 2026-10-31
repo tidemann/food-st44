@@ -4,6 +4,7 @@ from django.db.models import Count
 from food import photos
 from food.description import text
 from food.models import PlannedDinner, Recipe, Tag
+from food.structure import Group, Phase, stored
 from food.tags import normalise, normalise_one, sort_names
 
 
@@ -58,13 +59,20 @@ def create_recipe(
     tags: list[str] | None = None,
     servings: int | None = None,
     description: str = "",
+    ingredient_groups: list[Group] | None = None,
+    phases: list[Phase] | None = None,
 ) -> Recipe:
+    """Groups and phases (ST-1962) win over the flat text when given; see food.structure."""
     recipe = Recipe.objects.create(
         title=title,
-        ingredients=ingredients,
-        instructions=instructions,
         servings=servings,
         description=description,
+        **stored(
+            ingredients=ingredients,
+            instructions=instructions,
+            ingredient_groups=ingredient_groups,
+            phases=phases,
+        ),
     )
     _set_tags(recipe, tags or [])
     return recipe
@@ -80,15 +88,33 @@ def update_recipe(
     tags: list[str] | None = None,
     servings: int | None = None,
     description: str = "",
+    ingredient_groups: list[Group] | None = None,
+    phases: list[Phase] | None = None,
 ) -> Recipe:
-    """An edit replaces the text, the portions and the tags; `created_at` stays as it was. The
-    week plan keeps the new title for the days that carry the recipe."""
+    """An edit replaces the text, its groups and phases, the portions and the tags;
+    `created_at` stays as it was. The week plan keeps the new title for the days that carry the
+    recipe."""
     recipe.title = title
-    recipe.ingredients = ingredients
-    recipe.instructions = instructions
     recipe.servings = servings
     recipe.description = description
-    recipe.save(update_fields=["title", "ingredients", "instructions", "servings", "description"])
+    for name, value in stored(
+        ingredients=ingredients,
+        instructions=instructions,
+        ingredient_groups=ingredient_groups,
+        phases=phases,
+    ).items():
+        setattr(recipe, name, value)
+    recipe.save(
+        update_fields=[
+            "title",
+            "ingredients",
+            "ingredient_groups",
+            "instructions",
+            "phases",
+            "servings",
+            "description",
+        ]
+    )
     _set_tags(recipe, tags or [])
     _drop_unused_tags()
     PlannedDinner.objects.filter(recipe=recipe).update(recipe_title=title)

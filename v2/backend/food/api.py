@@ -33,7 +33,14 @@ def validation_errors(request: HttpRequest, exc: ValidationError) -> HttpRespons
     """422 as food.schemas.ValidationErrors: {"errors": {"<field>": "<first message>"}}."""
     errors: dict[str, str] = {}
     for error in exc.errors:
-        # loc is e.g. ("body", "payload", "title") or ("query", "q"); the field is the last name.
-        names = [part for part in error["loc"] if isinstance(part, str)]
-        errors.setdefault(names[-1] if names else "", str(error["msg"]))
+        loc = tuple(error["loc"])
+        if loc[:1] == ("body",) and len(loc) > 2:
+            # ("body", "payload", "phases", 1, "instructions"): the path in the body, so a
+            # group's or a phase's field (ST-1962) is told from the recipe's own.
+            field = ".".join(str(part) for part in loc[2:])
+        else:
+            # ("query", "q"): the last name.
+            names = [part for part in loc if isinstance(part, str)]
+            field = names[-1] if names else ""
+        errors.setdefault(field, str(error["msg"]))
     return api.create_response(request, {"errors": errors}, status=422)

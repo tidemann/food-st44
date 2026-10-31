@@ -1296,6 +1296,47 @@
         "title": "ErrorOut",
         "type": "object"
       },
+      "GroupOut": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "ingredients": {
+            "title": "Ingredients",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "ingredients"
+        ],
+        "title": "GroupOut",
+        "type": "object"
+      },
+      "PhaseOut": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "time": {
+            "title": "Time",
+            "type": "string"
+          },
+          "instructions": {
+            "title": "Instructions",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "time",
+          "instructions"
+        ],
+        "title": "PhaseOut",
+        "type": "object"
+      },
       "RecipeOut": {
         "properties": {
           "id": {
@@ -1348,6 +1389,20 @@
             "title": "Description Text",
             "type": "string"
           },
+          "ingredient_groups": {
+            "items": {
+              "$ref": "#/components/schemas/GroupOut"
+            },
+            "title": "Ingredient Groups",
+            "type": "array"
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/PhaseOut"
+            },
+            "title": "Phases",
+            "type": "array"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1366,6 +1421,8 @@
           "servings",
           "description",
           "description_text",
+          "ingredient_groups",
+          "phases",
           "title",
           "ingredients"
         ],
@@ -1389,20 +1446,88 @@
         "title": "ValidationErrors",
         "type": "object"
       },
-      "RecipeIn": {
-        "description": "Create and edit share one rule set (inventory §3.2). Values are stored trimmed.",
+      "GroupIn": {
+        "description": "One ingredient group (ST-1962). The title may be empty only when it is the only group.",
         "properties": {
           "title": {
+            "default": "",
             "title": "Title",
             "type": "string"
           },
           "ingredients": {
+            "default": "",
             "title": "Ingredients",
+            "type": "string"
+          }
+        },
+        "title": "GroupIn",
+        "type": "object"
+      },
+      "PhaseIn": {
+        "description": "One phase of the method (ST-1962): a title, an optional time, at least one step.",
+        "properties": {
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "time": {
+            "default": "",
+            "title": "Time",
             "type": "string"
           },
           "instructions": {
             "default": "",
             "title": "Instructions",
+            "type": "string"
+          }
+        },
+        "title": "PhaseIn",
+        "type": "object"
+      },
+      "RecipeIn": {
+        "description": "Create and edit share one rule set (inventory §3.2). Values are stored trimmed.\n\nThe rules that span fields (food.structure.errors: a plain list or every group needs\ningredients, several groups need titles, a phase needs a title and a step) are checked\nwith the others, so one 422 answers them all: a blank title does not hide a group's.",
+        "properties": {
+          "ingredients": {
+            "default": "",
+            "title": "Ingredients",
+            "type": "string"
+          },
+          "ingredient_groups": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/GroupIn"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Groups"
+          },
+          "instructions": {
+            "default": "",
+            "title": "Instructions",
+            "type": "string"
+          },
+          "phases": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PhaseIn"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phases"
+          },
+          "title": {
+            "title": "Title",
             "type": "string"
           },
           "tags": {
@@ -1430,8 +1555,7 @@
           }
         },
         "required": [
-          "title",
-          "ingredients"
+          "title"
         ],
         "title": "RecipeIn",
         "type": "object"

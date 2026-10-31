@@ -60,6 +60,8 @@ def test_list_is_newest_first_with_every_field(client: Client) -> None:
         "servings": None,
         "description": "",
         "description_text": "",
+        "ingredient_groups": [{"title": "", "ingredients": "mel\nmelk"}],
+        "phases": [],
     }
     assert titles(client) == ["Sveler", "Lapskaus"]
 
