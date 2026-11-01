@@ -203,6 +203,30 @@
                 }
               </ol>
             </div>
+
+            @if (mealBand().meals.length) {
+              <!-- ST-1968: the meals, a third band in the register's idiom (ST-1970 picture 22). -->
+              <div class="band mal-band">
+                <h2 class="band-head">Måltider</h2>
+                <p class="band-sub">Middager uten oppskrift — bare det dere trenger å handle.</p>
+                <ul class="maltider">
+                  @for (meal of mealBand().meals; track meal.id) {
+                    <li>
+                      <a [routerLink]="['/maltider', meal.id]">
+                        <span class="t">{{ meal.title }}</span>
+                        <span class="ldr" aria-hidden="true"></span>
+                        <span class="m">{{ meal.items }}</span>
+                      </a>
+                    </li>
+                  }
+                </ul>
+                @if (mealBand().all; as all) {
+                  <p class="mal-band-all">
+                    <a routerLink="/maltider">{{ all }}</a>
+                  </p>
+                }
+              </div>
+            }
           </div>
         </div>
       </section>

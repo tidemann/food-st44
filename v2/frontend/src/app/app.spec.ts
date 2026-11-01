@@ -90,9 +90,11 @@ describe('App chrome', () => {
 
   it('marks "Oppskrifter" as the current page on the list, searched or not', async () => {
     const el = await render('/');
-    const [list, add] = [...el.querySelectorAll('.mast-nav a')];
+    const [list, meals, add] = [...el.querySelectorAll('.mast-nav a')];
     expect(text(list)).toBe('Oppskrifter');
     expect(list?.getAttribute('aria-current')).toBe('page');
+    expect(meals?.getAttribute('href')).toBe('/maltider');
+    expect(meals?.hasAttribute('aria-current')).toBe(false);
     expect(add?.getAttribute('href')).toBe('/recipes/new');
     expect(add?.hasAttribute('aria-current')).toBe(false);
   });

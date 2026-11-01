@@ -44,7 +44,7 @@
                 [disabled]="busy()"
                 (click)="save(c.day.date, c.column.week)"
               >
-                Bytt til {{ recipe().title }}
+                Bytt til {{ dish().title }}
               </button>
               <button class="btn" type="button" (click)="confirming.set(null)">Avbryt</button>
             </div>
@@ -82,26 +82,30 @@
           </div>
         }
       </div>
-      <div class="field num" [class.field-invalid]="error()">
-        <label for="porsjoner">Porsjoner</label>
-        <p class="field-hint" id="porsjoner-hint">{{ portionsHint() }}</p>
-        <input
-          #portionsInput
-          type="number"
-          id="porsjoner"
-          name="porsjoner"
-          min="1"
-          max="99"
-          inputmode="numeric"
-          [value]="portions() ?? ''"
-          (input)="setPortions(portionsInput.value)"
-          [attr.aria-invalid]="error() ? 'true' : null"
-          [attr.aria-describedby]="error() ? 'porsjoner-hint porsjoner-error' : 'porsjoner-hint'"
-        />
-        @if (error(); as message) {
-          <p class="field-error" id="porsjoner-error">{{ message }}</p>
-        }
-      </div>
+      @if (isRecipe()) {
+        <div class="field num" [class.field-invalid]="error()">
+          <label for="porsjoner">Porsjoner</label>
+          <p class="field-hint" id="porsjoner-hint">{{ portionsHint() }}</p>
+          <input
+            #portionsInput
+            type="number"
+            id="porsjoner"
+            name="porsjoner"
+            min="1"
+            max="99"
+            inputmode="numeric"
+            [value]="portions() ?? ''"
+            (input)="setPortions(portionsInput.value)"
+            [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-describedby]="error() ? 'porsjoner-hint porsjoner-error' : 'porsjoner-hint'"
+          />
+          @if (error(); as message) {
+            <p class="field-error" id="porsjoner-error">{{ message }}</p>
+          }
+        </div>
+      } @else if (error(); as message) {
+        <p class="field-error" role="alert">{{ message }}</p>
+      }
     }
   }
 </div>

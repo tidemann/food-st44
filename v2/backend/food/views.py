@@ -5,13 +5,14 @@ from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.utils.html import escape
 
 from food import photos
-from food.models import Recipe
+from food.models import Meal, Recipe
 
 SITE = "food.st44.no"
 
 # The same two sentences as the client-side 404 page (and v1's), so a crawler that runs no JS
 # sees the title a browser ends up with.
 RECIPE_NOT_FOUND = f"Fant ikke oppskriften — {SITE}"
+MEAL_NOT_FOUND = f"Fant ikke måltidet — {SITE}"
 PAGE_NOT_FOUND = f"Siden finnes ikke — {SITE}"
 
 _TITLE = re.compile(r"<title>.*?</title>", re.DOTALL)
@@ -78,6 +79,26 @@ def recipe_action(request: HttpRequest, raw_id: str) -> HttpResponse:
     """`/recipes/<id>/edit` and `/delete`: 404 when there is no such recipe."""
     if _find(raw_id) is None:
         return _index(RECIPE_NOT_FOUND, status=404)
+    return _index()
+
+
+def _find_meal(raw_id: str) -> Meal | None:
+    meal_id = parse_id(raw_id)
+    return Meal.objects.filter(pk=meal_id).first() if meal_id is not None else None
+
+
+def meal_detail(request: HttpRequest, raw_id: str) -> HttpResponse:
+    """`/maltider/<id>` (ST-1968), with the <title> the page sets (meal-detail.ts)."""
+    meal = _find_meal(raw_id)
+    if meal is None:
+        return _index(MEAL_NOT_FOUND, status=404)
+    return _index(f"{meal.title} — {SITE}")
+
+
+def meal_action(request: HttpRequest, raw_id: str) -> HttpResponse:
+    """`/maltider/<id>/rediger` and `/slett`: 404 when there is no such meal."""
+    if _find_meal(raw_id) is None:
+        return _index(MEAL_NOT_FOUND, status=404)
     return _index()
 
 

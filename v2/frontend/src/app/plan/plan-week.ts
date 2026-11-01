@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import type { PlanWeek as Week } from '../api/types';
+import { itemsLabel } from '../meals/meal';
 import { NotFound } from '../pages/not-found';
 import { ServerError } from '../pages/server-error';
 import {
@@ -26,7 +27,8 @@ import {
   selector: 'app-plan-week',
   imports: [RouterLink, NotFound, ServerError],
   templateUrl: './plan-week.html',
-  styleUrl: './ukeplan.css',
+  // maltid.css for the red «Måltid» on a meal day (ST-1968).
+  styleUrls: ['./ukeplan.css', '../meals/maltid.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlanWeek {
@@ -53,6 +55,7 @@ export class PlanWeek {
       today: day.date === week.today,
       empty: isEmpty(day),
       portions: day.portions ? portionsLabel(day.portions) : '',
+      items: day.item_count !== null ? itemsLabel(day.item_count) : '',
     }));
     const empty = days.filter((day) => day.empty);
     return {

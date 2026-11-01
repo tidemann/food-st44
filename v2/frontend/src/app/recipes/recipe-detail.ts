@@ -15,7 +15,7 @@ import { Flash } from '../pages/flash';
 import { NotFound } from '../pages/not-found';
 import { ServerError } from '../pages/server-error';
 import { dayLong, portionsLabel } from '../plan/plan';
-import { type Added, PlanPick } from '../plan/plan-pick';
+import { type Added, type Dish, PlanPick } from '../plan/plan-pick';
 import { formatLong, groupsFor, ingredientsFor, phasesFor, recipeSteps } from './format';
 import { carry, loadRecipe } from './load';
 import { tagLabel } from './tags';
@@ -69,6 +69,12 @@ export class RecipeDetail {
       tags: recipe.tags.map((name) => ({ name, label: tagLabel(name) })),
       servings: recipe.servings ? portionsLabel(recipe.servings) : '',
     };
+  });
+
+  /** What "Legg til i ukeplan" puts on the day. */
+  protected readonly dish = computed<Dish | undefined>(() => {
+    const recipe = this.view()?.recipe;
+    return recipe && { kind: 'recipe', ...recipe };
   });
 
   /** "Legg til i ukeplan" is open (ST-1231). */

@@ -5,12 +5,16 @@ import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import type { Recipe } from '../api/types';
 import { Auth } from '../auth';
+import { allMealsLabel, itemsLabel } from '../meals/meal';
 import { Flash } from '../pages/flash';
 import { Site } from '../site';
 import { markTerm } from './description';
 import { pluralise, toCard, toIndex } from './format';
 import { TagLine } from './tag-line';
 import { tagLabel, tagParam } from './tags';
+
+/** How many meals the front page's band shows (ST-1968). */
+const MEALS_IN_BAND = 4;
 
 type State = 'loading' | 'empty' | 'error' | 'no-hits' | 'hits' | 'front';
 
@@ -35,7 +39,8 @@ function query(q: string, tag: string): { q?: string; tag?: string } {
   selector: 'app-recipe-list',
   imports: [NgOptimizedImage, RouterLink, Flash, TagLine],
   templateUrl: './recipe-list.html',
-  styleUrl: './recipe-list.css',
+  // maltid.css for the band of meals (ST-1968).
+  styleUrls: ['./recipe-list.css', '../meals/maltid.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RecipeList {
@@ -119,6 +124,19 @@ export class RecipeList {
   protected readonly side = computed(() => this.cards().slice(1, 4));
   protected readonly sideSub = computed(() => SIDE_SUB[this.side().length] ?? '');
   protected readonly index = computed(() => toIndex(this.cards()));
+  /** The band of meals under the register (ST-1968, ST-1970 picture 22): the newest four. */
+  protected readonly mealBand = computed(() => {
+    const meals = this.site.meals.hasValue() ? this.site.meals.value() : [];
+    const newest = [...meals].sort(
+      (a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id,
+    );
+    return {
+      meals: newest
+        .slice(0, MEALS_IN_BAND)
+        .map((meal) => ({ id: meal.id, title: meal.title, items: itemsLabel(meal.item_count) })),
+      all: meals.length > MEALS_IN_BAND ? allMealsLabel(meals.length) : '',
+    };
+  });
   protected readonly rest = computed(() => this.cards().slice(4));
   protected readonly restCols = computed(() => Math.min(this.rest().length, 4));
 

@@ -45,21 +45,45 @@ class Recipe(models.Model):
         return self.title
 
 
+class Meal(models.Model):
+    """A "måltid" (ST-1968): a dinner without a recipe, only its name and what to buy for it,
+    e.g. "Toro Tandoori chicken". No steps, no photo, no portions."""
+
+    title = models.TextField()
+    # Newline-separated lines, the same format as Recipe.ingredients: "2 pk naan", "raita".
+    items = models.TextField()
+    # A short line, e.g. how long it stays in the oven. "" when there is none.
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ("title", "id")
+
+    def __str__(self) -> str:
+        return self.title
+
+
 class PlannedDinner(models.Model):
-    """One day's dinner on the household's week plan (ST-1231): a recipe or a short text, never
-    both. One per date. A deleted recipe leaves the day standing with its title kept as
-    `recipe_title`, so the plan still says what was planned."""
+    """One day's dinner on the household's week plan (ST-1231): a recipe, a meal (ST-1968) or a
+    short text, exactly one of them. One per date. A deleted recipe or meal leaves the day
+    standing with its title kept (`recipe_title`, `meal_title`), so the plan still says what was
+    planned."""
 
     date = models.DateField(unique=True)
     recipe = models.ForeignKey(
         Recipe, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     # The recipe's title, kept in step with it (food.services), and all that is left of it once
-    # the recipe is deleted. "" for a text day.
+    # the recipe is deleted. "" for a meal or a text day.
     recipe_title = models.TextField(blank=True, default="")
-    # "Rester", "Ute og spiser": a day without a recipe. "" for a recipe day.
+    meal = models.ForeignKey(
+        Meal, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    # The same for a meal day. db_default: a rollback to code without meals can still set days.
+    meal_title = models.TextField(blank=True, default="", db_default="")
+    # "Rester", "Ute og spiser": a day without a recipe or a meal. "" otherwise.
     text = models.CharField(max_length=80, blank=True, default="")
-    # Null: the recipe as written (or a text day).
+    # Null: the recipe as written, a meal (never scaled) or a text day.
     portions = models.PositiveSmallIntegerField(null=True, blank=True)
     set_by = models.ForeignKey(
         "auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
@@ -70,14 +94,24 @@ class PlannedDinner(models.Model):
         ordering = ("date",)
         constraints = (
             models.CheckConstraint(
-                name="dinner_is_a_recipe_or_a_text",
-                condition=(models.Q(text="") & ~models.Q(recipe_title=""))
-                | (~models.Q(text="") & models.Q(recipe_title="") & models.Q(recipe__isnull=True)),
+                name="dinner_is_a_recipe_a_meal_or_a_text",
+                condition=(
+                    ~models.Q(recipe_title="") & models.Q(meal_title="", meal__isnull=True, text="")
+                )
+                | (
+                    ~models.Q(meal_title="")
+                    & models.Q(recipe_title="", recipe__isnull=True, text="", portions__isnull=True)
+                )
+                | (
+                    ~models.Q(text="")
+                    & models.Q(recipe_title="", recipe__isnull=True, meal_title="")
+                    & models.Q(meal__isnull=True)
+                ),
             ),
         )
 
     def __str__(self) -> str:
-        return f"{self.date}: {self.recipe_title or self.text}"
+        return f"{self.date}: {self.recipe_title or self.meal_title or self.text}"
 
 
 class Editor(models.Model):
@@ -160,9 +194,10 @@ class ApiKey(models.Model):
 
 
 class McpChange(models.Model):
-    """One recipe an assistant created or changed through /api/mcp (ST-833), or one day of the
-    week plan it set or cleared (ST-1231): who, through which key (or "Claude app"), which tool,
-    which recipe, when, and what. Read in the admin."""
+    """One recipe an assistant created or changed through /api/mcp (ST-833), one day of the
+    week plan it set or cleared (ST-1231), or one meal it saved or deleted (ST-1968): who,
+    through which key (or "Claude app"), which tool, which recipe or meal, when, and what. Read
+    in the admin."""
 
     at = models.DateTimeField(default=timezone.now, verbose_name="tidspunkt")
     user = models.ForeignKey(
@@ -174,6 +209,8 @@ class McpChange(models.Model):
     # Not a foreign key: the row outlives a recipe deleted on the site. Null for a plan change
     # without a recipe (a text day, a cleared day).
     recipe_id = models.IntegerField(null=True, blank=True, verbose_name="oppskrift")
+    # The same for a meal (ST-1968).
+    meal_id = models.IntegerField(null=True, blank=True, verbose_name="måltid")
     summary = models.CharField(max_length=200, verbose_name="endret")
 
     class Meta:

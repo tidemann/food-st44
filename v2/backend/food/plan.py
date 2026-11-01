@@ -1,4 +1,5 @@
-"""The household's week plan (ST-1231): one dinner a day, a recipe or a short text.
+"""The household's week plan (ST-1231): one dinner a day, a recipe, a meal (ST-1968) or a
+short text.
 
 The plan is private on an open site: every endpoint here, reads included, needs an editor
 (`editor_auth`, 403 for anyone else), and so do the MCP plan tools (food.mcp). The rules live
@@ -17,7 +18,7 @@ from ninja import Router, Status
 from ninja.errors import HttpError
 
 from food.auth import editor_auth
-from food.models import PlannedDinner, Recipe
+from food.models import Meal, PlannedDinner, Recipe
 from food.schemas import (
     MAX_PORTIONS,
     PORTIONS_RANGE,
@@ -36,10 +37,12 @@ WEEKDAYS = ("mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søn
 TEXT_MAX_CHARS = 80
 
 BAD_WEEK = "Uken må se ut som 2026-W43 (eller en dato som 2026-10-22)."
-RECIPE_OR_TEXT = "Velg en oppskrift eller skriv en kort tekst, ikke begge."
+RECIPE_OR_TEXT = "Velg en oppskrift, et måltid eller en kort tekst, bare én av dem."
 NO_TEXT = "Skriv en kort tekst."
 TEXT_TOO_LONG = "Teksten kan være høyst 80 tegn."
 NO_RECIPE = "Fant ingen oppskrift med id {id}."
+NO_MEAL = "Fant ikke noe måltid med id {id}."
+MEAL_PORTIONS = "Et måltid har ingen porsjoner."
 NOTHING_TO_MOVE = "Det er ingen middag å flytte den dagen."
 
 
@@ -90,18 +93,46 @@ def display_name(user: User | None) -> str:
 def day_out(day: date, dinner: PlannedDinner | None) -> dict[str, Any]:
     """A day as the API and MCP send it (food.schemas.PlanDayOut)."""
     recipe = dinner.recipe if dinner else None
+    meal = dinner.meal if dinner else None
     return {
         "date": day,
         "weekday": WEEKDAYS[day.weekday()],
+        "kind": kind_of(dinner),
         "recipe_id": recipe.id if recipe else None,
-        "title": (recipe.title if recipe else dinner.recipe_title) if dinner else "",
+        "meal_id": meal.id if meal else None,
+        "title": _title(dinner),
         "text": dinner.text if dinner else "",
         "portions": dinner.portions if dinner else None,
         "servings": recipe.servings if recipe else None,
+        "item_count": len(item_lines(meal.items)) if meal else None,
         "recipe_deleted": bool(dinner and dinner.recipe_title and recipe is None),
+        "meal_deleted": bool(dinner and dinner.meal_title and meal is None),
         "set_by": display_name(dinner.set_by) if dinner else "",
         "set_at": dinner.set_at if dinner else None,
     }
+
+
+def kind_of(dinner: PlannedDinner | None) -> str | None:
+    if dinner is None:
+        return None
+    if dinner.recipe_title:
+        return "recipe"
+    return "meal" if dinner.meal_title else "text"
+
+
+def _title(dinner: PlannedDinner | None) -> str:
+    if dinner is None:
+        return ""
+    if dinner.recipe:
+        return dinner.recipe.title
+    if dinner.meal:
+        return dinner.meal.title
+    return dinner.recipe_title or dinner.meal_title
+
+
+def item_lines(items: str) -> list[str]:
+    """A meal's items, or a recipe's ingredients: one per non-blank line."""
+    return [line.strip() for line in items.splitlines() if line.strip()]
 
 
 def read_days(start: date, count: int) -> list[dict[str, Any]]:
@@ -110,7 +141,7 @@ def read_days(start: date, count: int) -> list[dict[str, Any]]:
     dinners = {
         dinner.date: dinner
         for dinner in PlannedDinner.objects.filter(date__range=(start, end)).select_related(
-            "recipe", "set_by"
+            "recipe", "meal", "set_by"
         )
     }
     return [day_out(day, dinners.get(day)) for day in _dates(start, count)]
@@ -139,24 +170,34 @@ def read_week(monday: date) -> dict[str, Any]:
 
 
 def get_day(day: date) -> dict[str, Any]:
-    dinner = PlannedDinner.objects.select_related("recipe", "set_by").filter(date=day).first()
+    dinner = (
+        PlannedDinner.objects.select_related("recipe", "meal", "set_by").filter(date=day).first()
+    )
     return day_out(day, dinner)
 
 
 @dataclass(frozen=True)
 class Dinner:
-    """What a day is set to, checked: a recipe, or a text."""
+    """What a day is set to, checked: a recipe, a meal, or a text."""
 
     recipe: Recipe | None
     text: str
     portions: int | None
+    meal: Meal | None = None
 
 
-def check(*, recipe_id: int | None, text: str | None, portions: int | None) -> Dinner:
+def check(
+    *,
+    recipe_id: int | None = None,
+    meal_id: int | None = None,
+    text: str | None = None,
+    portions: int | None = None,
+) -> Dinner:
     """The rules for one day's dinner. A recipe without portions gets the recipe's porsjoner; a
-    text day has no portions."""
-    if recipe_id is not None and text is not None and text.strip():
-        raise PlanError("text", RECIPE_OR_TEXT)
+    meal and a text day have no portions."""
+    has_text = text is not None and bool(text.strip())
+    if (recipe_id is not None) + (meal_id is not None) + has_text > 1:
+        raise PlanError("text" if has_text else "meal_id", RECIPE_OR_TEXT)
     if portions is not None and not 1 <= portions <= MAX_PORTIONS:
         raise PlanError("portions", PORTIONS_RANGE)
     if recipe_id is not None:
@@ -164,6 +205,13 @@ def check(*, recipe_id: int | None, text: str | None, portions: int | None) -> D
         if recipe is None:
             raise PlanError("recipe_id", NO_RECIPE.format(id=recipe_id))
         return Dinner(recipe, "", portions if portions is not None else recipe.servings)
+    if meal_id is not None:
+        if portions is not None:
+            raise PlanError("portions", MEAL_PORTIONS)
+        meal = Meal.objects.filter(pk=meal_id).first()
+        if meal is None:
+            raise PlanError("meal_id", NO_MEAL.format(id=meal_id))
+        return Dinner(None, "", None, meal)
     if text is None:
         raise PlanError("text", RECIPE_OR_TEXT)
     text = text.strip()
@@ -181,6 +229,8 @@ def set_dinner(day: date, dinner: Dinner, user: User) -> dict[str, Any]:
         defaults={
             "recipe": dinner.recipe,
             "recipe_title": dinner.recipe.title if dinner.recipe else "",
+            "meal": dinner.meal,
+            "meal_title": dinner.meal.title if dinner.meal else "",
             "text": dinner.text,
             "portions": dinner.portions,
             "set_by": user,
@@ -196,7 +246,7 @@ def clear_dinner(day: date) -> bool:
     return deleted > 0
 
 
-_CONTENT = ("recipe", "recipe_title", "text", "portions", "set_by", "set_at")
+_CONTENT = ("recipe", "recipe_title", "meal", "meal_title", "text", "portions", "set_by", "set_at")
 
 
 @transaction.atomic
@@ -249,7 +299,8 @@ def get_week(
     "/{day}",
     response={200: PlanDayOut, 403: ErrorOut, 422: ValidationErrors},
     operation_id="set_plan_day",
-    summary="Set a day's dinner: a recipe (`recipe_id`, `portions`) or a short `text`",
+    summary="Set a day's dinner: a recipe (`recipe_id`, `portions`), a meal (`meal_id`) or a "
+    "short `text`",
 )
 def put_day(
     request: HttpRequest, day: date, payload: DinnerIn

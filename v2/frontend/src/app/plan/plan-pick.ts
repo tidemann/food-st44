@@ -9,10 +9,21 @@ import {
   output,
   signal,
 } from '@angular/core';
-import type { PlanDay, PlanWeek, Recipe, ValidationErrors } from '../api/types';
+import type { DinnerInput, PlanDay, PlanWeek, ValidationErrors } from '../api/types';
 import { capitalise, dayShort, dinnerOf, Plan, weekday, weekUrl } from './plan';
 
-/** What the recipe page is told after a save: the day, and the week to link to. */
+/**
+ * What goes on the day: a recipe, with its porsjoner, or a meal (ST-1968), which has none and
+ * gets no portions field.
+ */
+export interface Dish {
+  kind: 'recipe' | 'meal';
+  id: number;
+  title: string;
+  servings: number | null;
+}
+
+/** What the recipe or meal page is told after a save: the day, and the week to link to. */
 export interface Added {
   date: string;
   week: string;
@@ -25,9 +36,10 @@ interface Column {
 }
 
 /**
- * "Legg til i ukeplan" on the recipe page (ST-1231, ST-1213 pictures 05a–05d): the days of this
- * week and the next, what each already has, and the portions. An empty day is set at once; a
- * taken one asks first. The recipe page owns the button and the "Lagt til" line.
+ * "Legg til i ukeplan" on the recipe page (ST-1231, ST-1213 pictures 05a–05d) and the meal page
+ * (ST-1968, ST-1970 pictures 14–17): the days of this week and the next, what each already has,
+ * and for a recipe the portions. An empty day is set at once; a taken one asks first. The page
+ * owns the button and the "Lagt til" line.
  */
 @Component({
   selector: 'app-plan-pick',
@@ -36,7 +48,7 @@ interface Column {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlanPick {
-  readonly recipe = input.required<Recipe>();
+  readonly dish = input.required<Dish>();
   readonly added = output<Added>();
 
   private readonly plan = inject(Plan);
@@ -80,9 +92,10 @@ export class PlanPick {
     return column.days.slice(0, column.days.indexOf(day) + 1);
   });
 
-  protected readonly portions = linkedSignal<number | null>(() => this.recipe().servings);
+  protected readonly isRecipe = computed(() => this.dish().kind === 'recipe');
+  protected readonly portions = linkedSignal<number | null>(() => this.dish().servings);
   protected readonly portionsHint = computed(() => {
-    const servings = this.recipe().servings;
+    const servings = this.dish().servings;
     return servings
       ? `Står til ${String(servings)}, fra oppskriften.`
       : 'Oppskriften har ingen porsjoner. Settes den ikke, brukes oppskriften som den er skrevet.';
@@ -110,8 +123,17 @@ export class PlanPick {
 
   protected replaces(day: PlanDay): string {
     const old = dinnerOf(day);
-    const kept = day.recipe_id !== null ? ` ${old} blir liggende i samlingen.` : '';
-    return `Legger dere til ${this.recipe().title}, erstatter den ${old}.${kept}`;
+    const kept =
+      day.recipe_id !== null || day.meal_id !== null ? ` ${old} blir liggende i samlingen.` : '';
+    return `Legger dere til ${this.dish().title}, erstatter den ${old}.${kept}`;
+  }
+
+  /** A meal is never scaled, so it sends no portions. */
+  private dinner(): DinnerInput {
+    const dish = this.dish();
+    return dish.kind === 'meal'
+      ? { meal_id: dish.id }
+      : { recipe_id: dish.id, portions: this.portions() };
   }
 
   protected async save(date: string, week: string): Promise<void> {
@@ -119,7 +141,7 @@ export class PlanPick {
     this.busy.set(true);
     this.error.set('');
     try {
-      await this.plan.set(date, { recipe_id: this.recipe().id, portions: this.portions() });
+      await this.plan.set(date, this.dinner());
     } catch (error) {
       this.error.set(messageOf(error));
       this.busy.set(false);

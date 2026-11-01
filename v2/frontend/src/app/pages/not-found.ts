@@ -8,10 +8,21 @@ const TEXT = {
   recipe: {
     heading: 'Fant ikke oppskriften',
     dek: 'Den kan ha blitt slettet, eller lenken er feil.',
+    action: 'Til alle oppskrifter',
+    link: '/',
+  },
+  // ST-1968
+  meal: {
+    heading: 'Fant ikke måltidet',
+    dek: 'Det kan ha blitt slettet, eller lenken er feil.',
+    action: 'Til alle måltidene',
+    link: '/maltider',
   },
   page: {
     heading: 'Siden finnes ikke',
     dek: 'Lenken kan være skrevet feil. Alle oppskriftene ligger samlet på forsiden.',
+    action: 'Til alle oppskrifter',
+    link: '/',
   },
 } as const;
 
@@ -26,7 +37,7 @@ const TEXT = {
         <h1>{{ text().heading }}</h1>
         <p>{{ text().dek }}</p>
         <div class="notice-actions">
-          <a class="btn btn-lg" routerLink="/">Til alle oppskrifter</a>
+          <a class="btn btn-lg" [routerLink]="text().link">{{ text().action }}</a>
         </div>
       </div>
     </div>
@@ -35,8 +46,9 @@ const TEXT = {
 })
 export class NotFound {
   /**
-   * "recipe" from the recipe page. As a route component it is a page 404; the router's input
-   * binding then sets this to undefined, not to the default, hence the `??`.
+   * "recipe" from the recipe page, "meal" from a meal's (ST-1968). As a route component it is a
+   * page 404; the router's input binding then sets this to undefined, not to the default, hence
+   * the `??`.
    */
   readonly kind = input<keyof typeof TEXT>();
   protected readonly text = computed(() => TEXT[this.kind() ?? 'page']);

@@ -359,9 +359,12 @@ class ApiKeyCreatedOut(ApiKeyOut):
 
 
 class DinnerIn(Schema):
-    """One day's dinner: a recipe or a short text, not both. Replaces what the day had."""
+    """One day's dinner: a recipe, a meal or a short text, only one of them. Replaces what the
+    day had."""
 
     recipe_id: int | None = None
+    # ST-1968: a meal instead. A meal has no portions.
+    meal_id: int | None = None
     # At most 80 characters, e.g. «Rester» or «Ute og spiser».
     text: str | None = None
     # Left out for a recipe: the recipe's own porsjoner (or none: the recipe as written).
@@ -374,16 +377,22 @@ class MoveIn(Schema):
 
 
 class PlanDayOut(Schema):
-    """A day of the plan. An empty day has no recipe, an empty title and an empty text."""
+    """A day of the plan. An empty day has no `kind`, an empty title and an empty text."""
 
     date: date
     weekday: str  # "mandag" … "søndag"
-    recipe_id: int | None  # null for a text day, an empty day, or a recipe since deleted
-    title: str  # the recipe's title, kept when the recipe is deleted; "" otherwise
-    text: str  # the short text of a day without a recipe; "" otherwise
-    portions: int | None
+    # What the day has (ST-1968); null for an empty day.
+    kind: Literal["recipe", "meal", "text"] | None
+    recipe_id: int | None  # null unless a recipe day whose recipe still exists
+    meal_id: int | None  # the same for a meal day
+    # The recipe's or the meal's title, kept when it is deleted; "" otherwise
+    title: str
+    text: str  # the short text of a day without a recipe or a meal; "" otherwise
+    portions: int | None  # never for a meal
     servings: int | None  # the recipe's own porsjoner
+    item_count: int | None  # a meal day's number of items; null otherwise or once it is deleted
     recipe_deleted: bool  # the day had a recipe that has since been deleted
+    meal_deleted: bool  # the day had a meal that has since been deleted
     set_by: str  # who set it (first name, else e-mail); "" for an empty day
     set_at: datetime | None
 
@@ -408,3 +417,49 @@ class MoveOut(Schema):
     it went to."""
 
     days: list[PlanDayOut]
+
+
+# --- meals (food.meals, ST-1968) ---
+
+# "Én kort linje": room for a sentence or two, not a method.
+MEAL_NOTE_MAX_CHARS = 300
+
+
+class MealIn(Schema):
+    """Create and edit share one rule set. Values are stored trimmed; blank item lines go."""
+
+    title: str
+    # One per line, amount first when there is one: «2 pk naan», «mango chutney».
+    items: str
+    # Optional, at most 300 characters.
+    note: str = ""
+
+    @field_validator("title")
+    @classmethod
+    def _title(cls, value: str) -> str:
+        return _required(value, "Tittelen må fylles ut.")
+
+    @field_validator("items")
+    @classmethod
+    def _items(cls, value: str) -> str:
+        lines = [line.strip() for line in value.splitlines()]
+        return _required("\n".join(line for line in lines if line), "Skriv inn minst én vare.")
+
+    @field_validator("note")
+    @classmethod
+    def _note(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) > MEAL_NOTE_MAX_CHARS:
+            raise PydanticCustomError("too_long", "Notatet kan være høyst 300 tegn.")
+        return value
+
+
+class MealOut(Schema):
+    """A meal: a dinner without a recipe, only its name and what to buy."""
+
+    id: int
+    title: str
+    items: str  # one per line, the same format as a recipe's `ingredients`
+    item_count: int  # the number of lines in `items`
+    note: str  # "" when there is none
+    created_at: datetime

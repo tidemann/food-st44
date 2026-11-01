@@ -62,6 +62,8 @@
           }"
           >Oppskrifter</a
         >
+        <!-- ST-1968: for everyone, right after the recipes; "Nytt måltid" is on its page. -->
+        <a routerLink="/maltider" routerLinkActive ariaCurrentWhenActive="page">Måltider</a>
         @if (auth.isEditor()) {
           <a routerLink="/recipes/new" routerLinkActive ariaCurrentWhenActive="page"
             >Ny oppskrift</a

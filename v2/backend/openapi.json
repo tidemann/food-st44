@@ -1075,7 +1075,7 @@
     "/api/plan/{day}": {
       "put": {
         "operationId": "set_plan_day",
-        "summary": "Set a day's dinner: a recipe (`recipe_id`, `portions`) or a short `text`",
+        "summary": "Set a day's dinner: a recipe (`recipe_id`, `portions`), a meal (`meal_id`) or a short `text`",
         "parameters": [
           {
             "in": "path",
@@ -1240,6 +1240,314 @@
           },
           "required": true
         },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
+    },
+    "/api/meals": {
+      "get": {
+        "operationId": "list_meals",
+        "summary": "Every meal, by title",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MealOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "meals"
+        ]
+      },
+      "post": {
+        "operationId": "create_meal",
+        "summary": "Post Meal",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "meals"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
+    },
+    "/api/meals/{meal_id}": {
+      "get": {
+        "operationId": "get_meal",
+        "summary": "Get Meal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "schema": {
+              "title": "Meal Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "meals"
+        ]
+      },
+      "put": {
+        "operationId": "update_meal",
+        "summary": "Put Meal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "schema": {
+              "title": "Meal Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrors"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "meals"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_meal",
+        "summary": "Remove Meal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "schema": {
+              "title": "Meal Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "meals"
+        ],
+        "security": [
+          {
+            "EditorAuth": []
+          }
+        ]
+      }
+    },
+    "/api/meals/{meal_id}/days": {
+      "get": {
+        "operationId": "get_meal_days",
+        "summary": "The days from today on that the week plan has this meal (for the delete page)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "schema": {
+              "title": "Meal Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "meals"
+        ],
         "security": [
           {
             "EditorAuth": []
@@ -1851,7 +2159,7 @@
         "type": "object"
       },
       "PlanDayOut": {
-        "description": "A day of the plan. An empty day has no recipe, an empty title and an empty text.",
+        "description": "A day of the plan. An empty day has no `kind`, an empty title and an empty text.",
         "properties": {
           "date": {
             "format": "date",
@@ -1861,6 +2169,22 @@
           "weekday": {
             "title": "Weekday",
             "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "recipe",
+                  "meal",
+                  "text"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
           },
           "recipe_id": {
             "anyOf": [
@@ -1872,6 +2196,17 @@
               }
             ],
             "title": "Recipe Id"
+          },
+          "meal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Id"
           },
           "title": {
             "title": "Title",
@@ -1903,8 +2238,23 @@
             ],
             "title": "Servings"
           },
+          "item_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Count"
+          },
           "recipe_deleted": {
             "title": "Recipe Deleted",
+            "type": "boolean"
+          },
+          "meal_deleted": {
+            "title": "Meal Deleted",
             "type": "boolean"
           },
           "set_by": {
@@ -1927,12 +2277,16 @@
         "required": [
           "date",
           "weekday",
+          "kind",
           "recipe_id",
+          "meal_id",
           "title",
           "text",
           "portions",
           "servings",
+          "item_count",
           "recipe_deleted",
+          "meal_deleted",
           "set_by",
           "set_at"
         ],
@@ -2013,7 +2367,7 @@
         "type": "object"
       },
       "DinnerIn": {
-        "description": "One day's dinner: a recipe or a short text, not both. Replaces what the day had.",
+        "description": "One day's dinner: a recipe, a meal or a short text, only one of them. Replaces what the\nday had.",
         "properties": {
           "recipe_id": {
             "anyOf": [
@@ -2025,6 +2379,17 @@
               }
             ],
             "title": "Recipe Id"
+          },
+          "meal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Id"
           },
           "text": {
             "anyOf": [
@@ -2081,6 +2446,70 @@
           "to"
         ],
         "title": "MoveIn",
+        "type": "object"
+      },
+      "MealOut": {
+        "description": "A meal: a dinner without a recipe, only its name and what to buy.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "items": {
+            "title": "Items",
+            "type": "string"
+          },
+          "item_count": {
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "items",
+          "item_count",
+          "note",
+          "created_at"
+        ],
+        "title": "MealOut",
+        "type": "object"
+      },
+      "MealIn": {
+        "description": "Create and edit share one rule set. Values are stored trimmed; blank item lines go.",
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "items": {
+            "title": "Items",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "items"
+        ],
+        "title": "MealIn",
         "type": "object"
       }
     },

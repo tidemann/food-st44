@@ -14,7 +14,8 @@ import {
 import { Title } from '@angular/platform-browser';
 import { NgTemplateOutlet } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import type { PlanDay as Day, PlanWeek, Recipe, ValidationErrors } from '../api/types';
+import type { PlanDay as Day, Meal, PlanWeek, Recipe, ValidationErrors } from '../api/types';
+import { allMealsLabel, byTitle as mealsByTitle, itemsLabel, mealsLabel } from '../meals/meal';
 import { NotFound } from '../pages/not-found';
 import { ServerError } from '../pages/server-error';
 import { ingredientLines, pluralise } from '../recipes/format';
@@ -53,6 +54,9 @@ function matches(recipe: Recipe, needle: string): boolean {
 
 const byTitle = (a: Recipe, b: Recipe): number => a.title.localeCompare(b.title, 'nb');
 
+/** The picker shows the first meals by title; "Alle 6 måltidene" leads to the rest. */
+const MEALS_SHOWN = 4;
+
 /**
  * `/ukeplan/2026-10-23` (ST-1231, ST-1213 pictures 03a–03c, 04a): one day of the week plan.
  * An empty day opens on the search; a planned one shows its dinner, with portions to change,
@@ -63,7 +67,8 @@ const byTitle = (a: Recipe, b: Recipe): number => a.title.localeCompare(b.title,
   selector: 'app-plan-day',
   imports: [NgTemplateOutlet, RouterLink, NotFound, ServerError],
   templateUrl: './plan-day.html',
-  styleUrls: ['./ukeplan.css', './plan-day.css'],
+  // maltid.css for a meal day and the meal block in the picker (ST-1968).
+  styleUrls: ['./ukeplan.css', './plan-day.css', '../meals/maltid.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlanDay {
@@ -127,9 +132,26 @@ export class PlanDay {
 
   // --- the search: the whole collection, in alphabetical order, filtered as on the front page
   protected readonly q = signal('');
-  protected readonly collectionSize = computed(() =>
-    pluralise(this.site.total(), 'oppskrift', 'oppskrifter'),
+  protected readonly collectionSize = computed(() => {
+    const recipes = pluralise(this.site.total(), 'oppskrift', 'oppskrifter');
+    const meals = this.allOfTheMeals().length;
+    return meals ? `${recipes}, ${mealsLabel(meals)}` : recipes;
+  });
+
+  // --- the meals (ST-1968): picked at once, as a meal has no portions to set
+  private readonly allOfTheMeals = computed(() =>
+    this.site.meals.hasValue() ? [...this.site.meals.value()].sort(mealsByTitle) : [],
   );
+  protected readonly meals = computed(() =>
+    this.allOfTheMeals()
+      .slice(0, MEALS_SHOWN)
+      .map((meal) => ({ ...meal, count: itemsLabel(meal.item_count) })),
+  );
+  /** "Alle 6 måltidene", when there are more than the picker shows. */
+  protected readonly allMeals = computed(() => {
+    const count = this.allOfTheMeals().length;
+    return count > MEALS_SHOWN ? allMealsLabel(count) : '';
+  });
   protected readonly hits = computed(() => {
     if (!this.site.recipes.hasValue()) return [];
     const needle = this.q().trim().toLowerCase();
@@ -165,7 +187,9 @@ export class PlanDay {
   protected readonly errors = signal<Errors>({});
 
   private readonly textField = viewChild<ElementRef<HTMLInputElement>>('textField');
-  private readonly focusText = signal(false);
+  private readonly mealButton = viewChild<ElementRef<HTMLButtonElement>>('mealButton');
+  /** Where "Bytt middag" lands: the text field, or the first meal. */
+  private readonly focusOn = signal<'text' | 'meal' | null>(null);
 
   constructor() {
     const title = inject(Title);
@@ -173,12 +197,13 @@ export class PlanDay {
       const view = this.view();
       title.setTitle(view ? `Ukeplan: ${view.heading} — food.st44.no` : 'Ukeplan — food.st44.no');
     });
-    // "Skriv en kort tekst i stedet" lands in the text field.
+    // "Skriv en kort tekst i stedet" lands in the text field, "Velg et måltid" on the first meal.
     effect(() => {
-      const field = this.textField();
-      if (field && this.focusText()) {
+      const target = this.focusOn();
+      const field = target === 'text' ? this.textField() : target ? this.mealButton() : undefined;
+      if (field) {
         field.nativeElement.focus();
-        this.focusText.set(false);
+        this.focusOn.set(null);
       }
     });
   }
@@ -201,10 +226,24 @@ export class PlanDay {
     this.mode.set('chosen');
   }
 
-  protected pick(focusText = false): void {
+  protected pick(focus: 'text' | 'meal' | null = null): void {
     this.errors.set({});
     this.mode.set('pick');
-    this.focusText.set(focusText);
+    this.focusOn.set(focus);
+  }
+
+  protected itemsOf(count: number | null): string {
+    return count === null ? 'ingen varer' : itemsLabel(count);
+  }
+
+  /** A meal goes on the day at once: there are no portions to set. */
+  protected async chooseMeal(meal: Meal): Promise<void> {
+    const view = this.view();
+    if (!view) return;
+    const message = view.empty
+      ? `${meal.title} er lagt til ${dayLong(view.day.date)}.`
+      : `${capitalise(dayLong(view.day.date))} er endret: ${meal.title}.`;
+    await this.run(() => this.plan.set(view.day.date, { meal_id: meal.id }), message);
   }
 
   protected setPortions(value: string): void {

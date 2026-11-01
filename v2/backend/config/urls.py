@@ -5,6 +5,8 @@ from food.admin import site as admin_site
 from food.api import api
 from food.views import (
     healthz,
+    meal_action,
+    meal_detail,
     not_found,
     photo,
     recipe_action,
@@ -45,6 +47,10 @@ urlpatterns: list[URLPattern | URLResolver] = [
     # the plan itself only comes from /api/plan, which refuses them.
     re_path(r"^ukeplan/?$", spa),
     re_path(r"^ukeplan/\d{4}-\d{2}-\d{2}/?$", spa),
+    # Meals (ST-1968): the list, a new one, one meal, its edit and delete pages.
+    re_path(r"^maltider(?:/ny)?/?$", spa),
+    re_path(r"^maltider/(?P<raw_id>[^/]+)/?$", meal_detail),
+    re_path(r"^maltider/(?P<raw_id>[^/]+)/(?:rediger|slett)/?$", meal_action),
     # Recipe photos (food.photos), stored next to the database rather than built into the image.
     path("photos/<str:name>", photo),
     # Anything else that is not API or a static file is the SPA's "page not found".

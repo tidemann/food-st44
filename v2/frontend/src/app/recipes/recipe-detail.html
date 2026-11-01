@@ -116,11 +116,11 @@
                 </div>
               }
             </div>
-            @if (editor() && planOpen()) {
+            @if (editor() && planOpen() && dish(); as dish) {
               <app-plan-pick
                 class="plan-panel"
                 id="plan-pick"
-                [recipe]="v.recipe"
+                [dish]="dish"
                 (added)="planned($event)"
               />
             }

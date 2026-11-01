@@ -1,0 +1,410 @@
+/* ============================================================================
+   food.st44.no — MÅLTIDER (ST-1970 pictures, for ST-1968).
+   A meal is a dinner without a recipe: a name, the things to buy, and maybe a
+   short note. It never carries a photograph and it has no steps, so the page is
+   a register on white paper that closes on the picture's note block.
+
+   Only the six tokens. Plain CSS, square corners, hairlines, dotted leaders.
+   Values repeated from ukeplan.css / recipe-detail.css are marked; the point is
+   that a meal screen is the same material as the screens beside it.
+
+   The dotted leader span is `.ldr`, not `.lead`: `.lead` is the front page's
+   section class in recipe-list.css, and on the one page that loads both sheets
+   (the front page, with the band) the two collided and the band's rows grew to
+   twice the register's height. Keep the name distinct even once these sheets are
+   component-scoped in Angular.
+   ========================================================================== */
+
+/* ---------- the marker: the word "Måltid", in crimson, everywhere ----------
+   A meal must never be mistaken for a recipe at a glance. Crimson marks where
+   you are (design guide §1), so it marks what kind of thing you are looking at
+   in every place a meal can stand next to a recipe: the page, the week plan,
+   the day page, the day picker. It is always the word as well as the colour —
+   never colour alone (WCAG 1.4.1). */
+.maltid-kicker {
+  /* the front page's .kicker, unchanged: Bodoni italic, crimson, over the title */
+  font-family: var(--disp);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--red);
+  margin: 0 0 6px;
+}
+
+.maltid-tag {
+  /* in a register that can also hold recipes: the week, the day page, the picker */
+  color: var(--red);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ---------- the meal page: the list of things to buy ---------- */
+.varer {
+  grid-column: 1/9;
+}
+
+.varer h2 {
+  /* .steps h2 from recipe-detail.css: Bodoni on a 3 px ink rule */
+  font-family: var(--disp);
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--ink);
+}
+
+.varer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* One item: the name, a dotted leader, the amount right — the register of
+   "Hele samlingen" on the front page. The recipe puts the amount first, in its
+   own column, because you cook down a column; a meal is read in a shop, where
+   the name is what you look for and the amount is the answer. */
+.varer li {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 16px;
+  break-inside: avoid;
+}
+
+.varer .v {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.varer .ldr {
+  flex: 1;
+  border-bottom: 1px dotted var(--rule);
+  margin: 0 10px;
+  transform: translateY(-5px);
+}
+
+.varer .m {
+  flex: none;
+  font-size: 13px;
+  color: var(--soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* the note: the signed-off picture's note block (tinted paper, 3 px crimson
+   left rule, Bodoni italic), at the close of the page where the picture puts
+   it. The recipe has no notes field, so this is the first screen that can
+   carry it with real words. */
+.maltid-note {
+  grid-column: 1/9;
+  margin: 34px 0 0;
+  padding: 18px 24px 20px;
+  background: var(--tint);
+  border-left: 3px solid var(--red);
+  font-family: var(--disp);
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.5;
+  max-width: 54ch;
+}
+
+.maltid-note p {
+  margin: 0;
+}
+
+/* ---------- the list page ---------- */
+.mal-head {
+  padding: 40px 0 0;
+}
+
+.mal-head-rule {
+  height: 0;
+  border-top: 3px solid var(--red);
+  width: 120px;
+  margin-bottom: 20px;
+}
+
+.mal-head-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 30px;
+}
+
+.mal-head h1 {
+  /* .plan-head h1 from ukeplan.css */
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 52px;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  margin: 0 0 6px;
+}
+
+.mal-when {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  color: var(--soft);
+}
+
+/* the line that says what a meal is, in the paper's own italic voice */
+.mal-lead {
+  margin: 20px 0 0;
+  font-family: var(--disp);
+  font-style: italic;
+  font-size: 20px;
+  line-height: 1.5;
+  max-width: 44ch;
+}
+
+.mal-body {
+  padding: 30px 0 80px;
+}
+
+.mal-main {
+  grid-column: 1/9;
+}
+
+.mal-side {
+  grid-column: 10/13;
+  padding-top: 7px;
+}
+
+/* the register of meals: one ruled line each, as the week is a register of days */
+.maltider {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 3px solid var(--ink);
+}
+
+.maltider li {
+  border-bottom: 1px solid var(--rule);
+}
+
+.maltider li:last-child {
+  border-bottom: 3px solid var(--ink);
+}
+
+.maltider a,
+.maltider button {
+  display: flex;
+  align-items: baseline;
+  min-height: 52px;
+  padding: 7px 0;
+  text-decoration: none;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.maltider .t {
+  font-family: var(--disp);
+  font-size: 19px;
+  font-weight: 400;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.maltider .ldr {
+  flex: 1;
+  border-bottom: 1px dotted var(--rule);
+  margin: 0 10px;
+  transform: translateY(-5px);
+}
+
+.maltider .m {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- a meal in the week plan and on the day page ---------- */
+
+/* the week's right-hand slot: a recipe day says "4 porsjoner" there, a meal day
+   says what it is and how much to buy. A meal has no portions (no scaling). */
+.day-label .maltid-tag {
+  margin-right: 1px;
+}
+
+/* the day page: "Måltid" where a recipe day says "Fra oppskriftene" */
+.chosen .k.maltid-k {
+  color: var(--red);
+}
+
+/* the meal register inside the day picker and the "Legg til i ukeplan" panel */
+.alt .maltider {
+  border-top: 0;
+}
+
+.alt .maltider li:last-child {
+  border-bottom: 0;
+}
+
+@media (width <= 760px) {
+  .varer,
+  .maltid-note,
+  .mal-main,
+  .mal-side {
+    grid-column: auto;
+  }
+
+  .mal-head {
+    padding: 26px 0 0;
+  }
+
+  .mal-head h1 {
+    font-size: 38px;
+  }
+
+  .mal-head-top {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .mal-lead {
+    font-size: 17px;
+  }
+
+  .mal-body {
+    padding: 24px 0 56px;
+  }
+
+  /* the facts are a desktop column; on a phone the register is the page */
+  .mal-side {
+    display: none;
+  }
+
+  .maltid-note {
+    font-size: 17px;
+    padding: 16px 18px 18px;
+  }
+}
+
+/* A real list takes the whole measure, in two columns, the way the recipe page's
+   body does (ingredients 1/5 + fremgangsmåte 6/13 fill the width): a printed
+   shopping list, read down the first column and then the second. Under five
+   items it stays in the article column and in one column — two columns of two
+   lines reads as a mistake, and a 1100 px leader after "ruccola" reads as a
+   hole. One condition drives both. (:has is already used this way in
+   ukeplan.css.) */
+@media (width > 760px) {
+  .varer:has(li:nth-child(5)) {
+    grid-column: 1/13;
+  }
+
+  .varer:has(li:nth-child(5)) ul {
+    columns: 2;
+    column-gap: 48px;
+  }
+}
+
+/* the meal register inside the day picker's tinted block */
+.alt .maltider .t {
+  font-size: 18px;
+}
+
+.alt-all {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+}
+
+.alt-all a {
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* ---------- small links that stand alone in their own line ----------
+   WCAG 2.5.8 gives no inline exception to a link that is the only thing in its
+   paragraph, so each gets a 24 px hit box from an invisible band — the way
+   "Tøm søk" did in ST-751. The type does not move. (The same gap is open on the
+   recipe form's "Tilbake til oppskriften"; see the hand-in's WCAG list.) */
+.mal-back a,
+.mal-band-all a,
+.alt-all a {
+  position: relative;
+}
+
+.mal-back a::after,
+.mal-band-all a::after,
+.alt-all a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 12px);
+  height: 24px;
+}
+
+/* ---------- the band on the front page (ST-1970 picture 22, Maria's decision 2) ----------
+   The right column of the front page is a register: "Nylig lagt inn", then
+   "Hele samlingen". The meals are a third band in the same idiom, so a reader
+   who never opens the menu still knows they exist. */
+.mal-band {
+  margin-top: 34px;
+}
+
+.mal-band .maltider {
+  border-top: 0;
+}
+
+.mal-band .maltider li:first-child {
+  border-top: 1px solid var(--rule);
+}
+
+.mal-band .maltider li:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.mal-band-all {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+}
+
+.mal-band-all a {
+  color: var(--red);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+/* the rows keep the rhythm of the register right above them ("Hele samlingen"),
+   not the 52 px rows of the meal page: a band that scans as part of the column.
+   The register's row is 43.3 px — 8 px over and under its line, plus the
+   hairline — so the padding here is the register's padding, and the two lists
+   share one rhythm at every width. Measured, not guessed: band.mjs prints both
+   pitches. */
+.mal-band .maltider a {
+  min-height: 42px;
+  padding: 8px 0;
+}
+
+.mal-band .maltider .t {
+  font-size: 17px;
+}
+
+.mal-band .maltider .ldr {
+  border-bottom-color: var(--soft);
+  transform: translateY(-4px);
+}
+
+.mal-band .maltider .m {
+  font-size: 11.5px;
+}
+
+/* a meal's name turns red under the pointer and the focus ring, wherever it is listed */
+.maltider a:hover .t,
+.maltider a:focus-visible .t,
+.maltider button:hover .t {
+  color: var(--red);
+}

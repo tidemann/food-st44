@@ -12,10 +12,11 @@ Reads are open to anyone, as on the site. The write tools need `Authorization: B
 <token>` of a user on the editor list at the time of the call: either a personal key
 (food.keys) or, from the Claude app, an OAuth access token granted `write` (food.oauth, ST-834).
 An app token that is expired, revoked or unknown gets HTTP 401 with a WWW-Authenticate
-challenge, so the app refreshes it or signs in again. There is no delete tool.
-The week plan's tools (ST-1231) need an editor even to read, and are not listed for anyone else.
-Every write is logged in McpChange. The tools call food.services and food.importer, the same
-code the site's API uses.
+challenge, so the app refreshes it or signs in again. Recipes have no delete tool; meals
+(ST-1968) have one, as the plan asks: a meal is a short list, quickly written again. The week
+plan's tools (ST-1231) need an editor even to read, and are not listed for anyone else. Every
+write is logged in McpChange. The tools call food.services, food.meals and food.importer, the
+same code the site's API uses.
 """
 
 import datetime as dt
@@ -32,11 +33,11 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from food import importer, oauth, plan, services, structure
+from food import importer, meals, oauth, plan, services, structure
 from food.auth import is_editor
 from food.keys import KEY_START, editor_for
-from food.models import McpChange, Recipe
-from food.schemas import LinkImportIn, RecipeIn
+from food.models import McpChange, Meal, Recipe
+from food.schemas import LinkImportIn, MealIn, RecipeIn
 from food.tags import sort_names
 
 logger = logging.getLogger(__name__)
@@ -58,8 +59,13 @@ INSTRUCTIONS = (
     "method into phases with a title and an optional time (phases: «Røyk», «3 timer på "
     "110-120 °C»); steps are numbered through the whole recipe. `ingredients` is always "
     "every line of every group, in order: use it for a shopping list. "
-    "Editors also have the household's week plan (ukeplan): one dinner a day, a recipe or a "
-    "short text, read with get_meal_plan and changed with set_dinner and clear_dinner."
+    "Meals (måltider) are not recipes: a meal is a shopping list for a dinner without a "
+    "recipe, e.g. «Toro Tandoori chicken»: a title, items one per line in the same format as "
+    "ingredients («2 pk naan»), and a short note. No steps, no portions. Read them with "
+    "list_meals and get_meal; editors change them with save_meal and delete_meal. "
+    "Editors also have the household's week plan (ukeplan): one dinner a day, a recipe, a meal "
+    "or a short text, read with get_meal_plan and changed with set_dinner and clear_dinner. "
+    "get_meal_plan gives every recipe and meal day its shopping lines in `ingredients`."
 )
 
 # JSON-RPC 2.0 error codes.
@@ -83,6 +89,8 @@ APP_READ_ONLY = (
     "til på nytt for å kunne legge inn og endre oppskrifter."
 )
 NOT_FOUND = "Fant ingen oppskrift med id {id}."
+MEAL_NOT_FOUND = "Fant ikke noe måltid med id {id}."
+MEAL_NEEDS = "Et nytt måltid trenger title og items."
 NO_PLAN = (
     "Ukeplanen er privat for husstanden: den krever en nøkkel fra en redaktør, eller Claude-appen "
     "logget inn med en redaktørs Google-konto. Nøkler lages på "
@@ -100,6 +108,8 @@ FIELD_NAMES = {
     "description": "beskrivelse",
 }
 SERVINGS = "How many portions the ingredients make (1 to 99). The week plan defaults to it."
+# The names of a meal's fields in the change log.
+MEAL_FIELD_NAMES = {"title": "tittel", "items": "varer", "note": "notat"}
 DESCRIPTION = (
     "A short intro to the recipe, shown under its title: one to three sentences, at most 500 "
     "characters of text (tags not counted). May use <b>, <strong>, <i>, <em>, <u>, <br>, <p>, "
@@ -251,6 +261,29 @@ class UpdateArgs(_Args):
     )
 
 
+class MealIdArgs(_Args):
+    id: int = Field(description="The meal's id, from list_meals.")
+
+
+class SaveMealArgs(_Args):
+    id: int | None = Field(
+        None, description="The meal to change, from list_meals. Leave out to add a new meal."
+    )
+    title: str | None = Field(
+        None, description="The meal's name, e.g. «Toro Tandoori chicken». Needed for a new one."
+    )
+    items: str | None = Field(
+        None,
+        description="What to buy, one item per line, amount first when there is one: "
+        "«2 pk naan», «mango chutney». The whole list, replacing it. Needed for a new one.",
+    )
+    note: str | None = Field(
+        None,
+        description="A short note (at most 300 characters), e.g. how long it is in the oven. "
+        '"" removes it.',
+    )
+
+
 class MealPlanArgs(_Args):
     start: dt.date | None = Field(
         None, description="The first day, YYYY-MM-DD. Leave out for this week's Monday."
@@ -261,13 +294,20 @@ class MealPlanArgs(_Args):
 class SetDinnerArgs(_Args):
     date: dt.date = Field(description="The day, YYYY-MM-DD.")
     recipe_id: int | None = Field(
-        None, description="The recipe's id, from search_recipes. Give this or text, not both."
+        None,
+        description="The recipe's id, from search_recipes. Give one of recipe_id, meal_id and "
+        "text.",
+    )
+    meal_id: int | None = Field(
+        None, description="A meal's id, from list_meals, instead of a recipe. No portions."
     )
     text: str | None = Field(
         None, description="A short text instead of a recipe (at most 80 characters): «Rester»."
     )
     portions: int | None = Field(
-        None, description="Portions (1 to 99). Leave out to use the recipe's own (servings)."
+        None,
+        description="Portions for a recipe (1 to 99). Leave out to use the recipe's own "
+        "(servings). Not for a meal.",
     )
 
 
@@ -280,6 +320,10 @@ class DayArgs(_Args):
 
 def _link(recipe_id: int) -> str:
     return f"{settings.FOOD_SITE_URL}/recipes/{recipe_id}"
+
+
+def _meal_link(meal_id: int) -> str:
+    return f"{settings.FOOD_SITE_URL}/maltider/{meal_id}"
 
 
 def _summary(recipe: Recipe) -> dict[str, Any]:
@@ -326,9 +370,16 @@ def _messages(exc: ValidationError) -> str:
     )
 
 
-def _log(writer: Writer, tool: str, recipe_id: int | None, summary: str) -> None:
+def _log(
+    writer: Writer, tool: str, recipe_id: int | None, summary: str, meal_id: int | None = None
+) -> None:
     McpChange.objects.create(
-        user=writer.user, via=writer.via, tool=tool, recipe_id=recipe_id, summary=summary[:200]
+        user=writer.user,
+        via=writer.via,
+        tool=tool,
+        recipe_id=recipe_id,
+        meal_id=meal_id,
+        summary=summary[:200],
     )
 
 
@@ -423,37 +474,147 @@ def import_recipe_from_link(args: ImportArgs, caller: Caller) -> dict[str, Any]:
     return _full(recipe)
 
 
+# --- meals (food.meals, ST-1968): read by anyone, changed by an editor
+
+
+def _meal(meal_id: int) -> Meal:
+    meal = Meal.objects.filter(pk=meal_id).first()
+    if meal is None:
+        raise ToolError(MEAL_NOT_FOUND.format(id=meal_id))
+    return meal
+
+
+def _meal_summary(meal: Meal) -> dict[str, Any]:
+    return {
+        "id": meal.id,
+        "title": meal.title,
+        "item_count": meals.item_count(meal),
+        "link": _meal_link(meal.id),
+    }
+
+
+def _meal_full(meal: Meal) -> dict[str, Any]:
+    return {
+        **_meal_summary(meal),
+        "items": meal.items,
+        "note": meal.note,
+        "created_at": meal.created_at.isoformat(),
+    }
+
+
+def _valid_meal(**fields: object) -> MealIn:
+    try:
+        return MealIn.model_validate(fields)
+    except ValidationError as exc:
+        raise ToolError(_messages(exc)) from exc
+
+
+def list_meals(args: NoArgs, caller: Caller) -> dict[str, Any]:
+    found = list(Meal.objects.all())
+    return {"count": len(found), "meals": [_meal_summary(meal) for meal in found]}
+
+
+def get_meal(args: MealIdArgs, caller: Caller) -> dict[str, Any]:
+    return _meal_full(_meal(args.id))
+
+
+def save_meal(args: SaveMealArgs, caller: Caller) -> dict[str, Any]:
+    """Without an id, a new meal; with one, only the fields given change."""
+    writer = caller.editor()
+    given = args.model_dump(exclude={"id"}, exclude_none=True)
+    if args.id is None:
+        if "title" not in given or "items" not in given:
+            raise ToolError(MEAL_NEEDS)
+        valid = _valid_meal(**given)
+        with transaction.atomic():
+            meal = meals.create_meal(**valid.model_dump())
+            _log(writer, "save_meal", None, f"nytt måltid: {meal.title}", meal.id)
+        return _meal_full(meal)
+    meal = _meal(args.id)
+    current = {"title": meal.title, "items": meal.items, "note": meal.note}
+    valid_fields = _valid_meal(**{**current, **given}).model_dump()
+    changed = [name for name in MEAL_FIELD_NAMES if valid_fields[name] != current[name]]
+    if changed:
+        summary = "endret: " + ", ".join(MEAL_FIELD_NAMES[name] for name in changed)
+        with transaction.atomic():
+            meal = meals.update_meal(meal, **valid_fields)
+            _log(writer, "save_meal", None, summary, meal.id)
+    return {**_meal_full(meal), "changed": changed}
+
+
+def delete_meal(args: MealIdArgs, caller: Caller) -> dict[str, Any]:
+    writer = caller.editor()
+    meal = _meal(args.id)
+    days = [day.isoformat() for day in meals.planned_days(meal, dt.date.min)]
+    with transaction.atomic():
+        meals.delete_meal(meal)
+        _log(writer, "delete_meal", None, f"slettet måltid: {meal.title}", args.id)
+    return {"deleted": True, "id": args.id, "title": meal.title, "planned_days_kept": days}
+
+
 # --- the week plan (food.plan, ST-1231): editors only, reads included
 
 
-def _plan_day(day: dict[str, Any]) -> dict[str, Any]:
+def _plan_day(day: dict[str, Any], lines: dict[tuple[str, int], str]) -> dict[str, Any]:
+    recipe_id, meal_id = day["recipe_id"], day["meal_id"]
+    if recipe_id:
+        link, ingredients = _link(recipe_id), lines.get(("recipe", recipe_id), "")
+    elif meal_id:
+        link, ingredients = _meal_link(meal_id), lines.get(("meal", meal_id), "")
+    else:
+        link, ingredients = None, ""
     return {
         "date": day["date"].isoformat(),
         "weekday": day["weekday"],
-        "recipe_id": day["recipe_id"],
+        "kind": day["kind"],
+        "recipe_id": recipe_id,
+        "meal_id": meal_id,
         "title": day["title"],
         "text": day["text"],
         "portions": day["portions"],
         "servings": day["servings"],
+        "ingredients": ingredients,
         "recipe_deleted": day["recipe_deleted"],
-        "link": _link(day["recipe_id"]) if day["recipe_id"] else None,
+        "meal_deleted": day["meal_deleted"],
+        "link": link,
     }
+
+
+def _shopping_lines(days: list[dict[str, Any]]) -> dict[tuple[str, int], str]:
+    """The ingredients of the days' recipes and the items of their meals, by kind and id."""
+    recipe_ids = {day["recipe_id"] for day in days if day["recipe_id"]}
+    meal_ids = {day["meal_id"] for day in days if day["meal_id"]}
+    lines: dict[tuple[str, int], str] = {}
+    for recipe_id, ingredients in Recipe.objects.filter(pk__in=recipe_ids).values_list(
+        "id", "ingredients"
+    ):
+        lines["recipe", recipe_id] = "\n".join(plan.item_lines(ingredients))
+    for meal_id, items in Meal.objects.filter(pk__in=meal_ids).values_list("id", "items"):
+        lines["meal", meal_id] = "\n".join(plan.item_lines(items))
+    return lines
+
+
+def _one_day(day: dict[str, Any]) -> dict[str, Any]:
+    return _plan_day(day, _shopping_lines([day]))
 
 
 def get_meal_plan(args: MealPlanArgs, caller: Caller) -> dict[str, Any]:
     caller.editor()
     start = args.start or plan.monday_of(plan.today())
     days = plan.read_days(start, args.days)
+    lines = _shopping_lines(days)
     return {
         "start": start.isoformat(),
         "end": days[-1]["date"].isoformat(),
-        "days": [_plan_day(day) for day in days],
+        "days": [_plan_day(day, lines) for day in days],
         "link": f"{settings.FOOD_SITE_URL}/ukeplan?uke={plan.week_name(plan.monday_of(start))}",
     }
 
 
 def _what(day: dict[str, Any]) -> str:
     what: str = day["title"] or day["text"]
+    if day["kind"] == "meal":
+        what += " (måltid)"
     if day["portions"]:
         what += f" ({day['portions']} porsjoner)"
     return what
@@ -462,13 +623,16 @@ def _what(day: dict[str, Any]) -> str:
 def set_dinner(args: SetDinnerArgs, caller: Caller) -> dict[str, Any]:
     writer = caller.editor()
     try:
-        dinner = plan.check(recipe_id=args.recipe_id, text=args.text, portions=args.portions)
+        dinner = plan.check(
+            recipe_id=args.recipe_id, meal_id=args.meal_id, text=args.text, portions=args.portions
+        )
     except plan.PlanError as exc:
         raise ToolError(f"{exc.field}: {exc.message}") from exc
     with transaction.atomic():
         day = plan.set_dinner(args.date, dinner, writer.user)
-        _log(writer, "set_dinner", day["recipe_id"], f"{args.date.isoformat()}: {_what(day)}")
-    return _plan_day(day)
+        summary = f"{args.date.isoformat()}: {_what(day)}"
+        _log(writer, "set_dinner", day["recipe_id"], summary, day["meal_id"])
+    return _one_day(day)
 
 
 def clear_dinner(args: DayArgs, caller: Caller) -> dict[str, Any]:
@@ -478,8 +642,8 @@ def clear_dinner(args: DayArgs, caller: Caller) -> dict[str, Any]:
         cleared = plan.clear_dinner(args.date)
         if cleared:
             summary = f"{args.date.isoformat()}: fjernet {before['title'] or before['text']}"
-            _log(writer, "clear_dinner", before["recipe_id"], summary)
-    return {**_plan_day(plan.get_day(args.date)), "cleared": cleared}
+            _log(writer, "clear_dinner", before["recipe_id"], summary, before["meal_id"])
+    return {**_one_day(plan.get_day(args.date)), "cleared": cleared}
 
 
 @dataclass(frozen=True)
@@ -491,6 +655,7 @@ class Tool:
     run: Callable[[Any, Caller], dict[str, Any]]
     writes: bool = False
     open_world: bool = False
+    destructive: bool = False
     # Listed and run only for an editor: the week plan is private (ST-1231).
     editors_only: bool = False
 
@@ -503,7 +668,7 @@ class Tool:
             "annotations": {
                 "title": self.title,
                 "readOnlyHint": not self.writes,
-                "destructiveHint": False,
+                "destructiveHint": self.destructive,
                 "idempotentHint": not self.writes,
                 "openWorldHint": self.open_world,
             },
@@ -567,11 +732,49 @@ TOOLS = {
             writes=True,
         ),
         Tool(
+            "list_meals",
+            "Måltidene",
+            "Every meal, by title: id, title, how many items, link. A meal is a shopping list "
+            "for a dinner without a recipe, not a recipe.",
+            NoArgs,
+            list_meals,
+        ),
+        Tool(
+            "get_meal",
+            "Les et måltid",
+            "One meal: title, items (one per line, amount first, the same format as a recipe's "
+            "ingredients), note, link. A meal has no steps and no portions.",
+            MealIdArgs,
+            get_meal,
+        ),
+        Tool(
+            "save_meal",
+            "Lagre et måltid",
+            "Add a meal (no id: title and items needed) or change one (id: only the fields you "
+            "send change; items are replaced as a whole list). A meal is a shopping list, not a "
+            "recipe. Needs an editor. Answers with the meal and its link on food.st44.no.",
+            SaveMealArgs,
+            save_meal,
+            writes=True,
+        ),
+        Tool(
+            "delete_meal",
+            "Slett et måltid",
+            "Delete a meal for good. Days in the week plan that had it keep its name, without "
+            "the link. Needs an editor.",
+            MealIdArgs,
+            delete_meal,
+            writes=True,
+            destructive=True,
+        ),
+        Tool(
             "get_meal_plan",
             "Les ukeplanen",
-            "The household's dinner plan: each day with date, weekday, the recipe (id, title, "
-            "link) or a short text, portions, and the recipe's servings. Empty days have "
-            "neither. Defaults to this week, Monday to Sunday. Needs an editor.",
+            "The household's dinner plan: each day with date, weekday, kind (recipe, meal, text, "
+            "or null for an empty day), the recipe or meal (id, title, link) or a short text, "
+            "portions, the recipe's servings, and `ingredients`: the day's shopping lines, one "
+            "per line, a recipe's ingredients or a meal's items in the same format. Defaults to "
+            "this week, Monday to Sunday. Needs an editor.",
             MealPlanArgs,
             get_meal_plan,
             editors_only=True,
@@ -579,9 +782,9 @@ TOOLS = {
         Tool(
             "set_dinner",
             "Sett middag",
-            "Put a dinner on a day of the week plan: a recipe (recipe_id, from search_recipes) "
-            "or a short text, replacing what the day had. Portions default to the recipe's "
-            "servings. Needs an editor.",
+            "Put a dinner on a day of the week plan: a recipe (recipe_id, from search_recipes), "
+            "a meal (meal_id, from list_meals) or a short text, replacing what the day had. "
+            "Portions default to the recipe's servings; a meal has none. Needs an editor.",
             SetDinnerArgs,
             set_dinner,
             writes=True,
@@ -590,7 +793,7 @@ TOOLS = {
         Tool(
             "clear_dinner",
             "Fjern middag",
-            "Empty a day of the week plan. The recipe itself stays. Needs an editor.",
+            "Empty a day of the week plan. The recipe or meal itself stays. Needs an editor.",
             DayArgs,
             clear_dinner,
             writes=True,

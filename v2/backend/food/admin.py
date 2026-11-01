@@ -94,9 +94,9 @@ class PhotoReadAdmin(_PhotoReadAdminBase):
 
 @admin.register(McpChange, site=site)
 class McpChangeAdmin(_McpChangeAdminBase):
-    """Every recipe an assistant added or changed through /api/mcp (ST-833), read-only."""
+    """Every recipe, plan day and meal an assistant changed through /api/mcp, read-only."""
 
-    list_display = ("at", "user", "via", "tool", "recipe_id", "summary")
+    list_display = ("at", "user", "via", "tool", "recipe_id", "meal_id", "summary")
     list_filter = ("tool", "via")
     search_fields = ("user__email", "via", "summary")
     date_hierarchy = "at"
