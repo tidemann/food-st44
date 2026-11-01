@@ -51,8 +51,20 @@
                       @if (day.recipe_deleted) {
                         <span class="gone">· oppskriften er slettet</span>
                       }
+                      @if (day.meal_deleted) {
+                        <span class="gone">· måltidet er slettet</span>
+                      }
                     </span>
-                    @if (day.portions) {
+                    @if (day.kind === 'meal') {
+                      <!-- ST-1968: a meal has no portions; the slot says what it is instead. -->
+                      <span class="lead" aria-hidden="true"></span>
+                      <span class="portions"
+                        ><span class="maltid-tag">Måltid</span>
+                        @if (day.items) {
+                          · {{ day.items }}
+                        }
+                      </span>
+                    } @else if (day.portions) {
                       <span class="lead" aria-hidden="true"></span>
                       <span class="portions">{{ day.portions }}</span>
                     }
@@ -68,6 +80,12 @@
                       @if (day.recipe_id !== null) {
                         <p>
                           <a class="dish" [routerLink]="['/recipes', day.recipe_id]">{{
+                            day.title
+                          }}</a>
+                        </p>
+                      } @else if (day.meal_id !== null) {
+                        <p>
+                          <a class="dish" [routerLink]="['/maltider', day.meal_id]">{{
                             day.title
                           }}</a>
                         </p>

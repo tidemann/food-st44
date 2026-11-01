@@ -1,9 +1,10 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { PlanDay, PlanWeek } from '../api/types';
+import type { Meal, PlanDay, PlanWeek } from '../api/types';
 import {
   answer,
+  type Answers,
   open,
   openHarness,
   OUTSIDER,
@@ -24,15 +25,21 @@ const WEEKDAYS = ['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag',
 
 function day(date: string, dinner: Partial<PlanDay> = {}): PlanDay {
   const index = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+  // A day with a title is a recipe day and one with a text a text day, unless it says otherwise.
+  const kind = dinner.title ? 'recipe' : dinner.text ? 'text' : null;
   return {
     date,
     weekday: WEEKDAYS[index] ?? '',
+    kind,
     recipe_id: null,
+    meal_id: null,
     title: '',
     text: '',
     portions: null,
     servings: null,
+    item_count: null,
     recipe_deleted: false,
+    meal_deleted: false,
     set_by: '',
     set_at: null,
     ...dinner,
@@ -122,11 +129,12 @@ async function openWeek(
   url: string,
   week: PlanWeek | number,
   apiUrl: string,
+  answers: Answers = {},
 ): Promise<RouterTestingHarness> {
   const harness = await RouterTestingHarness.create();
   signIn();
   await harness.navigateByUrl(url);
-  answer({});
+  answer(answers);
   await flushWeek(harness, apiUrl, week);
   return harness;
 }
@@ -475,5 +483,102 @@ describe('Ukeplan (ST-1231)', () => {
         );
       });
     }
+  });
+
+  // ST-1968: a meal on the plan is marked «Måltid» in red and never has portions.
+  describe('meals', () => {
+    const TORO: Meal = {
+      id: 3,
+      title: 'Toro Tandoori chicken',
+      items: '2 pk naan\nmango chutney',
+      item_count: 7,
+      note: '',
+      created_at: '2026-10-20T10:00:00Z',
+    };
+    const BIG_ONE: Meal = { ...TORO, id: 4, title: 'Big One frozen pizza', item_count: 2 };
+    const MEAL_DAY: Partial<PlanDay> = {
+      kind: 'meal',
+      meal_id: 3,
+      title: 'Toro Tandoori chicken',
+      item_count: 7,
+      set_by: 'Maria',
+      set_at: '2026-10-21T18:00:00Z',
+    };
+
+    it('shows a meal day in the week, marked and linked to the meal', async () => {
+      const gone: Partial<PlanDay> = { kind: 'meal', title: 'Pizza', meal_deleted: true };
+      const harness = await openWeek(
+        '/ukeplan',
+        w43({ '2026-10-22': MEAL_DAY, '2026-10-23': gone }),
+        '/api/plan?week=',
+      );
+      const days = page(harness).querySelectorAll('.day');
+      expect(text(days[3]?.querySelector('.portions'))).toBe('Måltid · 7 varer');
+      expect(days[3]?.querySelector('.maltid-tag')).not.toBeNull();
+      expect(days[3]?.querySelector('a.dish')?.getAttribute('href')).toBe('/maltider/3');
+      expect(text(days[4]?.querySelector('.day-label'))).toContain('· måltidet er slettet');
+      expect(days[4]?.querySelector('a.dish')).toBeNull();
+      expect(text(days[4]?.querySelector('.portions'))).toBe('Måltid');
+    });
+
+    it('shows a meal day on the day page: «Måltid», its items, no portions', async () => {
+      const harness = await openWeek(
+        '/ukeplan/2026-10-22',
+        w43({ '2026-10-22': MEAL_DAY }),
+        '/api/plan?week=2026-10-22',
+      );
+      const el = page(harness);
+      expect(text(el.querySelector('.chosen .k.maltid-k'))).toBe('Måltid');
+      expect(text(el.querySelector('.chosen .m'))).toBe('7 varer · ingen oppskrift');
+      expect(el.querySelector('.chosen a')?.getAttribute('href')).toBe('/maltider/3');
+      expect(el.querySelector('#porsjoner')).toBeNull();
+      expect(el.querySelector('.day-col .form-actions')).toBeNull();
+      expect(button(el, 'Velg et annet måltid')).toBeTruthy();
+    });
+
+    it('picks a meal for an empty day at once, without portions', async () => {
+      const harness = await openWeek('/ukeplan/2026-10-21', w43(), '/api/plan?week=2026-10-21', {
+        meals: [TORO, BIG_ONE],
+      });
+      const el = page(harness);
+      expect(text(el.querySelector('.alt h3'))).toBe('Eller velg et måltid');
+      expect([...el.querySelectorAll('.maltider .t')].map((t) => text(t))).toEqual([
+        'Big One frozen pizza',
+        'Toro Tandoori chicken',
+      ]);
+      expect(text(el.querySelector('.maltider .m'))).toBe('2 varer');
+
+      const navigated = navigation();
+      button(el, 'Toro Tandoori chicken').click();
+      TestBed.tick();
+      const put = http().expectOne({ method: 'PUT', url: '/api/plan/2026-10-21' });
+      expect(put.request.body).toEqual({ meal_id: 3 });
+      put.flush(day('2026-10-21', MEAL_DAY));
+      expect((await navigated).url).toBe('/ukeplan?uke=2026-W43');
+      await flushWeek(harness, '/api/plan?week=2026-W43', w43({ '2026-10-21': MEAL_DAY }));
+      expect(text(page(harness).querySelector('.flash'))).toBe(
+        'Toro Tandoori chicken er lagt til onsdag 21. oktober.',
+      );
+    });
+
+    it('"Legg til i ukeplan" on a meal page has no portions field and sends the meal', async () => {
+      const harness = await openHarness('/maltider/3', { meal: TORO });
+      button(page(harness), 'Legg til i ukeplan').click();
+      answerWeek('/api/plan?week=', w43(PLANNED));
+      await new Promise((resolve) => setTimeout(resolve));
+      await flushWeek(harness, '/api/plan?week=2026-W44', w44());
+      const el = page(harness);
+      expect(el.querySelector('#porsjoner')).toBeNull();
+
+      button(el, 'Mandag 26. okt').click();
+      TestBed.tick();
+      const put = http().expectOne({ method: 'PUT', url: '/api/plan/2026-10-26' });
+      expect(put.request.body).toEqual({ meal_id: 3 });
+      put.flush(day('2026-10-26', MEAL_DAY));
+      await settle(harness);
+      expect(text(page(harness).querySelector('.flash'))).toBe(
+        'Lagt til mandag 26. oktober. Se ukeplanen',
+      );
+    });
   });
 });

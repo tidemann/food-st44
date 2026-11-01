@@ -53,3 +53,7 @@ export type Phase = components['schemas']['PhaseOut'];
 export type IngredientGroupInput = components['schemas']['GroupIn'];
 /** ST-1962: a phase as the form sends it. */
 export type PhaseInput = components['schemas']['PhaseIn'];
+/** `GET /api/meals/{id}` (ST-1968): a dinner without a recipe, only a name and what to buy. */
+export type Meal = components['schemas']['MealOut'];
+/** `POST /api/meals`, `PUT /api/meals/{id}`: title, item lines, an optional note. */
+export type MealInput = components['schemas']['MealIn'];

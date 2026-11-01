@@ -51,7 +51,7 @@ describe('Sign-in state (M2)', () => {
 
     it('shows only a small "Logg inn", back to this page', async () => {
       const el = await render('/recipes/9?q=saus&flash=updated', { me, recipe: seed(9) });
-      expect(navLinks(el)).toEqual(['Oppskrifter', 'Logg inn']);
+      expect(navLinks(el)).toEqual(['Oppskrifter', 'Måltider', 'Logg inn']);
       expect(el.querySelector('.who .initial')).toBeNull();
       expect(signInLink(el, 'Logg inn')).toBe(login('/recipes/9?q=saus&login=ok'));
     });
@@ -90,7 +90,7 @@ describe('Sign-in state (M2)', () => {
     it('hides "Logg inn" when sign-in is not set up', async () => {
       const el = await render('/', { me: { ...me, sign_in_available: false } });
       expect(el.querySelector('.who')).toBeNull();
-      expect(navLinks(el)).toEqual(['Oppskrifter']);
+      expect(navLinks(el)).toEqual(['Oppskrifter', 'Måltider']);
     });
 
     it('is read-only when /api/auth/me fails', async () => {
@@ -113,7 +113,13 @@ describe('Sign-in state (M2)', () => {
 
     it('shows the initial, the name, "Logg ut" and "Ny oppskrift"', async () => {
       const el = await render('/', { me });
-      expect(navLinks(el)).toEqual(['Oppskrifter', 'Ny oppskrift', 'Ukeplan', 'Logg ut']);
+      expect(navLinks(el)).toEqual([
+        'Oppskrifter',
+        'Måltider',
+        'Ny oppskrift',
+        'Ukeplan',
+        'Logg ut',
+      ]);
       expect(text(el.querySelector('.who .initial'))).toBe('S');
       expect(who(el)).toBe('S Stig Logg ut');
     });
@@ -143,7 +149,7 @@ describe('Sign-in state (M2)', () => {
       expect(logout.request.method).toBe('POST');
       logout.flush(null, { status: 204, statusText: 'No Content' });
       await fixture.whenStable();
-      expect(navLinks(el)).toEqual(['Oppskrifter', 'Logg inn']);
+      expect(navLinks(el)).toEqual(['Oppskrifter', 'Måltider', 'Logg inn']);
       expect(el.querySelector('main form')).toBeNull();
       expect(text(el.querySelector('main h1'))).toBe('Logg inn for å endre');
     });
@@ -154,7 +160,7 @@ describe('Sign-in state (M2)', () => {
 
     it('shows the account and "Logg ut", but no "Ny oppskrift"', async () => {
       const el = await render('/', { me });
-      expect(navLinks(el)).toEqual(['Oppskrifter', 'Logg ut']);
+      expect(navLinks(el)).toEqual(['Oppskrifter', 'Måltider', 'Logg ut']);
       expect(who(el)).toBe('K kari.eksempel@gmail.com Logg ut');
     });
 

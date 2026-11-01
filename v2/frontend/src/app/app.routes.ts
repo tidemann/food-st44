@@ -5,6 +5,10 @@ import { AssistantKeyDelete } from './assistant/key-delete';
 import { AssistantKeyNew } from './assistant/key-new';
 import { AssistantKeys } from './assistant/keys';
 import { editorOnly } from './auth';
+import { MealDelete } from './meals/meal-delete';
+import { MealDetail } from './meals/meal-detail';
+import { MealForm } from './meals/meal-form';
+import { MealList } from './meals/meal-list';
 import { NoAccess } from './pages/no-access';
 import { NotFound } from './pages/not-found';
 import { PlanDay } from './plan/plan-day';
@@ -71,5 +75,14 @@ export const routes: Routes = [
   { path: 'ukeplan', component: NoAccess },
   { path: 'ukeplan/:date', component: PlanDay, canMatch: [editorOnly] },
   { path: 'ukeplan/:date', component: NoAccess },
+  // Meals (ST-1968): read by everyone, like the recipes; written by editors.
+  { path: 'maltider', component: MealList },
+  { path: 'maltider/ny', component: MealForm, canMatch: [editorOnly] },
+  { path: 'maltider/ny', component: NoAccess },
+  { path: 'maltider/:id', component: MealDetail },
+  { path: 'maltider/:id/rediger', component: MealForm, canMatch: [editorOnly] },
+  { path: 'maltider/:id/rediger', component: NoAccess },
+  { path: 'maltider/:id/slett', component: MealDelete, canMatch: [editorOnly] },
+  { path: 'maltider/:id/slett', component: NoAccess },
   { path: '**', component: NotFound },
 ];

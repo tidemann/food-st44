@@ -6,7 +6,7 @@ import { TestBed } from '@angular/core/testing';
 import { Title } from '@angular/platform-browser';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { ApiError, Me, PhotoReading, Recipe, Tag } from '../app/api/types';
+import type { ApiError, Meal, Me, PhotoReading, Recipe, Tag } from '../app/api/types';
 import { routes } from '../app/app.routes';
 import { Auth } from '../app/auth';
 
@@ -155,6 +155,10 @@ export interface Answers {
   recipe?: Recipe | number;
   /** GET /api/recipes/read-photo, asked by S-NEW for its button (default: reading off). */
   reading?: PhotoReading | number;
+  /** GET /api/meals, every meal (ST-1968; default: none). */
+  meals?: Meal[] | number;
+  /** GET /api/meals/:id */
+  meal?: Meal | number;
 }
 
 export function setUp(): void {
@@ -170,7 +174,7 @@ export function setUp(): void {
 function reply(
   http: HttpTestingController,
   match: (url: string, filtered: boolean) => boolean,
-  body: Me | PhotoReading | Recipe | Recipe[] | Tag[] | number,
+  body: Me | PhotoReading | Recipe | Recipe[] | Tag[] | Meal | Meal[] | number,
   expect: boolean,
 ): void {
   const requests = http.match(
@@ -205,6 +209,10 @@ export function answer(answers: Answers): void {
   reply(http, (url, q) => url === '/api/recipes' && !q, answers.all ?? SEED, false);
   reply(http, (url) => url === READING, answers.reading ?? { available: false }, false);
   reply(http, (url) => url === '/api/tags', answers.tags ?? TAGS, false);
+  reply(http, (url) => url === '/api/meals', answers.meals ?? [], false);
+  if (answers.meal !== undefined) {
+    reply(http, (url) => /^\/api\/meals\/\d+$/.test(url), answers.meal, true);
+  }
   if (answers.search !== undefined) {
     reply(http, (url, q) => url === '/api/recipes' && q, answers.search, true);
   }

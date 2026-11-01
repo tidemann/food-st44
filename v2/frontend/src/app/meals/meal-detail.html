@@ -1,0 +1,106 @@
+@switch (state()) {
+  @case ('not-found') {
+    <app-not-found kind="meal" />
+  }
+  @case ('error') {
+    <app-server-error />
+  }
+  @case ('ready') {
+    @if (view(); as v) {
+      @if (flashMessage(); as message) {
+        <div class="wrap">
+          <p class="flash" role="status">{{ message }}</p>
+        </div>
+      }
+      @if (planAdded(); as added) {
+        <div class="wrap">
+          <p class="flash" role="status">
+            {{ added.text }}
+            <a routerLink="/ukeplan" [queryParams]="{ uke: added.week }">Se ukeplanen</a>
+          </p>
+        </div>
+      }
+      <section class="rh">
+        <div class="wrap">
+          <div class="rh-top">
+            <p class="crumb">
+              <a routerLink="/maltider">Måltider</a> &nbsp;/&nbsp; {{ v.meal.title }}
+            </p>
+            @if (editor()) {
+              <div class="acts">
+                <a class="btn" [routerLink]="['/maltider', v.meal.id, 'rediger']">Rediger</a>
+                <a class="btn btn-danger-ghost" [routerLink]="['/maltider', v.meal.id, 'slett']"
+                  >Slett</a
+                >
+              </div>
+            }
+          </div>
+
+          <div class="grid">
+            <div class="rt">
+              <p class="maltid-kicker">Måltid</p>
+              <h1>{{ v.meal.title }}</h1>
+            </div>
+            <div class="rmeta">
+              <dl>
+                <div>
+                  <dt>Varer</dt>
+                  <dd>{{ v.items.length }}</dd>
+                </div>
+                <div>
+                  <dt>Lagt inn</dt>
+                  <dd>{{ v.added }}</dd>
+                </div>
+              </dl>
+              @if (editor()) {
+                <div class="plan-add">
+                  <button
+                    class="btn"
+                    type="button"
+                    [attr.aria-expanded]="planOpen()"
+                    aria-controls="plan-pick"
+                    (click)="togglePlan()"
+                  >
+                    Legg til i ukeplan
+                  </button>
+                </div>
+              }
+            </div>
+            @if (editor() && planOpen() && dish(); as dish) {
+              <app-plan-pick
+                class="plan-panel"
+                id="plan-pick"
+                [dish]="dish"
+                (added)="planned($event)"
+              />
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="rbody">
+        <div class="wrap grid">
+          <div class="varer">
+            <h2>Dette trenger dere</h2>
+            <ul>
+              @for (item of v.items; track $index) {
+                <li [class.v-plain]="!item.amount">
+                  <span class="v">{{ item.name }}</span>
+                  @if (item.amount) {
+                    <span class="ldr" aria-hidden="true"></span>
+                    <span class="m">{{ item.amount }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+          @if (v.meal.note) {
+            <div class="maltid-note">
+              <p>{{ v.meal.note }}</p>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  }
+}

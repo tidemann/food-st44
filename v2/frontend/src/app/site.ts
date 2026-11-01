@@ -1,6 +1,6 @@
 import { httpResource } from '@angular/common/http';
 import { computed, Injectable, signal } from '@angular/core';
-import type { Recipe, Tag } from './api/types';
+import type { Meal, Recipe, Tag } from './api/types';
 import { formatLong } from './recipes/format';
 
 /**
@@ -13,6 +13,8 @@ export class Site {
   readonly recipes = httpResource<Recipe[]>(() => '/api/recipes');
   /** The emneord in use, with counts, in Norwegian order: the tag band and the suggestions. */
   readonly tags = httpResource<Tag[]>(() => '/api/tags');
+  /** The meals (ST-1968), by title: the front page's band and the day page's picker. */
+  readonly meals = httpResource<Meal[]>(() => '/api/meals');
 
   readonly total = computed(() => (this.recipes.hasValue() ? this.recipes.value().length : 0));
   /** "Sist oppdatert": the newest `created_at`, or '' when there is none. */
@@ -32,5 +34,10 @@ export class Site {
   changed(): void {
     this.recipes.reload();
     this.tags.reload();
+  }
+
+  /** After a meal was saved or deleted. */
+  mealsChanged(): void {
+    this.meals.reload();
   }
 }

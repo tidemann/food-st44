@@ -75,6 +75,36 @@
                     </li>
                   }
                 </ul>
+                @if (meals().length) {
+                  <!-- ST-1968: a meal is its own block, under the recipes, marked by standing apart. -->
+                  <div class="alt">
+                    <h3>Eller velg et måltid</h3>
+                    <p class="field-hint">
+                      En middag uten oppskrift: bare det dere trenger å handle.
+                    </p>
+                    <ul class="maltider">
+                      @for (meal of meals(); track meal.id) {
+                        <li>
+                          <button
+                            #mealButton
+                            type="button"
+                            [disabled]="busy()"
+                            (click)="chooseMeal(meal)"
+                          >
+                            <span class="t">{{ meal.title }}</span>
+                            <span class="ldr" aria-hidden="true"></span>
+                            <span class="m">{{ meal.count }}</span>
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                    @if (allMeals(); as all) {
+                      <p class="alt-all">
+                        <a routerLink="/maltider">{{ all }}</a>
+                      </p>
+                    }
+                  </div>
+                }
                 <form class="alt" novalidate (submit)="saveText($event)">
                   <h3>Eller skriv en kort tekst</h3>
                   <div class="field" [class.field-invalid]="errors().text">
@@ -130,8 +160,8 @@
                     </div>
                   </dl>
                   <p class="note">
-                    Velger du en oppskrift, foreslår vi porsjonene som står i den. En kort tekst
-                    trenger ingen oppskrift.
+                    Velger dere en oppskrift, foreslår vi porsjonene som står i den. Et måltid og en
+                    kort tekst trenger ingen porsjoner.
                   </p>
                 </div>
               </aside>
@@ -188,6 +218,15 @@
                     <p class="m">
                       Navnet står igjen på planen. Velg en annen oppskrift om dere vil.
                     </p>
+                  } @else if (v.day.meal_id !== null) {
+                    <p class="k maltid-k">Måltid</p>
+                    <h2>{{ v.day.title }}</h2>
+                    <p class="m">{{ itemsOf(v.day.item_count) }} · ingen oppskrift</p>
+                    <a class="swap" [routerLink]="['/maltider', v.day.meal_id]">Se måltidet</a>
+                  } @else if (v.day.meal_deleted) {
+                    <p class="k maltid-k">Måltidet er slettet</p>
+                    <h2>{{ v.day.title }}</h2>
+                    <p class="m">Navnet står igjen på planen. Velg et annet måltid om dere vil.</p>
                   } @else {
                     <p class="k">Kort tekst</p>
                     <h2>{{ v.day.text }}</h2>
@@ -233,7 +272,13 @@
                       </div>
                     }
                   </dl>
-                  <p class="note">Planen er felles for husstanden. Endringen gjelder for alle.</p>
+                  <p class="note">
+                    @if (v.day.kind === 'meal') {
+                      Et måltid har ingen porsjoner. Varene står som de er skrevet.
+                    } @else {
+                      Planen er felles for husstanden. Endringen gjelder for alle.
+                    }
+                  </p>
                 </div>
               </aside>
             </div>
@@ -252,7 +297,16 @@
                     </button>
                   </li>
                   <li>
-                    <button type="button" (click)="pick(true)">
+                    <button type="button" (click)="pick('meal')">
+                      <span class="d">{{
+                        v.day.kind === 'meal' ? 'Velg et annet måltid' : 'Velg et måltid i stedet'
+                      }}</span>
+                      <span class="lead" aria-hidden="true"></span>
+                      <span class="s">Handleliste uten oppskrift</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" (click)="pick('text')">
                       <span class="d">{{
                         v.day.text ? 'Skriv en annen tekst' : 'Skriv en kort tekst i stedet'
                       }}</span>
