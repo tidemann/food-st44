@@ -402,14 +402,20 @@ def test_get_meal_plan_defaults_to_this_week(client: Client, token: str, lapskau
     assert week["days"][3] == {
         "date": "2026-10-22",
         "weekday": "torsdag",
+        "kind": "recipe",
         "recipe_id": lapskaus.id,
+        "meal_id": None,
         "title": "Lapskaus",
         "text": "",
         "portions": 4,
         "servings": 6,
+        "ingredients": "kjøtt\npotet",
         "recipe_deleted": False,
+        "meal_deleted": False,
         "link": f"https://food.st44.no/recipes/{lapskaus.id}",
     }
+    assert (week["days"][4]["kind"], week["days"][4]["ingredients"]) == ("text", "")
+    assert week["days"][0]["kind"] is None
     assert (week["days"][4]["text"], week["days"][4]["recipe_id"]) == ("Rester", None)
     assert week["days"][0]["title"] == week["days"][0]["text"] == ""
 

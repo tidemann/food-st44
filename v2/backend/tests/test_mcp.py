@@ -141,7 +141,7 @@ def test_an_unsupported_protocol_header_is_400(client: Client) -> None:
     assert client.post(MCP, body, content_type=JSON, headers=headers).status_code == 200
 
 
-def test_the_tools_are_listed_and_none_deletes(client: Client) -> None:
+def test_the_tools_are_listed_and_only_a_meal_is_deleted(client: Client) -> None:
     tools = rpc(client, "tools/list")["result"]["tools"]
     names = [tool["name"] for tool in tools]
     assert names == [
@@ -151,13 +151,17 @@ def test_the_tools_are_listed_and_none_deletes(client: Client) -> None:
         "import_recipe_from_link",
         "create_recipe",
         "update_recipe",
+        "list_meals",
+        "get_meal",
+        "save_meal",
+        "delete_meal",
     ]
-    assert not [name for name in names if "delete" in name or "remove" in name]
+    assert [name for name in names if "delete" in name or "remove" in name] == ["delete_meal"]
     for tool in tools:
         assert tool["inputSchema"]["type"] == "object"
-        assert tool["annotations"]["destructiveHint"] is False
+        assert tool["annotations"]["destructiveHint"] is (tool["name"] == "delete_meal")
     reads = {t["name"] for t in tools if t["annotations"]["readOnlyHint"]}
-    assert reads == {"search_recipes", "get_recipe", "list_tags"}
+    assert reads == {"search_recipes", "get_recipe", "list_tags", "list_meals", "get_meal"}
 
 
 def test_an_unknown_tool_is_an_invalid_params_error(client: Client) -> None:

@@ -4,6 +4,7 @@ from ninja.errors import ValidationError
 
 from food.auth import router as auth_router
 from food.keys import router as keys_router
+from food.meals import router as meals_router
 from food.oauth import router as oauth_router
 from food.plan import router as plan_router
 from food.recipes import router as recipes_router
@@ -26,6 +27,8 @@ api.add_router("/api/keys", keys_router)
 api.add_router("/api/oauth", oauth_router)
 # The week plan (ST-1231): editors only, reads included.
 api.add_router("/api/plan", plan_router)
+# Meals (ST-1968): dinners without a recipe. Reads are public, as for recipes.
+api.add_router("/api/meals", meals_router)
 
 
 @api.exception_handler(ValidationError)
